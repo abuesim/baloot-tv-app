@@ -252,7 +252,7 @@ export default function TvBoard({
           game={game}
           team1={team1}
           team2={team2}
-          accent={game.winner === 1 ? TEAM1_COLOR : TEAM2_COLOR}
+          accent={accent}
         />
       )}
     </>
