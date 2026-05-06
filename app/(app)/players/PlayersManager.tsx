@@ -229,7 +229,7 @@ export default function PlayersManager({ players }: { players: PlayerRow[] }) {
                     <div className="flex-1 min-w-0">
                       <div className="font-bold text-lg truncate">{p.name}</div>
                       <div className="text-xs text-white/50">
-                        {p.gamesPlayed} مباراة
+                        {p.gamesPlayed} صكة
                       </div>
                     </div>
                     <div className="flex gap-1 flex-wrap shrink-0">
@@ -255,7 +255,7 @@ export default function PlayersManager({ players }: { players: PlayerRow[] }) {
                       <button
                         onClick={() => remove(p.id, p.name)}
                         disabled={p.gamesPlayed > 0}
-                        title={p.gamesPlayed > 0 ? "شارك في مباريات سابقة" : ""}
+                        title={p.gamesPlayed > 0 ? "شارك في صكات سابقة" : ""}
                         className="text-xs bg-danger/20 hover:bg-danger/30 disabled:opacity-30 disabled:cursor-not-allowed text-red-300 px-3 py-1 rounded"
                       >
                         حذف

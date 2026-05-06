@@ -64,7 +64,7 @@ export default function TvSection({
             {code}
           </div>
           <p className="text-xs text-white/50 mt-1">
-            هذا الكود دائم — الشاشة تتصل مرة وتعمل لكل مبارياتك
+            هذا الكود دائم — الشاشة تتصل مرة وتعمل لكل صكاتك
           </p>
         </div>
 

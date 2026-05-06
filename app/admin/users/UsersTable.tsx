@@ -105,7 +105,7 @@ export default function UsersTable({
               <th className="text-right p-3">الصلاحية</th>
               <th className="text-right p-3">الحالة</th>
               <th className="text-right p-3">اللاعبون</th>
-              <th className="text-right p-3">المباريات</th>
+              <th className="text-right p-3">الصكات</th>
               <th className="text-right p-3">آخر دخول</th>
               <th className="text-right p-3">إجراءات</th>
             </tr>

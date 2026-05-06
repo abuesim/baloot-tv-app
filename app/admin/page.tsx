@@ -14,8 +14,8 @@ export default async function AdminDashboard() {
 
   const stats = [
     { label: "المستخدمون", value: usersCount, href: "/admin/users" },
-    { label: "كل المباريات", value: gamesCount, href: null },
-    { label: "مباريات جارية", value: activeGamesCount, href: null },
+    { label: "كل الصكات", value: gamesCount, href: null },
+    { label: "صكات جارية", value: activeGamesCount, href: null },
     { label: "إعلانات نشطة", value: bannersCount, href: "/admin/banners" },
   ];
 

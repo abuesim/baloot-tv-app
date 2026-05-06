@@ -23,7 +23,7 @@ export default function AppHeader({ appName, displayName, isAdmin }: Props) {
     function exitGame() {
       if (
         confirm(
-          "هل تريد الخروج من المباراة؟\nالمباراة محفوظة وتقدر ترجع لها لاحقاً.",
+          "هل تريد الخروج من الصكة؟\nالصكة محفوظة وتقدر ترجع لها لاحقاً.",
         )
       ) {
         router.push("/home");

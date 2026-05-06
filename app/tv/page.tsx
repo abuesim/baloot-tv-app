@@ -66,7 +66,7 @@ export default function TvEntryPage() {
         </div>
         <h1 className="text-3xl font-black text-gold">شاشة البث</h1>
         <p className="text-white/60 text-sm">
-          أدخل كود البث للاتصال بالمباراة على شاشة التلفزيون
+          أدخل كود البث للاتصال بالصكة على شاشة التلفزيون
         </p>
       </div>
 

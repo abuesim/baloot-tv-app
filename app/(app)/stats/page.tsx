@@ -133,7 +133,7 @@ export default async function StatsPage({
       <div className="flex flex-wrap items-end justify-between gap-3">
         <div>
           <h1 className="text-3xl font-bold mb-1">الإحصائيات</h1>
-          <p className="text-white/60">{games.length} مباراة في هذا الشهر</p>
+          <p className="text-white/60">{games.length} صكة في هذا الشهر</p>
         </div>
         <div>
           <label className="block text-xs mb-1 text-white/60">الشهر</label>
@@ -167,7 +167,7 @@ export default async function StatsPage({
             <div className="text-sm text-gold">بطل الشهر</div>
             <div className="text-2xl font-black">{champion.name}</div>
             <div className="text-sm text-white/70">
-              {champion.wins} فوز من {champion.games} مباراة
+              {champion.wins} فوز من {champion.games} صكة
             </div>
           </div>
         </div>

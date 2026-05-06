@@ -39,9 +39,9 @@ export async function recordRoundAction(
     where: { id: gameId, userId: user.id },
     include: { rounds: true },
   });
-  if (!game) return { ok: false, error: "المباراة غير موجودة" };
+  if (!game) return { ok: false, error: "الصكة غير موجودة" };
   if (game.status !== "IN_PROGRESS")
-    return { ok: false, error: "المباراة منتهية" };
+    return { ok: false, error: "الصكة منتهية" };
 
   const newTeam1 = game.team1Score + parsed.data.team1Score;
   const newTeam2 = game.team2Score + parsed.data.team2Score;
@@ -82,7 +82,7 @@ export async function deleteRoundAction(
     where: { id: gameId, userId: user.id },
     include: { rounds: true },
   });
-  if (!game) return { ok: false, error: "المباراة غير موجودة" };
+  if (!game) return { ok: false, error: "الصكة غير موجودة" };
 
   const round = game.rounds.find((r) => r.id === roundId);
   if (!round) return { ok: false, error: "الجولة غير موجودة" };
@@ -125,7 +125,7 @@ export async function abandonGameAction(gameId: string): Promise<ActionResult> {
   const game = await db.game.findFirst({
     where: { id: gameId, userId: user.id },
   });
-  if (!game) return { ok: false, error: "المباراة غير موجودة" };
+  if (!game) return { ok: false, error: "الصكة غير موجودة" };
 
   await db.game.update({
     where: { id: gameId },
@@ -144,9 +144,9 @@ export async function changeGameModeAction(
   const game = await db.game.findFirst({
     where: { id: gameId, userId: user.id },
   });
-  if (!game) return { ok: false, error: "المباراة غير موجودة" };
+  if (!game) return { ok: false, error: "الصكة غير موجودة" };
   if (game.status !== "IN_PROGRESS")
-    return { ok: false, error: "المباراة منتهية" };
+    return { ok: false, error: "الصكة منتهية" };
 
   await db.game.update({ where: { id: gameId }, data: { mode } });
   await broadcastGame(gameId, user.id);
@@ -207,7 +207,7 @@ export async function setGamePlayersAction(
   const game = await db.game.findFirst({
     where: { id: gameId, userId: user.id },
   });
-  if (!game) return { ok: false, error: "المباراة غير موجودة" };
+  if (!game) return { ok: false, error: "الصكة غير موجودة" };
 
   // تحقق أن كل اللاعبين يخصّون المستخدم
   const players = await db.player.findMany({

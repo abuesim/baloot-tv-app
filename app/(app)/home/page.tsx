@@ -33,7 +33,7 @@ export default async function HomePage() {
     <div className="space-y-8">
       <div>
         <h1 className="text-3xl font-bold mb-1">أهلاً، {user.displayName}</h1>
-        <p className="text-white/60">جاهز لمباراة جديدة؟</p>
+        <p className="text-white/60">جاهز لصكة جديدة؟</p>
       </div>
 
       <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
@@ -42,7 +42,7 @@ export default async function HomePage() {
           className="btn-grad rounded-2xl p-8 text-center shadow-lg shadow-accent/20"
         >
           <div className="text-5xl mb-2">🎴</div>
-          <div className="text-xl font-bold">مباراة جديدة</div>
+          <div className="text-xl font-bold">صكة جديدة</div>
         </Link>
         <Link
           href="/players"
@@ -61,10 +61,10 @@ export default async function HomePage() {
       </div>
 
       <div>
-        <h2 className="text-xl font-bold mb-4">آخر المباريات</h2>
+        <h2 className="text-xl font-bold mb-4">آخر الصكات</h2>
         {recentGames.length === 0 ? (
           <div className="bg-navy rounded-2xl p-12 text-center text-white/40 border border-white/10">
-            لا توجد مباريات بعد
+            لا توجد صكات بعد
           </div>
         ) : (
           <div className="space-y-3">

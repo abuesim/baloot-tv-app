@@ -7,7 +7,7 @@ import { APP_NAV, isCalculatorPath } from "./app-nav";
 export default function MobileBottomNav() {
   const pathname = usePathname();
 
-  // إخفاء الشريط في شاشة الحاسبة (مباراة جارية) لتجربة مركّزة
+  // إخفاء الشريط في شاشة الحاسبة (صكة جارية) لتجربة مركّزة
   if (isCalculatorPath(pathname)) return null;
 
   return (

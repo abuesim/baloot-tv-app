@@ -149,7 +149,7 @@ export default function TvBoard({
     ["--tv-accent" as never]: accent,
   };
 
-  // حالة بدون مباراة
+  // حالة بدون صكة
   if (!game) {
     return (
       <div
@@ -184,7 +184,7 @@ export default function TvBoard({
           <div className="space-y-4">
             <div className="text-6xl md:text-9xl">🎴</div>
             <div className="text-xl md:text-3xl text-white/80 font-bold">
-              بانتظار بداية المباراة
+              بانتظار بداية الصكة
             </div>
             <div className="text-white/40 text-sm md:text-base tracking-widest" style={{ color: accent }}>
               {code}
@@ -217,7 +217,7 @@ export default function TvBoard({
   const TEAM1_COLOR = "#ff7c2a"; // لنا  — برتقالي
   const TEAM2_COLOR = "#ffffff"; // لهم — أبيض
 
-  // محتوى المباراة (مشترك بين الوضعين)
+  // محتوى الصكة (مشترك بين الوضعين)
   const gameContent = (
     <>
       <Header user={user} game={game} connected={connected} />

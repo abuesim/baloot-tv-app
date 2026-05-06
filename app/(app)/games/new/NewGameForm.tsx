@@ -145,7 +145,7 @@ export default function NewGameForm({ players }: { players: Player[] }) {
         </>
       ) : (
         <div className="bg-navy/60 rounded-2xl p-4 border border-white/10 text-sm text-white/70">
-          ما عندك ما يكفي من اللاعبين بعد. ابدأ المباراة الآن وأضفهم من الحاسبة لاحقاً.
+          ما عندك ما يكفي من اللاعبين بعد. ابدأ الصكة الآن وأضفهم من الحاسبة لاحقاً.
         </div>
       )}
 
@@ -161,8 +161,8 @@ export default function NewGameForm({ players }: { players: Player[] }) {
         {isPending
           ? "جاري الإنشاء..."
           : noneChosen
-          ? "ابدأ المباراة (بدون لاعبين)"
-          : "ابدأ المباراة"}
+          ? "ابدأ الصكة (بدون لاعبين)"
+          : "ابدأ الصكة"}
       </button>
     </form>
   );

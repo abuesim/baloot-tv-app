@@ -48,7 +48,7 @@ export default async function StudioPage() {
       <section className="bg-navy rounded-2xl p-6 border border-white/10">
         <h2 className="font-bold text-lg mb-1">📢 إعلاناتي الخاصة</h2>
         <p className="text-xs text-white/50 mb-4">
-          تظهر فقط على شاشة بثّك ومبارياتك (ليست عامة)
+          تظهر فقط على شاشة بثّك وصكاتك (ليست عامة)
         </p>
         <MyAdsSection ads={myAds} />
       </section>

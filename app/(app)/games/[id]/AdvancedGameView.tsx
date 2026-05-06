@@ -160,7 +160,7 @@ export default function AdvancedGameView({
   function exitGame() {
     if (
       confirm(
-        "هل تريد الخروج من المباراة؟\nالمباراة محفوظة وتقدر ترجع لها لاحقاً.",
+        "هل تريد الخروج من الصكة؟\nالصكة محفوظة وتقدر ترجع لها لاحقاً.",
       )
     ) {
       router.push("/home");
@@ -252,7 +252,7 @@ export default function AdvancedGameView({
       )}
       {game.status === "ABANDONED" && (
         <div className="mx-5 mt-2 text-center bg-white/10 text-white/60 rounded-2xl py-3 text-sm">
-          ألغيت المباراة
+          ألغيت الصكة
         </div>
       )}
 
@@ -411,7 +411,7 @@ export default function AdvancedGameView({
           tvUrl={tvUrl}
           onClose={() => setShowSettings(false)}
           onAbandon={() => {
-            if (confirm("إلغاء المباراة الحالية؟")) {
+            if (confirm("إلغاء الصكة الحالية؟")) {
               startTransition(async () => {
                 await abandonGameAction(game.id);
                 router.refresh();
@@ -584,7 +584,7 @@ function WinCelebration({
             onClick={onNewGame}
             className="w-full h-14 rounded-2xl btn-grad font-bold text-lg"
           >
-            🎮 مباراة جديدة
+            🎮 صكة جديدة
           </button>
           <button
             onClick={onClose}
@@ -786,7 +786,7 @@ function SettingsModal({
 }) {
   const [tab, setTab] = useState<SettingsTab>("general");
 
-  // نوع المباراة — قابل للتبديل
+  // نوع الصكة — قابل للتبديل
   const [localMode, setLocalMode] = useState<"NORMAL" | "MASHDOOD">(gameMode);
   const [modeLoading, setModeLoading] = useState(false);
 
@@ -883,9 +883,9 @@ function SettingsModal({
           {tab === "general" && (
             <div className="space-y-4">
 
-              {/* نوع المباراة — toggle */}
+              {/* نوع الصكة — toggle */}
               <div>
-                <div className="text-xs text-white/60 mb-2">نوع المباراة</div>
+                <div className="text-xs text-white/60 mb-2">نوع الصكة</div>
                 <div className="grid grid-cols-2 bg-white/[0.04] rounded-xl p-1 border border-white/5">
                   <button
                     onClick={() => toggleMode("NORMAL")}
@@ -933,12 +933,12 @@ function SettingsModal({
                 </div>
               )}
 
-              {/* إلغاء المباراة */}
+              {/* إلغاء الصكة */}
               <button
                 onClick={() => { onClose(); onAbandon(); }}
                 className="w-full bg-danger/20 hover:bg-danger/30 text-red-300 rounded-xl py-3 font-bold text-sm"
               >
-                إلغاء المباراة
+                إلغاء الصكة
               </button>
             </div>
           )}

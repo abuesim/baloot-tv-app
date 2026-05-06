@@ -59,7 +59,7 @@ export async function deletePlayerAction(id: string): Promise<ActionResult> {
   });
   if (!player) return { ok: false, error: "اللاعب غير موجود" };
   if (player._count.participants > 0) {
-    return { ok: false, error: "لا يمكن حذف لاعب شارك في مباريات سابقة" };
+    return { ok: false, error: "لا يمكن حذف لاعب شارك في صكات سابقة" };
   }
   await db.player.delete({ where: { id } });
   await deletePlayerImage(player.imageUrl);

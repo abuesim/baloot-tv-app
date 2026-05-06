@@ -13,7 +13,7 @@ export default async function NewGamePage() {
   return (
     <div className="space-y-6">
       <div>
-        <h1 className="text-3xl font-bold mb-1">مباراة جديدة</h1>
+        <h1 className="text-3xl font-bold mb-1">صكة جديدة</h1>
         <p className="text-white/60">اختر نوع اللعب وابدأ — اللاعبون اختياريون</p>
       </div>
 

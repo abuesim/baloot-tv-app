@@ -2,7 +2,7 @@ import { db } from "@/lib/db";
 import { ImageCarousel } from "./ImageCarousel";
 
 /**
- * @param ownerId — معرّف المستخدم المملوك له السياق (مثلاً صاحب المباراة).
+ * @param ownerId — معرّف المستخدم المملوك له السياق (مثلاً صاحب الصكة).
  *   لو null/undefined: تظهر فقط الإعلانات العامة (للأدمن، userId = null).
  *   لو موجود: تظهر الإعلانات العامة + إعلانات المستخدم نفسه.
  */

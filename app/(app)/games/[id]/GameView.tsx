@@ -174,7 +174,7 @@ export default function GameView({
         )}
         {game.status === "ABANDONED" && (
           <div className="mt-4 text-center bg-white/10 text-white/60 rounded-xl py-3 text-sm">
-            ألغيت المباراة
+            ألغيت الصكة
           </div>
         )}
       </div>
@@ -240,7 +240,7 @@ export default function GameView({
         <button
           disabled={isPending}
           onClick={() => {
-            if (confirm("إلغاء المباراة الحالية؟")) {
+            if (confirm("إلغاء الصكة الحالية؟")) {
               startTransition(async () => {
                 await abandonGameAction(game.id);
                 router.refresh();
@@ -249,7 +249,7 @@ export default function GameView({
           }}
           className="w-full text-sm text-white/40 hover:text-red-400 py-2"
         >
-          إلغاء المباراة
+          إلغاء الصكة
         </button>
       )}
 
