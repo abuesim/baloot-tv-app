@@ -1,14 +1,14 @@
 import type { NextConfig } from "next";
-import path from "path"; // أضفنا هذا السطر
 
 const nextConfig: NextConfig = {
   experimental: {
     serverActions: {
       bodySizeLimit: "10mb",
     },
-    // هذا السطر يحل مشكلة الـ NFT list والتتبع المفرط للملفات
-    outputFileTracingRoot: path.join(__dirname),
   },
+  
+  // ملاحظة: قمنا بإزالة بلوك eslint و typescript لأن النظام الجديد 
+  // في Next.js 16 يكتشفها تلقائياً من الملفات المنفصلة
   
   allowedDevOrigins: [
     "192.168.*.*", "10.*.*.*", "172.16.*.*", "172.17.*.*", "172.18.*.*", 
@@ -18,12 +18,6 @@ const nextConfig: NextConfig = {
   ],
 
   output: 'standalone', 
-  typescript: {
-    ignoreBuildErrors: true,
-  },
-  eslint: {
-    ignoreDuringBuilds: true,
-  },
 };
 
 export default nextConfig;
