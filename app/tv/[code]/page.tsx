@@ -25,7 +25,8 @@ export default async function TvPage({
   });
   if (!user) notFound();
 
-  const inProgress = await db.game.findFirst({
+  // نعرض فقط المباريات الجارية — المنتهية لا تظهر على الشاشة
+  const game = await db.game.findFirst({
     where: { userId: user.id, status: "IN_PROGRESS" },
     orderBy: { startedAt: "desc" },
     include: {
@@ -33,16 +34,6 @@ export default async function TvPage({
       rounds: { orderBy: { number: "asc" } },
     },
   });
-  const game =
-    inProgress ??
-    (await db.game.findFirst({
-      where: { userId: user.id },
-      orderBy: { startedAt: "desc" },
-      include: {
-        participants: { include: { player: true } },
-        rounds: { orderBy: { number: "asc" } },
-      },
-    }));
 
   // جلب الإعلانات هنا وتمريرها لـ TvBoard حتى تتدوّر معه في وضع الطولي
   const banners = await db.adBanner.findMany({

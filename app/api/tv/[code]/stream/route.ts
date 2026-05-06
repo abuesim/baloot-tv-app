@@ -16,18 +16,8 @@ const USER_TV_SELECT = {
 } as const;
 
 async function getCurrentGameForUser(userId: string) {
-  const inProgress = await db.game.findFirst({
-    where: { userId, status: "IN_PROGRESS" },
-    orderBy: { startedAt: "desc" },
-    include: {
-      participants: { include: { player: true } },
-      rounds: { orderBy: { number: "asc" } },
-    },
-  });
-  if (inProgress) return inProgress;
-
   return db.game.findFirst({
-    where: { userId },
+    where: { userId, status: "IN_PROGRESS" },
     orderBy: { startedAt: "desc" },
     include: {
       participants: { include: { player: true } },
