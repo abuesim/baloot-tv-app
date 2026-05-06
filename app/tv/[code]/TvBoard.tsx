@@ -190,6 +190,10 @@ export default function TvBoard({
   const showChat = user.tvShowChat && !!user.tvChatUrl;
   const showDonations = user.tvShowDonations && !!user.tvDonationUrl;
 
+  // ألوان الفريقين الثابتة
+  const TEAM1_COLOR = "#ff7c2a"; // لنا  — برتقالي
+  const TEAM2_COLOR = "#ffffff"; // لهم — أبيض
+
   // محتوى المباراة (مشترك بين الوضعين)
   const gameContent = (
     <>
@@ -209,19 +213,19 @@ export default function TvBoard({
                 score={game.team1Score}
                 isWinner={game.winner === 1}
                 target={game.targetScore}
-                accent={accent}
+                accent={TEAM1_COLOR}
                 isAccent
                 flashing={flash.team1}
                 pops={pops.filter((p) => p.team === 1)}
               />
-              <DiffPanel diff={diff} lead={lead} accent={accent} />
+              <DiffPanel diff={diff} lead={lead} accent={TEAM1_COLOR} />
               <ScoreColumn
                 label="لهم"
                 players={team2}
                 score={game.team2Score}
                 isWinner={game.winner === 2}
                 target={game.targetScore}
-                accent={accent}
+                accent={TEAM2_COLOR}
                 isAccent={false}
                 flashing={flash.team2}
                 pops={pops.filter((p) => p.team === 2)}
@@ -248,7 +252,7 @@ export default function TvBoard({
           game={game}
           team1={team1}
           team2={team2}
-          accent={accent}
+          accent={game.winner === 1 ? TEAM1_COLOR : TEAM2_COLOR}
         />
       )}
     </>
@@ -436,16 +440,16 @@ function TvWinCelebration({
         <div className="text-white/50 text-lg md:text-3xl mb-5 md:mb-8 tabular-nums">
           {winScore} — {loseScore}
         </div>
-        <div className="flex justify-center gap-6 md:gap-12">
+        <div className="flex justify-center gap-8 md:gap-16">
           {winners.map((p) => (
-            <div key={p.id} className="flex flex-col items-center gap-2 md:gap-3">
-              <span className="block md:hidden">
-                <PlayerAvatar name={p.name} imageUrl={p.imageUrl} size="xl" />
-              </span>
-              <span className="hidden md:block">
+            <div key={p.id} className="flex flex-col items-center gap-2 md:gap-4">
+              {/* جوال: 2xl (128px) — شاشة كبيرة: 2xl × scale-125 ≈ 160px */}
+              <div className="md:scale-125 md:my-4">
                 <PlayerAvatar name={p.name} imageUrl={p.imageUrl} size="2xl" />
+              </div>
+              <span className="text-sm md:text-xl font-bold" style={{ color: accent }}>
+                {p.name}
               </span>
-              <span className="text-sm md:text-xl text-white/80">{p.name}</span>
             </div>
           ))}
         </div>
