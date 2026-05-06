@@ -497,7 +497,7 @@ function DiffPanel({
         {diff}
       </div>
       <div className="text-xs text-white/60 mt-1 hidden sm:block">
-        {lead === 1 ? "← لنا" : "لهم →"}
+        {lead === 1 ? "لنا →" : "← لهم"}
       </div>
     </div>
   );
