@@ -209,7 +209,6 @@ export default function TvBoard({
             <div className="grid grid-cols-[1fr_auto_1fr] gap-2 md:gap-6 w-full items-center">
               <ScoreColumn
                 label="لنا"
-                labelColor={TEAM1_COLOR}
                 players={team1}
                 score={game.team1Score}
                 isWinner={game.winner === 1}
@@ -495,7 +494,6 @@ function DonationStrip({ url }: { url: string }) {
 
 function ScoreColumn({
   label,
-  labelColor,
   players,
   score,
   isWinner,
@@ -506,7 +504,6 @@ function ScoreColumn({
   pops,
 }: {
   label: string;
-  labelColor?: string;
   players: Player[];
   score: number;
   isWinner: boolean;
@@ -526,7 +523,7 @@ function ScoreColumn({
     >
       <div
         className="text-base md:text-2xl font-bold mb-1 md:mb-3"
-        style={{ color: labelColor ?? "rgba(255,255,255,0.6)" }}
+        style={{ color }}
       >
         {label}
       </div>
