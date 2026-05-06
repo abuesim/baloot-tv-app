@@ -1,6 +1,7 @@
 import type { Metadata } from "next";
 import { Readex_Pro } from "next/font/google";
 import "./globals.css";
+import { ServiceWorkerRegister } from "@/components/ServiceWorkerRegister";
 
 const readex = Readex_Pro({
   subsets: ["arabic", "latin"],
@@ -18,6 +19,10 @@ export const metadata: Metadata = {
     statusBarStyle: "black-translucent",
     title: "أكك لايف",
   },
+  icons: {
+    apple: "/icon-192x192.png",
+    icon: "/icon-512x512.png",
+  },
 };
 
 export default function RootLayout({
@@ -33,6 +38,7 @@ export default function RootLayout({
         <div className="bg-grid pointer-events-none fixed inset-0 z-0" />
         <div className="bg-glow pointer-events-none fixed inset-0 z-0" />
         <div className="relative z-10 flex-1 flex flex-col">{children}</div>
+        <ServiceWorkerRegister />
       </body>
     </html>
   );
