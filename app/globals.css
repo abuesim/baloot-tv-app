@@ -1,0 +1,161 @@
+@import "tailwindcss";
+
+@theme {
+  --font-sans: var(--font-readex), system-ui, sans-serif;
+
+  /* لوحة الألوان مستوحاة من creators.sa */
+  --color-bg: #0a0a0e; /* الخلفية الأساسية - أسود مع لمحة زرقاء */
+  --color-navy-deep: #0a0a0e; /* توافق مع المسمّيات السابقة */
+  --color-navy: #15151c; /* بطاقات وأقسام */
+  --color-navy-light: #1f1f29; /* عناصر مرفوعة */
+  --color-border: #2a2a36;
+
+  /* الألوان المميزة */
+  --color-accent: #ff5e3a; /* برتقالي */
+  --color-accent-2: #e91e63; /* وردي */
+  --color-secondary: #7c3aed; /* بنفسجي */
+  --color-gold: #f5b042; /* ذهبي - للتمييز */
+  --color-success: #4ade80;
+  --color-danger: #ef4444;
+}
+
+html,
+body {
+  background: var(--color-bg);
+  color: white;
+}
+
+/* الخلفية المتدرّجة (هالة ضوئية) */
+.bg-glow {
+  background-image:
+    radial-gradient(at 15% -5%, rgba(124, 58, 237, 0.18) 0%, transparent 45%),
+    radial-gradient(at 85% 105%, rgba(255, 94, 58, 0.14) 0%, transparent 45%),
+    radial-gradient(at 50% 50%, rgba(233, 30, 99, 0.06) 0%, transparent 60%);
+}
+
+/* خلفية النقاط الخفيفة */
+.bg-grid {
+  background-image: radial-gradient(
+    circle,
+    rgba(255, 255, 255, 0.05) 1px,
+    transparent 1px
+  );
+  background-size: 22px 22px;
+  mask-image: radial-gradient(
+    ellipse at center,
+    black 30%,
+    transparent 80%
+  );
+}
+
+/* أرقام لاتينية أنيقة */
+* {
+  font-feature-settings: "tnum";
+  font-variant-numeric: tabular-nums;
+}
+
+button,
+a {
+  transition: all 0.18s ease;
+}
+
+input[type="number"]::-webkit-inner-spin-button,
+input[type="number"]::-webkit-outer-spin-button {
+  -webkit-appearance: none;
+  margin: 0;
+}
+input[type="number"] {
+  -moz-appearance: textfield;
+}
+
+/* ==========================================
+   الأزرار - زر متدرّج كـ creators.sa
+   ========================================== */
+.btn-grad {
+  background: linear-gradient(135deg, #ff5e3a 0%, #e91e63 100%);
+  color: white;
+  font-weight: 700;
+  border: 0;
+  box-shadow: 0 8px 24px -8px rgba(233, 30, 99, 0.5);
+}
+.btn-grad:hover:not(:disabled) {
+  background: linear-gradient(135deg, #ff7a5a 0%, #f33a7d 100%);
+  box-shadow: 0 12px 32px -8px rgba(233, 30, 99, 0.6);
+}
+.btn-grad:disabled {
+  opacity: 0.5;
+}
+
+.btn-grad-outline {
+  background: transparent;
+  border: 1.5px solid #ff5e3a;
+  color: #ff5e3a;
+  font-weight: 700;
+}
+.btn-grad-outline:hover {
+  background: rgba(255, 94, 58, 0.1);
+}
+
+/* بطاقة محسّنة */
+.card-elev {
+  background: linear-gradient(
+    135deg,
+    rgba(28, 28, 37, 0.7) 0%,
+    rgba(21, 21, 28, 0.8) 100%
+  );
+  border: 1px solid rgba(255, 255, 255, 0.06);
+  backdrop-filter: blur(8px);
+}
+
+/* ==========================================
+   شريط الإعلانات المتحرك
+   ========================================== */
+@keyframes marquee {
+  0% { transform: translateX(0); }
+  100% { transform: translateX(50%); }
+}
+.animate-marquee {
+  animation: marquee 40s linear infinite;
+}
+
+/* ==========================================
+   مؤثرات تحديث النقاط - 4 ثوانٍ نبضات متلاشية
+   ========================================== */
+@keyframes scoreFlash {
+  0% { transform: scale(1); text-shadow: 0 0 0 rgba(245, 176, 66, 0); }
+  8% { transform: scale(1.12); text-shadow: 0 0 60px rgba(245, 176, 66, 0.85), 0 0 120px rgba(245, 176, 66, 0.5); }
+  20% { transform: scale(1); text-shadow: 0 0 10px rgba(245, 176, 66, 0.2); }
+  32% { transform: scale(1.06); text-shadow: 0 0 40px rgba(245, 176, 66, 0.55); }
+  44% { transform: scale(1); text-shadow: 0 0 8px rgba(245, 176, 66, 0.15); }
+  56% { transform: scale(1.04); text-shadow: 0 0 28px rgba(245, 176, 66, 0.35); }
+  68% { transform: scale(1); text-shadow: 0 0 5px rgba(245, 176, 66, 0.1); }
+  80% { transform: scale(1.02); text-shadow: 0 0 18px rgba(245, 176, 66, 0.2); }
+  100% { transform: scale(1); text-shadow: 0 0 0 rgba(245, 176, 66, 0); }
+}
+.score-flash {
+  animation: scoreFlash 4s ease-in-out;
+}
+
+@keyframes floatUp {
+  0% { transform: translateY(0) scale(0.6); opacity: 0; }
+  15% { transform: translateY(-20px) scale(1.3); opacity: 1; }
+  100% { transform: translateY(-200px) scale(1); opacity: 0; }
+}
+.float-up {
+  animation: floatUp 2.4s ease-out forwards;
+}
+
+@keyframes panelGlow {
+  0% { box-shadow: 0 0 0 0 rgba(245, 176, 66, 0); background-color: transparent; }
+  8% { box-shadow: 0 0 70px 8px rgba(245, 176, 66, 0.4); background-color: rgba(245, 176, 66, 0.08); }
+  20% { box-shadow: 0 0 10px 1px rgba(245, 176, 66, 0.08); background-color: rgba(245, 176, 66, 0.02); }
+  32% { box-shadow: 0 0 50px 6px rgba(245, 176, 66, 0.28); background-color: rgba(245, 176, 66, 0.05); }
+  44% { box-shadow: 0 0 8px 0 rgba(245, 176, 66, 0.06); background-color: rgba(245, 176, 66, 0.02); }
+  56% { box-shadow: 0 0 36px 4px rgba(245, 176, 66, 0.18); background-color: rgba(245, 176, 66, 0.04); }
+  68% { box-shadow: 0 0 5px 0 rgba(245, 176, 66, 0.04); background-color: rgba(245, 176, 66, 0.01); }
+  80% { box-shadow: 0 0 24px 3px rgba(245, 176, 66, 0.12); background-color: rgba(245, 176, 66, 0.03); }
+  100% { box-shadow: 0 0 0 0 rgba(245, 176, 66, 0); background-color: transparent; }
+}
+.panel-glow {
+  animation: panelGlow 4s ease-in-out;
+}

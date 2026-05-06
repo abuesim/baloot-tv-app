@@ -1,0 +1,192 @@
+// مخطط قاعدة بيانات حاسبة بلوت
+// المرجع: https://pris.ly/d/prisma-schema
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+// ============================================================
+// المستخدمون والصلاحيات
+// ============================================================
+
+enum UserRole {
+  ADMIN // كل الصلاحيات
+  SUPPORT // دعم فني — يساعد المستخدمين بحل المشاكل
+  CONTENT_CREATOR // صانع محتوى — يدير إعلاناته الخاصة + اتجاه شاشته
+  USER // مستخدم عادي
+}
+
+enum TVOrientation {
+  LANDSCAPE // عرضي (افقي)
+  PORTRAIT // طولي (عمودي)
+}
+
+enum CalculatorStyle {
+  CLASSIC // الحاسبة الكلاسيكية (الافتراضية)
+  ADVANCED // الحاسبة المتقدمة (تصميم مينمالي)
+}
+
+model User {
+  id            String        @id @default(cuid())
+  username      String        @unique
+  passwordHash  String
+  displayName   String
+  role            UserRole        @default(USER)
+  tvOrientation   TVOrientation   @default(LANDSCAPE)
+  calculatorStyle CalculatorStyle @default(CLASSIC)
+  tvCode          String?         @unique
+  active        Boolean       @default(true)
+  createdAt     DateTime      @default(now())
+  lastLoginAt   DateTime?
+
+  // استوديو شاشة التلفزيون - تخصيص صانع المحتوى
+  tvAccentColor   String   @default("#f5b042") // اللون الذهبي افتراضياً
+  tvShowRounds    Boolean  @default(true)
+  tvShowChat      Boolean  @default(false)
+  tvChatUrl       String? // رابط iframe لشات البث
+  tvShowDonations Boolean  @default(false)
+  tvDonationUrl   String? // رابط iframe للدونيشن
+  tvLogoUrl       String? // لوغو شخصي اختياري (يحلّ محل "بلوت")
+
+  players Player[]
+  games   Game[]
+  banners AdBanner[]
+
+  @@index([role])
+}
+
+// ============================================================
+// لاعبون يملكهم المستخدم (روستر شخصي)
+// ============================================================
+
+model Player {
+  id        String   @id @default(cuid())
+  name      String
+  imageUrl  String? // صورة اللاعب (مسار في public/uploads/players)
+  userId    String
+  createdAt DateTime @default(now())
+
+  user         User              @relation(fields: [userId], references: [id], onDelete: Cascade)
+  participants GameParticipant[]
+
+  @@unique([userId, name])
+  @@index([userId])
+}
+
+// ============================================================
+// المباريات
+// ============================================================
+
+enum GameStatus {
+  IN_PROGRESS
+  COMPLETED
+  ABANDONED
+}
+
+// نوع اللعب:
+// NORMAL   = عادي (٠ → ١٥٢)
+// MASHDOOD = مشدود (٥٢ → ١٥٢)
+enum GameMode {
+  NORMAL
+  MASHDOOD
+}
+
+model Game {
+  id     String @id @default(cuid())
+  userId String
+  user   User   @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  // ملاحظة: كود التلفزيون الآن دائم على المستخدم (User.tvCode)
+  mode        GameMode   @default(NORMAL)
+  status      GameStatus @default(IN_PROGRESS)
+  team1Score  Int        @default(0) // "لنا"
+  team2Score  Int        @default(0) // "لهم"
+  winner      Int? // 1 أو 2 أو null
+  targetScore Int        @default(152)
+
+  startedAt DateTime  @default(now())
+  endedAt   DateTime?
+
+  participants GameParticipant[]
+  rounds       Round[]
+
+  @@index([userId, startedAt])
+  @@index([userId, status])
+  @@index([startedAt]) // للإحصائيات الشهرية
+}
+
+model GameParticipant {
+  id       String @id @default(cuid())
+  gameId   String
+  playerId String
+  team     Int // 1 أو 2
+
+  game   Game   @relation(fields: [gameId], references: [id], onDelete: Cascade)
+  player Player @relation(fields: [playerId], references: [id], onDelete: Restrict)
+
+  @@unique([gameId, playerId])
+  @@index([playerId])
+}
+
+model Round {
+  id         String   @id @default(cuid())
+  gameId     String
+  number     Int
+  team1Score Int
+  team2Score Int
+  createdAt  DateTime @default(now())
+
+  game Game @relation(fields: [gameId], references: [id], onDelete: Cascade)
+
+  @@unique([gameId, number])
+  @@index([gameId])
+}
+
+// ============================================================
+// إعدادات التطبيق (سطر واحد فقط - singleton)
+// ============================================================
+
+model AppSetting {
+  id Int @id @default(1) // دائماً 1، نضمن سطر واحد فقط
+
+  // وضع الصيانة - يقفل التطبيق على الكل ما عدا الأدمن
+  maintenanceMode    Boolean @default(false)
+  maintenanceMessage String  @default("التطبيق تحت الصيانة، نرجع قريباً")
+
+  // الإعدادات الافتراضية للمباريات
+  defaultTargetScore Int @default(152)
+
+  // معلومات تظهر للمستخدمين
+  appName    String @default("بلوت")
+  appTagline String @default("حاسبة بلوت احترافية")
+
+  updatedAt DateTime @updatedAt
+}
+
+// ============================================================
+// إعلانات الشريط السفلي
+// ============================================================
+
+model AdBanner {
+  id        String   @id @default(cuid())
+  text      String?
+  imageUrl  String?
+  linkUrl   String?
+  active    Boolean  @default(true)
+  order     Int      @default(0)
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  // null = إعلان عام يديره الأدمن (يظهر للجميع)
+  // userId = إعلان خاص بصانع المحتوى (يظهر فقط على مبارياته/تلفزيونه)
+  userId String?
+  user   User?   @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([active, order])
+  @@index([userId, active, order])
+}

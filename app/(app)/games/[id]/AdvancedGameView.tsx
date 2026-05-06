@@ -1,0 +1,1009 @@
+"use client";
+
+import { useState, useTransition, useEffect, useRef, useMemo } from "react";
+import { useRouter } from "next/navigation";
+import {
+  ChevronUp,
+  ChevronDown,
+  Settings,
+  Redo2,
+  ArrowLeft,
+  X,
+  Camera,
+  Pencil,
+} from "lucide-react";
+import { PlayerAvatar } from "@/components/PlayerAvatar";
+import {
+  recordRoundAction,
+  deleteRoundAction,
+  abandonGameAction,
+  setGamePlayersAction,
+  changeGameModeAction,
+  createPlayerAction,
+} from "./actions";
+
+type Player = { id: string; name: string; imageUrl: string | null };
+type Participant = { team: number; player: Player };
+type Round = {
+  id: string;
+  number: number;
+  team1Score: number;
+  team2Score: number;
+};
+type Game = {
+  id: string;
+  mode: "NORMAL" | "MASHDOOD";
+  status: "IN_PROGRESS" | "COMPLETED" | "ABANDONED";
+  team1Score: number;
+  team2Score: number;
+  targetScore: number;
+  winner: number | null;
+  startedAt: Date | string;
+  endedAt: Date | string | null;
+  participants: Participant[];
+  rounds: Round[];
+};
+
+const QUICK_CHIPS = [16, 18, 26, 30];
+
+export default function AdvancedGameView({
+  game: initial,
+  tvCode,
+  tvUrl,
+  allPlayers,
+}: {
+  game: Game;
+  tvCode: string | null;
+  tvUrl: string | null;
+  allPlayers: Player[];
+}) {
+  const router = useRouter();
+  const [game, setGame] = useState<Game>(initial);
+  useEffect(() => setGame(initial), [initial]);
+
+  const [activeSide, setActiveSide] = useState<"us" | "them" | null>(null);
+  const [usInput, setUsInput] = useState("");
+  const [themInput, setThemInput] = useState("");
+  const usInputRef = useRef<HTMLInputElement>(null);
+  const themInputRef = useRef<HTMLInputElement>(null);
+
+  // فوكس تلقائي على الحقل النشط
+  useEffect(() => {
+    if (activeSide === "us") setTimeout(() => usInputRef.current?.focus(), 30);
+    else if (activeSide === "them") setTimeout(() => themInputRef.current?.focus(), 30);
+  }, [activeSide]);
+
+  const [showSettings, setShowSettings] = useState(false);
+  const [showAllRounds, setShowAllRounds] = useState(false);
+
+  const [error, setError] = useState<string | null>(null);
+  const [isPending, startTransition] = useTransition();
+
+  const isOver = game.status !== "IN_PROGRESS";
+
+  const team1 = game.participants.filter((p) => p.team === 1).map((p) => p.player);
+  const team2 = game.participants.filter((p) => p.team === 2).map((p) => p.player);
+
+  // عدّاد المدة
+  const [elapsed, setElapsed] = useState("00:00");
+  useEffect(() => {
+    function fmt() {
+      const start = new Date(game.startedAt).getTime();
+      const end = game.endedAt ? new Date(game.endedAt).getTime() : Date.now();
+      const s = Math.floor((end - start) / 1000);
+      const mm = String(Math.floor(s / 60)).padStart(2, "0");
+      const ss = String(s % 60).padStart(2, "0");
+      setElapsed(`${mm}:${ss}`);
+    }
+    fmt();
+    if (game.status !== "IN_PROGRESS") return;
+    const t = setInterval(fmt, 1000);
+    return () => clearInterval(t);
+  }, [game.startedAt, game.endedAt, game.status]);
+
+  // النقاط الحية (مع الإدخال أثناء الكتابة)
+  const usScore = game.team1Score + (Number(usInput) || 0);
+  const themScore = game.team2Score + (Number(themInput) || 0);
+
+  function clickChip(value: number) {
+    if (activeSide === "us") setUsInput(String(value));
+    else if (activeSide === "them") setThemInput(String(value));
+  }
+
+  function record() {
+    if (!activeSide) return;
+    setError(null);
+    const t1 = Number(usInput) || 0;
+    const t2 = Number(themInput) || 0;
+    if (t1 === 0 && t2 === 0) {
+      setError("أدخل نقاطاً");
+      return;
+    }
+    startTransition(async () => {
+      const res = await recordRoundAction(game.id, t1, t2);
+      if (!res.ok) {
+        setError(res.error);
+        return;
+      }
+      setUsInput("");
+      setThemInput("");
+      setActiveSide(null);
+      router.refresh();
+    });
+  }
+
+  function undoLast() {
+    const last = [...game.rounds].sort((a, b) => b.number - a.number)[0];
+    if (!last) return;
+    if (
+      !confirm(
+        `تراجع عن الجولة ${last.number} (لنا ${last.team1Score} / لهم ${last.team2Score})؟`,
+      )
+    )
+      return;
+    startTransition(async () => {
+      await deleteRoundAction(game.id, last.id);
+      router.refresh();
+    });
+  }
+
+  function exitGame() {
+    if (
+      confirm(
+        "هل تريد الخروج من المباراة؟\nالمباراة محفوظة وتقدر ترجع لها لاحقاً.",
+      )
+    ) {
+      router.push("/home");
+    }
+  }
+
+  return (
+    <div
+      className="min-h-screen text-white relative overflow-hidden -m-4 md:-m-6"
+      style={{
+        background: `
+          radial-gradient(ellipse 60% 40% at 0% 35%, rgba(60, 60, 80, 0.55) 0%, transparent 60%),
+          radial-gradient(ellipse 60% 40% at 100% 35%, rgba(60, 60, 80, 0.55) 0%, transparent 60%),
+          radial-gradient(ellipse 70% 50% at 0% 75%, rgba(50, 50, 70, 0.4) 0%, transparent 60%),
+          radial-gradient(ellipse 70% 50% at 100% 75%, rgba(50, 50, 70, 0.4) 0%, transparent 60%),
+          #000
+        `,
+      }}
+    >
+      {/* Top header */}
+      <div className="flex items-center justify-between px-5 pt-4 pb-2">
+        <button
+          onClick={exitGame}
+          className="w-10 h-10 rounded-full flex items-center justify-center hover:bg-white/5"
+          title="خروج"
+        >
+          <ArrowLeft size={22} strokeWidth={2} />
+        </button>
+        <h1 className="text-xl font-bold">
+          {game.mode === "MASHDOOD" ? "بلوت — مشدود" : "حاسبة بلوت"}
+        </h1>
+        <button
+          onClick={() => setShowSettings(true)}
+          className="w-10 h-10 rounded-full border border-white/15 bg-white/5 flex items-center justify-center"
+          title="الإعدادات"
+        >
+          <Settings size={18} />
+        </button>
+      </div>
+
+      {/* Timer + undo */}
+      <div className="flex items-center justify-between px-6 mt-6">
+        {!isOver ? (
+          <button
+            onClick={undoLast}
+            disabled={isPending || game.rounds.length === 0}
+            className="w-11 h-11 rounded-full flex items-center justify-center hover:bg-white/5 disabled:opacity-30"
+            title="تراجع"
+          >
+            <Redo2 size={22} strokeWidth={2} className="rotate-180" />
+          </button>
+        ) : (
+          <div className="w-11 h-11" />
+        )}
+
+        <div className="flex items-center gap-2 text-white/95">
+          <TimerIcon />
+          <span className="text-3xl font-medium tabular-nums tracking-wider">
+            {elapsed}
+          </span>
+        </div>
+
+        <div className="w-11 h-11" />
+      </div>
+
+      {/* Score Display */}
+      <div className="grid grid-cols-2 items-end gap-4 px-6 mt-12 mb-4">
+        <ScoreSide
+          label="لنا"
+          players={team1}
+          score={usScore}
+          isWinner={game.winner === 1}
+          flashing={!!usInput && activeSide === "us"}
+        />
+        <ScoreSide
+          label="لهم"
+          players={team2}
+          score={themScore}
+          isWinner={game.winner === 2}
+          flashing={!!themInput && activeSide === "them"}
+        />
+      </div>
+
+      {/* Winner banner */}
+      {game.winner !== null && (
+        <div className="mx-5 mt-2 text-center bg-gold/20 text-gold rounded-2xl py-3 font-bold text-lg">
+          🏆 الفوز للفريق {game.winner === 1 ? "لنا" : "لهم"}
+        </div>
+      )}
+      {game.status === "ABANDONED" && (
+        <div className="mx-5 mt-2 text-center bg-white/10 text-white/60 rounded-2xl py-3 text-sm">
+          ألغيت المباراة
+        </div>
+      )}
+
+      {/* 3 boxes */}
+      {!isOver && (
+        <>
+          <div className="px-5 mt-8 grid grid-cols-[1fr_2.5fr_1fr] gap-2.5">
+
+            {/* لنا */}
+            <label
+              className={`h-16 rounded-2xl bg-black flex items-center justify-center transition cursor-text ${
+                activeSide === "us"
+                  ? "border-2 border-amber-400"
+                  : "border border-white/15"
+              }`}
+            >
+              <input
+                ref={usInputRef}
+                type="text"
+                inputMode="numeric"
+                pattern="[0-9]*"
+                value={usInput}
+                onChange={(e) => {
+                  const val = e.target.value.replace(/\D/g, "");
+                  setUsInput(val);
+                  setActiveSide("us");
+                  if (val.length >= 2) {
+                    setActiveSide("them");
+                    setTimeout(() => themInputRef.current?.focus(), 30);
+                  }
+                }}
+                onFocus={() => setActiveSide("us")}
+                onKeyDown={(e) => e.key === "Enter" && record()}
+                placeholder="لنا"
+                className="w-full h-full text-center bg-transparent text-white text-2xl font-bold tabular-nums outline-none placeholder:text-white/30 placeholder:text-xs placeholder:font-normal"
+              />
+            </label>
+
+            {/* سجل */}
+            <button
+              onClick={record}
+              disabled={isPending || (!usInput && !themInput)}
+              className="h-16 rounded-2xl border border-white/15 bg-black flex items-center justify-center hover:bg-white/[0.03] disabled:opacity-50"
+            >
+              <span
+                className="font-black text-3xl tracking-wide"
+                style={{
+                  background: "linear-gradient(180deg, #ffb547 0%, #ff7e2e 100%)",
+                  WebkitBackgroundClip: "text",
+                  WebkitTextFillColor: "transparent",
+                  backgroundClip: "text",
+                }}
+              >
+                {isPending ? "..." : "سجل"}
+              </span>
+            </button>
+
+            {/* لهم */}
+            <label
+              className={`h-16 rounded-2xl bg-black flex items-center justify-center transition cursor-text ${
+                activeSide === "them"
+                  ? "border-2 border-amber-400"
+                  : "border border-white/15"
+              }`}
+            >
+              <input
+                ref={themInputRef}
+                type="text"
+                inputMode="numeric"
+                pattern="[0-9]*"
+                value={themInput}
+                onChange={(e) => {
+                  setThemInput(e.target.value.replace(/\D/g, ""));
+                  setActiveSide("them");
+                }}
+                onFocus={() => setActiveSide("them")}
+                onKeyDown={(e) => e.key === "Enter" && record()}
+                placeholder="لهم"
+                className="w-full h-full text-center bg-transparent text-white text-2xl font-bold tabular-nums outline-none placeholder:text-white/30 placeholder:text-xs placeholder:font-normal"
+              />
+            </label>
+
+          </div>
+
+          {/* Quick chips — تظهر فقط عند تنشيط أحد الحقلين */}
+          <div
+            className={`flex items-center justify-center gap-3 mt-5 transition-all duration-300 ${
+              activeSide
+                ? "opacity-100 translate-y-0"
+                : "opacity-0 -translate-y-2 pointer-events-none h-0"
+            }`}
+          >
+            {QUICK_CHIPS.map((c) => (
+              <button
+                key={c}
+                onClick={() => clickChip(c)}
+                className="w-12 h-12 rounded-full border border-amber-700/60 bg-stone-800/70 hover:bg-stone-700 flex items-center justify-center text-amber-100/90 font-medium tabular-nums"
+              >
+                {c}
+              </button>
+            ))}
+          </div>
+
+          {error && (
+            <div className="mx-5 mt-3 bg-danger/20 text-red-300 text-sm rounded-xl p-3">
+              {error}
+            </div>
+          )}
+        </>
+      )}
+
+      {/* Rounds preview at bottom */}
+      <RoundsPreview
+        rounds={game.rounds}
+        onExpand={() => setShowAllRounds(true)}
+      />
+
+      {showAllRounds && (
+        <RoundsOverlay
+          gameId={game.id}
+          rounds={game.rounds}
+          isOver={isOver}
+          onClose={() => setShowAllRounds(false)}
+          onChanged={() => router.refresh()}
+        />
+      )}
+
+      {/* Floating "advanced" tag */}
+      <div className="fixed top-3 right-3 bg-gold/20 text-gold text-[10px] font-bold px-2 py-1 rounded-full z-30 border border-gold/30">
+        متقدمة
+      </div>
+
+      {showSettings && (
+        <SettingsModal
+          gameId={game.id}
+          gameMode={game.mode}
+          team1={team1}
+          team2={team2}
+          allPlayers={allPlayers}
+          tvCode={tvCode}
+          tvUrl={tvUrl}
+          onClose={() => setShowSettings(false)}
+          onAbandon={() => {
+            if (confirm("إلغاء المباراة الحالية؟")) {
+              startTransition(async () => {
+                await abandonGameAction(game.id);
+                router.refresh();
+              });
+            }
+          }}
+          onChanged={() => router.refresh()}
+        />
+      )}
+    </div>
+  );
+}
+
+// ============================================================
+// Sub-components
+// ============================================================
+
+function ScoreSide({
+  label,
+  players,
+  score,
+  isWinner,
+  flashing,
+}: {
+  label: string;
+  players: Player[];
+  score: number;
+  isWinner: boolean;
+  flashing: boolean;
+}) {
+  return (
+    <div className={`text-center transition ${flashing ? "scale-105" : ""}`}>
+      <div className="flex items-center justify-center gap-2 mb-2 min-h-10">
+        {players.map((p) => (
+          <PlayerAvatar key={p.id} name={p.name} imageUrl={p.imageUrl} size="sm" />
+        ))}
+      </div>
+      <div className="text-xl font-medium mb-1 text-white/95">{label}</div>
+      <div
+        key={score}
+        className={`text-[6.5rem] sm:text-[7.5rem] leading-none font-black ${
+          isWinner ? "text-gold" : "text-white"
+        }`}
+      >
+        {score}
+      </div>
+    </div>
+  );
+}
+
+function RoundsPreview({
+  rounds,
+  onExpand,
+}: {
+  rounds: Round[];
+  onExpand: () => void;
+}) {
+  if (rounds.length === 0) return null;
+  const newestFirst = [...rounds].sort((a, b) => b.number - a.number);
+  const visible = newestFirst.slice(0, 2);
+
+  return (
+    <div className="px-4 mt-6 mb-4">
+      <div className="bg-[#0d0d0d] rounded-2xl border border-white/5 overflow-hidden">
+        <div className="grid grid-cols-3 px-6 py-2 text-white/60 text-xs">
+          <div className="text-right">لهم</div>
+          <div className="text-center">لنا</div>
+          <div className="text-left">#</div>
+        </div>
+        {visible.map((r) => (
+          <div
+            key={r.id}
+            className="grid grid-cols-3 px-6 py-2 text-base border-t border-white/5"
+          >
+            <div className="text-right tabular-nums">{r.team2Score}</div>
+            <div className="text-center tabular-nums">{r.team1Score}</div>
+            <div className="text-left tabular-nums text-white/50">{r.number}</div>
+          </div>
+        ))}
+        {rounds.length > 2 && (
+          <button
+            onClick={onExpand}
+            className="w-full flex items-center justify-center py-1.5 border-t border-white/5 text-white/40 hover:text-white/70 hover:bg-white/5"
+            aria-label="عرض كل الجولات"
+          >
+            <ChevronUp size={18} strokeWidth={2} />
+          </button>
+        )}
+      </div>
+    </div>
+  );
+}
+
+function RoundsOverlay({
+  gameId,
+  rounds,
+  isOver,
+  onClose,
+  onChanged,
+}: {
+  gameId: string;
+  rounds: Round[];
+  isOver: boolean;
+  onClose: () => void;
+  onChanged: () => void;
+}) {
+  const [isPending, startTransition] = useTransition();
+  const ascending = [...rounds].sort((a, b) => a.number - b.number);
+
+  function del(roundId: string, n: number) {
+    if (!confirm(`حذف الجولة ${n}؟`)) return;
+    startTransition(async () => {
+      await deleteRoundAction(gameId, roundId);
+      onChanged();
+    });
+  }
+
+  return (
+    <div
+      className="fixed inset-0 z-50 bg-black/70 backdrop-blur-sm flex items-center justify-center p-4"
+      onClick={onClose}
+    >
+      <div
+        className="bg-[#0d0d0d] rounded-3xl border border-white/10 w-full max-w-md max-h-[85vh] overflow-hidden flex flex-col shadow-2xl"
+        onClick={(e) => e.stopPropagation()}
+      >
+        <div className="px-5 py-4 flex items-center justify-between border-b border-white/5">
+          <h3 className="text-lg font-bold">الجولات ({rounds.length})</h3>
+          <button
+            onClick={onClose}
+            className="w-9 h-9 rounded-full border border-white/15 flex items-center justify-center hover:bg-white/5"
+          >
+            <X size={18} strokeWidth={2.2} />
+          </button>
+        </div>
+
+        <div className="grid grid-cols-[auto_1fr_1fr_auto] gap-4 px-6 py-3 text-white/60 text-sm bg-white/[0.03]">
+          <div>#</div>
+          <div className="text-center">لنا</div>
+          <div className="text-center">لهم</div>
+          <div />
+        </div>
+
+        <div className="flex-1 overflow-y-auto">
+          {ascending.map((r) => (
+            <div
+              key={r.id}
+              className="grid grid-cols-[auto_1fr_1fr_auto] gap-4 px-6 py-3 text-lg items-center border-b border-white/5"
+            >
+              <div className="tabular-nums text-white/50">{r.number}</div>
+              <div className="text-center tabular-nums">{r.team1Score}</div>
+              <div className="text-center tabular-nums">{r.team2Score}</div>
+              <div>
+                {!isOver && (
+                  <button
+                    disabled={isPending}
+                    onClick={() => del(r.id, r.number)}
+                    className="text-xs text-red-400 hover:text-red-300"
+                  >
+                    حذف
+                  </button>
+                )}
+              </div>
+            </div>
+          ))}
+        </div>
+
+        <button
+          onClick={onClose}
+          className="border-t border-white/5 py-3 text-white/60 hover:bg-white/5 flex items-center justify-center"
+        >
+          <ChevronDown size={20} strokeWidth={2} />
+        </button>
+      </div>
+    </div>
+  );
+}
+
+function TimerIcon() {
+  return (
+    <svg width="22" height="22" viewBox="0 0 24 24" fill="none">
+      <rect
+        x="9"
+        y="2"
+        width="6"
+        height="2"
+        rx="0.5"
+        stroke="currentColor"
+        strokeWidth="1.6"
+      />
+      <path
+        d="M16 6l1.5-1.5"
+        stroke="currentColor"
+        strokeWidth="1.6"
+        strokeLinecap="round"
+      />
+      <circle cx="12" cy="14" r="8" stroke="currentColor" strokeWidth="1.6" />
+      <path
+        d="M12 10v4"
+        stroke="currentColor"
+        strokeWidth="1.6"
+        strokeLinecap="round"
+      />
+    </svg>
+  );
+}
+
+// ============================================================
+// Settings Modal with tabs
+// ============================================================
+
+type SettingsTab = "general" | "us" | "them";
+
+function SettingsModal({
+  gameId,
+  gameMode,
+  team1,
+  team2,
+  allPlayers,
+  tvCode,
+  tvUrl,
+  onClose,
+  onAbandon,
+  onChanged,
+}: {
+  gameId: string;
+  gameMode: "NORMAL" | "MASHDOOD";
+  team1: Player[];
+  team2: Player[];
+  allPlayers: Player[];
+  tvCode: string | null;
+  tvUrl: string | null;
+  onClose: () => void;
+  onAbandon: () => void;
+  onChanged: () => void;
+}) {
+  const [tab, setTab] = useState<SettingsTab>("general");
+
+  // نوع المباراة — قابل للتبديل
+  const [localMode, setLocalMode] = useState<"NORMAL" | "MASHDOOD">(gameMode);
+  const [modeLoading, setModeLoading] = useState(false);
+
+  // قائمة اللاعبين مع إمكانية إضافة جديد
+  const [localPlayers, setLocalPlayers] = useState<Player[]>(allPlayers);
+
+  // اختيار اللاعبين
+  const initialPick = useMemo(
+    () => ({
+      t1p1: team1[0]?.id ?? "",
+      t1p2: team1[1]?.id ?? "",
+      t2p1: team2[0]?.id ?? "",
+      t2p2: team2[1]?.id ?? "",
+    }),
+    [team1, team2],
+  );
+
+  const [t1p1, setT1p1] = useState(initialPick.t1p1);
+  const [t1p2, setT1p2] = useState(initialPick.t1p2);
+  const [t2p1, setT2p1] = useState(initialPick.t2p1);
+  const [t2p2, setT2p2] = useState(initialPick.t2p2);
+  const [error, setError] = useState<string | null>(null);
+  const [isPending, startTransition] = useTransition();
+
+  const dirty =
+    t1p1 !== initialPick.t1p1 ||
+    t1p2 !== initialPick.t1p2 ||
+    t2p1 !== initialPick.t2p1 ||
+    t2p2 !== initialPick.t2p2;
+
+  async function toggleMode(mode: "NORMAL" | "MASHDOOD") {
+    if (mode === localMode || modeLoading) return;
+    setModeLoading(true);
+    const res = await changeGameModeAction(gameId, mode);
+    setModeLoading(false);
+    if (res.ok) {
+      setLocalMode(mode);
+      onChanged();
+    }
+  }
+
+  function savePlayers() {
+    setError(null);
+    if (!t1p1 || !t1p2 || !t2p1 || !t2p2) {
+      setError("اختر كل اللاعبين الأربعة");
+      return;
+    }
+    if (new Set([t1p1, t1p2, t2p1, t2p2]).size !== 4) {
+      setError("كل لاعب لازم يكون مختلف");
+      return;
+    }
+    startTransition(async () => {
+      const res = await setGamePlayersAction(gameId, {
+        team1Player1Id: t1p1,
+        team1Player2Id: t1p2,
+        team2Player1Id: t2p1,
+        team2Player2Id: t2p2,
+      });
+      if (!res.ok) { setError(res.error); return; }
+      onChanged();
+      onClose();
+    });
+  }
+
+  function handleNewPlayer(player: Player) {
+    setLocalPlayers((prev) => [...prev, player]);
+  }
+
+  return (
+    <div className="fixed inset-0 bg-black/70 z-50 flex items-end md:items-center justify-center p-3 backdrop-blur-sm">
+      <div className="w-full max-w-md bg-[#171717] rounded-3xl border border-white/10 overflow-hidden flex flex-col max-h-[88vh]">
+        {/* Header */}
+        <div className="flex items-center justify-between px-5 pt-4 pb-3">
+          <button
+            onClick={onClose}
+            className="w-9 h-9 rounded-full border border-white/15 flex items-center justify-center"
+          >
+            <X size={18} strokeWidth={2.2} />
+          </button>
+          <h3 className="text-lg font-bold">الإعدادات</h3>
+          <div className="w-9" />
+        </div>
+
+        {/* Tabs */}
+        <div className="grid grid-cols-3 mx-5 bg-white/[0.04] rounded-xl p-1 border border-white/5">
+          <TabBtn active={tab === "general"} onClick={() => setTab("general")}>عام</TabBtn>
+          <TabBtn active={tab === "us"} onClick={() => setTab("us")}>لنا</TabBtn>
+          <TabBtn active={tab === "them"} onClick={() => setTab("them")}>لهم</TabBtn>
+        </div>
+
+        <div className="flex-1 overflow-y-auto px-5 py-4">
+
+          {/* ===== تاب عام ===== */}
+          {tab === "general" && (
+            <div className="space-y-4">
+
+              {/* نوع المباراة — toggle */}
+              <div>
+                <div className="text-xs text-white/60 mb-2">نوع المباراة</div>
+                <div className="grid grid-cols-2 bg-white/[0.04] rounded-xl p-1 border border-white/5">
+                  <button
+                    onClick={() => toggleMode("NORMAL")}
+                    disabled={modeLoading}
+                    className={`h-10 rounded-lg text-sm font-bold transition ${
+                      localMode === "NORMAL"
+                        ? "bg-orange-500 text-white shadow"
+                        : "text-white/50 hover:text-white"
+                    }`}
+                  >
+                    عادي
+                  </button>
+                  <button
+                    onClick={() => toggleMode("MASHDOOD")}
+                    disabled={modeLoading}
+                    className={`h-10 rounded-lg text-sm font-bold transition ${
+                      localMode === "MASHDOOD"
+                        ? "bg-orange-500 text-white shadow"
+                        : "text-white/50 hover:text-white"
+                    }`}
+                  >
+                    مشدود
+                  </button>
+                </div>
+              </div>
+
+              {/* كود التلفزيون */}
+              {tvCode && tvUrl && (
+                <div>
+                  <div className="text-xs text-white/60 mb-1">كود شاشة التلفزيون</div>
+                  <div className="bg-white/[0.04] rounded-xl px-4 py-3 border border-white/5 flex items-center justify-between gap-3">
+                    <span className="text-gold font-black tracking-[0.25em] text-2xl tabular-nums">
+                      {tvCode}
+                    </span>
+                    <a
+                      href={tvUrl}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      className="text-xs text-white/50 hover:text-white border border-white/15 rounded-lg px-2.5 py-1.5 shrink-0"
+                    >
+                      📺 افتح الشاشة
+                    </a>
+                  </div>
+                  <p className="text-xs text-white/30 mt-1">هذا الكود خاص بك — لا تشاركه مع المشاهدين</p>
+                </div>
+              )}
+
+              {/* إلغاء المباراة */}
+              <button
+                onClick={() => { onClose(); onAbandon(); }}
+                className="w-full bg-danger/20 hover:bg-danger/30 text-red-300 rounded-xl py-3 font-bold text-sm"
+              >
+                إلغاء المباراة
+              </button>
+            </div>
+          )}
+
+          {/* ===== تاب لنا / لهم ===== */}
+          {(tab === "us" || tab === "them") && (
+            <>
+              <PlayersTabPanel
+                accent={tab === "us" ? "text-blue-400" : "text-orange-400"}
+                p1Id={tab === "us" ? t1p1 : t2p1}
+                p2Id={tab === "us" ? t1p2 : t2p2}
+                setP1={tab === "us" ? setT1p1 : setT2p1}
+                setP2={tab === "us" ? setT1p2 : setT2p2}
+                allPlayers={localPlayers}
+                excluded={tab === "us" ? [t2p1, t2p2] : [t1p1, t1p2]}
+              />
+
+              {/* إضافة لاعب جديد */}
+              <AddPlayerInline onCreated={handleNewPlayer} />
+
+              {error && (
+                <div className="mt-3 bg-danger/20 text-red-300 text-sm rounded-xl p-3">
+                  {error}
+                </div>
+              )}
+            </>
+          )}
+        </div>
+
+        {/* Footer */}
+        <div className="p-4 border-t border-white/5 grid grid-cols-2 gap-2">
+          <button
+            onClick={onClose}
+            className="h-12 rounded-2xl bg-white/10 hover:bg-white/20 font-medium"
+          >
+            تم
+          </button>
+          {(tab === "us" || tab === "them") && (
+            <button
+              onClick={savePlayers}
+              disabled={isPending || !dirty}
+              className="h-12 rounded-2xl btn-grad disabled:opacity-50"
+            >
+              {isPending ? "..." : "حفظ اللاعبين"}
+            </button>
+          )}
+        </div>
+      </div>
+    </div>
+  );
+}
+
+function TabBtn({
+  active,
+  onClick,
+  children,
+}: {
+  active: boolean;
+  onClick: () => void;
+  children: React.ReactNode;
+}) {
+  return (
+    <button
+      onClick={onClick}
+      className={`h-10 rounded-lg text-sm font-bold transition ${
+        active
+          ? "bg-orange-500 text-white shadow"
+          : "text-white/70 hover:text-white"
+      }`}
+    >
+      {children}
+    </button>
+  );
+}
+
+function AddPlayerInline({ onCreated }: { onCreated: (p: Player) => void }) {
+  const [open, setOpen] = useState(false);
+  const [name, setName] = useState("");
+  const [loading, setLoading] = useState(false);
+  const [err, setErr] = useState<string | null>(null);
+  const inputRef = useRef<HTMLInputElement>(null);
+
+  async function submit() {
+    if (!name.trim()) return;
+    setLoading(true);
+    setErr(null);
+    const res = await createPlayerAction(name.trim());
+    setLoading(false);
+    if (!res.ok) { setErr(res.error); return; }
+    onCreated(res.player);
+    setName("");
+    setOpen(false);
+  }
+
+  if (!open) {
+    return (
+      <button
+        onClick={() => { setOpen(true); setTimeout(() => inputRef.current?.focus(), 30); }}
+        className="mt-4 w-full h-10 rounded-xl border border-dashed border-white/20 text-white/40 hover:border-white/40 hover:text-white/70 text-sm flex items-center justify-center gap-2 transition"
+      >
+        <span className="text-lg leading-none">+</span>
+        إضافة لاعب جديد
+      </button>
+    );
+  }
+
+  return (
+    <div className="mt-4 bg-white/[0.04] rounded-xl p-3 border border-white/10 space-y-2">
+      <div className="text-xs text-white/60">اسم اللاعب الجديد</div>
+      <div className="flex gap-2">
+        <input
+          ref={inputRef}
+          value={name}
+          onChange={(e) => setName(e.target.value)}
+          onKeyDown={(e) => e.key === "Enter" && submit()}
+          placeholder="مثال: عبدالله"
+          className="flex-1 bg-black/40 border border-white/10 rounded-xl px-3 py-2 text-sm outline-none focus:border-amber-500/60"
+        />
+        <button
+          onClick={submit}
+          disabled={loading || !name.trim()}
+          className="px-4 rounded-xl bg-orange-500 hover:bg-orange-400 text-white font-bold text-sm disabled:opacity-40"
+        >
+          {loading ? "..." : "إضافة"}
+        </button>
+        <button
+          onClick={() => { setOpen(false); setName(""); setErr(null); }}
+          className="w-9 rounded-xl border border-white/10 text-white/40 hover:text-white flex items-center justify-center"
+        >
+          <X size={15} />
+        </button>
+      </div>
+      {err && <div className="text-red-400 text-xs">{err}</div>}
+    </div>
+  );
+}
+
+function PlayersTabPanel({
+  accent,
+  p1Id,
+  p2Id,
+  setP1,
+  setP2,
+  allPlayers,
+  excluded,
+}: {
+  accent: string;
+  p1Id: string;
+  p2Id: string;
+  setP1: (v: string) => void;
+  setP2: (v: string) => void;
+  allPlayers: Player[];
+  excluded: string[];
+}) {
+  return (
+    <div className="space-y-3">
+      <div className={`text-sm font-bold ${accent}`}>اللاعبان</div>
+      <PlayerSelect
+        value={p1Id}
+        onChange={setP1}
+        allPlayers={allPlayers}
+        disabledIds={[p2Id, ...excluded]}
+        label="اللاعب الأول"
+      />
+      <PlayerSelect
+        value={p2Id}
+        onChange={setP2}
+        allPlayers={allPlayers}
+        disabledIds={[p1Id, ...excluded]}
+        label="اللاعب الثاني"
+      />
+      <p className="text-xs text-white/40 pt-2">
+        لا يمكن تكرار اللاعب بين الفريقين. لإضافة/تعديل اللاعبين روح لـ{" "}
+        <a href="/players" className="underline">صفحة اللاعبين</a>.
+      </p>
+    </div>
+  );
+}
+
+function PlayerSelect({
+  value,
+  onChange,
+  allPlayers,
+  disabledIds,
+  label,
+}: {
+  value: string;
+  onChange: (v: string) => void;
+  allPlayers: Player[];
+  disabledIds: string[];
+  label: string;
+}) {
+  const current = allPlayers.find((p) => p.id === value);
+  return (
+    <div>
+      <label className="block text-xs mb-1 text-white/70">{label}</label>
+      <div className="bg-black/40 border border-white/10 rounded-xl flex items-center gap-2 px-2">
+        {current ? (
+          <PlayerAvatar
+            name={current.name}
+            imageUrl={current.imageUrl}
+            size="sm"
+          />
+        ) : (
+          <div className="w-8 h-8" />
+        )}
+        <select
+          value={value}
+          onChange={(e) => onChange(e.target.value)}
+          className="flex-1 bg-transparent py-2.5 outline-none text-sm"
+        >
+          <option value="" className="bg-[#1a1a1a]">
+            — اختر —
+          </option>
+          {allPlayers.map((p) => (
+            <option
+              key={p.id}
+              value={p.id}
+              disabled={disabledIds.includes(p.id) && p.id !== value}
+              className="bg-[#1a1a1a]"
+            >
+              {p.name}
+            </option>
+          ))}
+        </select>
+      </div>
+    </div>
+  );
+}
