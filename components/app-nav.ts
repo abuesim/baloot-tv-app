@@ -4,6 +4,7 @@ import {
   PlayCircle,
   BarChart3,
   UserCircle,
+  History,
   type LucideIcon,
 } from "lucide-react";
 
@@ -15,8 +16,8 @@ export type NavItem = {
 
 export const APP_NAV: NavItem[] = [
   { href: "/home", label: "الرئيسية", icon: Home },
-  { href: "/players", label: "اللاعبون", icon: Users },
   { href: "/games/new", label: "صكة", icon: PlayCircle },
+  { href: "/history", label: "السجل", icon: History },
   { href: "/stats", label: "إحصائيات", icon: BarChart3 },
   { href: "/profile", label: "ملفي", icon: UserCircle },
 ];
