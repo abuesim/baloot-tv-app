@@ -297,7 +297,7 @@ function Header({
             مشدود
           </span>
         )}
-        {game && <span className="hidden sm:inline">الهدف: {game.targetScore}</span>}
+
         <span
           className={`w-2 h-2 rounded-full shrink-0 ${
             connected ? "bg-green-400 animate-pulse" : "bg-red-400"
