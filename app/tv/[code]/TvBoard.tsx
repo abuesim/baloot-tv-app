@@ -209,23 +209,24 @@ export default function TvBoard({
             <div className="grid grid-cols-[1fr_auto_1fr] gap-2 md:gap-6 w-full items-center">
               <ScoreColumn
                 label="لنا"
+                labelColor={TEAM1_COLOR}
                 players={team1}
                 score={game.team1Score}
                 isWinner={game.winner === 1}
                 target={game.targetScore}
-                accent={TEAM1_COLOR}
+                accent={accent}
                 isAccent
                 flashing={flash.team1}
                 pops={pops.filter((p) => p.team === 1)}
               />
-              <DiffPanel diff={diff} lead={lead} accent={TEAM1_COLOR} />
+              <DiffPanel diff={diff} lead={lead} accent={accent} />
               <ScoreColumn
                 label="لهم"
                 players={team2}
                 score={game.team2Score}
                 isWinner={game.winner === 2}
                 target={game.targetScore}
-                accent={TEAM2_COLOR}
+                accent={accent}
                 isAccent={false}
                 flashing={flash.team2}
                 pops={pops.filter((p) => p.team === 2)}
@@ -494,6 +495,7 @@ function DonationStrip({ url }: { url: string }) {
 
 function ScoreColumn({
   label,
+  labelColor,
   players,
   score,
   isWinner,
@@ -504,6 +506,7 @@ function ScoreColumn({
   pops,
 }: {
   label: string;
+  labelColor?: string;
   players: Player[];
   score: number;
   isWinner: boolean;
@@ -521,7 +524,12 @@ function ScoreColumn({
         flashing ? "panel-glow" : ""
       } ${isWinner ? "scale-105" : ""}`}
     >
-      <div className="text-base md:text-2xl text-white/60 mb-1 md:mb-3">{label}</div>
+      <div
+        className="text-base md:text-2xl font-bold mb-1 md:mb-3"
+        style={{ color: labelColor ?? "rgba(255,255,255,0.6)" }}
+      >
+        {label}
+      </div>
       <div className="flex items-center justify-center gap-2 md:gap-4 mb-2 md:mb-4 min-h-8 md:min-h-24">
         {players.map((p) => (
           <div key={p.id} className="flex flex-col items-center gap-1 md:gap-2">
