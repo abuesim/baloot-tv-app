@@ -11,6 +11,29 @@ import {
   removePlayerImageAction,
 } from "./actions";
 
+/** ضغط وتصغير الصورة في المتصفح قبل الرفع — max 300px، JPEG 82% */
+function compressImage(file: File, maxDim = 300): Promise<string> {
+  return new Promise((resolve, reject) => {
+    const url = URL.createObjectURL(file);
+    const img = new Image();
+    img.onload = () => {
+      URL.revokeObjectURL(url);
+      let { naturalWidth: w, naturalHeight: h } = img;
+      if (w > maxDim || h > maxDim) {
+        if (w >= h) { h = Math.round((h * maxDim) / w); w = maxDim; }
+        else        { w = Math.round((w * maxDim) / h); h = maxDim; }
+      }
+      const canvas = document.createElement("canvas");
+      canvas.width  = w;
+      canvas.height = h;
+      canvas.getContext("2d")!.drawImage(img, 0, 0, w, h);
+      resolve(canvas.toDataURL("image/jpeg", 0.82));
+    };
+    img.onerror = () => { URL.revokeObjectURL(url); reject(new Error("فشل تحميل الصورة")); };
+    img.src = url;
+  });
+}
+
 type PlayerRow = {
   id: string;
   name: string;
@@ -79,17 +102,19 @@ export default function PlayersManager({ players }: { players: PlayerRow[] }) {
     setError(null);
     setUploadingFor(playerId);
     try {
-      const fd = new FormData();
-      fd.append("image", file);
-      const res = await uploadPlayerImageAction(playerId, fd);
+      // ضغط وتصغير الصورة في المتصفح أولاً
+      const base64 = await compressImage(file, 300);
+      const res = await uploadPlayerImageAction(playerId, base64);
       if (!res.ok) {
         setError(res.error);
         return;
       }
       router.refresh();
+    } catch {
+      setError("فشل معالجة الصورة، حاول مرة أخرى");
     } finally {
       setUploadingFor(null);
-      e.target.value = ""; // إعادة تعيين عشان نقدر نختار نفس الملف ثاني
+      e.target.value = "";
     }
   }
 
@@ -171,7 +196,7 @@ export default function PlayersManager({ players }: { players: PlayerRow[] }) {
                     fileInputRefs.current[p.id] = el;
                   }}
                   type="file"
-                  accept="image/jpeg,image/png,image/webp"
+                  accept="image/*"
                   onChange={(e) => onFileSelected(p.id, e)}
                   className="hidden"
                 />

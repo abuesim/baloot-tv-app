@@ -4,7 +4,7 @@ import { revalidatePath } from "next/cache";
 import { z } from "zod";
 import { db } from "@/lib/db";
 import { requireUser } from "@/lib/auth";
-import { savePlayerImage, deletePlayerImage } from "@/lib/upload";
+import { deletePlayerImage } from "@/lib/upload";
 
 const nameSchema = z.string().min(1, "الاسم مطلوب").max(40, "أقصى ٤٠ حرف").trim();
 
@@ -69,7 +69,7 @@ export async function deletePlayerAction(id: string): Promise<ActionResult> {
 
 export async function uploadPlayerImageAction(
   playerId: string,
-  formData: FormData,
+  base64: string,
 ): Promise<ActionResult> {
   const user = await requireUser();
   const player = await db.player.findFirst({
@@ -77,21 +77,24 @@ export async function uploadPlayerImageAction(
   });
   if (!player) return { ok: false, error: "اللاعب غير موجود" };
 
-  const file = formData.get("image");
-  if (!(file instanceof File)) {
-    return { ok: false, error: "لم يتم اختيار صورة" };
+  // تحقق أنها data URL صالحة
+  if (!base64.startsWith("data:image/")) {
+    return { ok: false, error: "صورة غير صالحة" };
+  }
+  // حد أقصى ~200 KB بعد الضغط (base64 = ~4/3 من الحجم الأصلي)
+  if (base64.length > 280_000) {
+    return { ok: false, error: "الصورة كبيرة جداً بعد الضغط" };
   }
 
-  const result = await savePlayerImage(file);
-  if (!result.ok) return result;
+  // احذف الملف القديم إن كان من النظام القديم (يبدأ بـ /uploads/)
+  if (player.imageUrl?.startsWith("/uploads/")) {
+    await deletePlayerImage(player.imageUrl);
+  }
 
-  // احذف القديمة بعد نجاح حفظ الجديدة
-  const oldUrl = player.imageUrl;
   await db.player.update({
     where: { id: playerId },
-    data: { imageUrl: result.url },
+    data: { imageUrl: base64 },
   });
-  await deletePlayerImage(oldUrl);
 
   revalidatePath("/players");
   revalidatePath("/games", "layout");
