@@ -181,6 +181,26 @@ const playersSchema = z.object({
   team2Player2Id: z.string().min(1),
 });
 
+export async function deleteGameAction(
+  gameId: string,
+): Promise<ActionResult> {
+  const user = await requireUser();
+  const game = await db.game.findFirst({
+    where: { id: gameId, userId: user.id },
+  });
+  if (!game) return { ok: false, error: "الصكة غير موجودة" };
+
+  await db.$transaction([
+    db.round.deleteMany({ where: { gameId } }),
+    db.gameParticipant.deleteMany({ where: { gameId } }),
+    db.game.delete({ where: { id: gameId } }),
+  ]);
+
+  revalidatePath("/home");
+  revalidatePath("/stats");
+  return { ok: true };
+}
+
 export async function setGamePlayersAction(
   gameId: string,
   input: {
