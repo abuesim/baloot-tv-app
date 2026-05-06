@@ -153,24 +153,47 @@ export default function TvBoard({
   if (!game) {
     return (
       <div
-        className="min-h-screen flex flex-col bg-bg pb-32"
+        className="fixed inset-0 flex flex-col bg-bg overflow-hidden"
         style={styleVars}
       >
-        <Header user={user} game={null} connected={connected} />
+        {/* الهيدر: شعار + اسم التطبيق + اسم اليوزر */}
+        <div className="px-4 md:px-8 pt-4 md:pt-6 pb-2 flex items-center justify-between shrink-0">
+          <div className="flex items-center gap-2 md:gap-3">
+            {/* eslint-disable-next-line @next/next/no-img-element */}
+            <img
+              src="/icon-512x512.png"
+              alt="logo"
+              className="w-9 h-9 md:w-12 md:h-12 rounded-full object-cover"
+            />
+            <span className="text-xl md:text-3xl font-black" style={{ color: accent }}>
+              أكك لايف
+            </span>
+          </div>
+          <div className="flex items-center gap-2 text-xs md:text-sm text-white/50">
+            <span>{user.displayName}</span>
+            <span
+              className={`w-2 h-2 rounded-full shrink-0 ${
+                connected ? "bg-green-400 animate-pulse" : "bg-red-400"
+              }`}
+            />
+          </div>
+        </div>
+
+        {/* المنتصف */}
         <div className="flex-1 flex items-center justify-center text-center px-4">
-          <div className="space-y-3">
+          <div className="space-y-4">
             <div className="text-6xl md:text-9xl">🎴</div>
             <div className="text-xl md:text-3xl text-white/80 font-bold">
               بانتظار بداية المباراة
             </div>
-            <div className="text-white/50 text-base md:text-lg">
-              الكود:{" "}
-              <span className="tracking-widest" style={{ color: accent }}>
-                {code}
-              </span>
+            <div className="text-white/40 text-sm md:text-base tracking-widest" style={{ color: accent }}>
+              {code}
             </div>
           </div>
         </div>
+
+        {/* الإعلانات في الأسفل */}
+        {banners.length > 0 && <TvBannerBar banners={banners} />}
       </div>
     );
   }
