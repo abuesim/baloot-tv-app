@@ -104,6 +104,16 @@ export default function TvBoard({
         }
         if (msg.type === "game") {
           const data: Game = msg.game;
+
+          // صكة متروكة → أخفِ الشاشة فوراً
+          if (data.status === "ABANDONED") {
+            setGame(null);
+            setShowCelebration(false);
+            prevRef.current = { gameId: null, t1: 0, t2: 0 };
+            prevWinnerRef.current = null;
+            return;
+          }
+
           const isNewGame = prevRef.current.gameId !== data.id;
           if (isNewGame) {
             prevRef.current = { gameId: data.id, t1: data.team1Score, t2: data.team2Score };
