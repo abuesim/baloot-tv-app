@@ -273,8 +273,16 @@ function Header({
 }) {
   return (
     <div className="px-3 md:px-8 pt-3 md:pt-6 pb-1 md:pb-2 flex items-center justify-between">
-      <div className="text-xl md:text-3xl font-black" style={{ color: user.tvAccentColor }}>
-        بلوت
+      <div className="flex items-center gap-2 md:gap-3">
+        {/* eslint-disable-next-line @next/next/no-img-element */}
+        <img
+          src="/icon-512x512.png"
+          alt="logo"
+          className="w-8 h-8 md:w-11 md:h-11 rounded-full object-cover"
+        />
+        <span className="text-xl md:text-3xl font-black" style={{ color: user.tvAccentColor }}>
+          أكك لايف
+        </span>
       </div>
       <div className="flex items-center gap-2 md:gap-3 text-xs md:text-sm text-white/60">
         <span className="hidden sm:inline">{user.displayName}</span>
@@ -436,7 +444,10 @@ function ScoreColumn({
             <span className="hidden md:block">
               <PlayerAvatar name={p.name} imageUrl={p.imageUrl} size="xl" />
             </span>
-            <span className="text-xs md:text-base text-white/80 max-w-16 md:max-w-24 truncate">
+            <span
+              className="text-xs md:text-base max-w-16 md:max-w-24 truncate font-medium"
+              style={{ color }}
+            >
               {p.name}
             </span>
           </div>
