@@ -418,6 +418,7 @@ export default function AdvancedGameView({
               });
             }
           }}
+          onModeChange={(mode) => setGame((g) => ({ ...g, mode }))}
           onChanged={() => router.refresh()}
         />
       )}
@@ -771,6 +772,7 @@ function SettingsModal({
   tvUrl,
   onClose,
   onAbandon,
+  onModeChange,
   onChanged,
 }: {
   gameId: string;
@@ -782,6 +784,7 @@ function SettingsModal({
   tvUrl: string | null;
   onClose: () => void;
   onAbandon: () => void;
+  onModeChange: (mode: "NORMAL" | "MASHDOOD") => void;
   onChanged: () => void;
 }) {
   const [tab, setTab] = useState<SettingsTab>("general");
@@ -820,11 +823,19 @@ function SettingsModal({
   async function toggleMode(mode: "NORMAL" | "MASHDOOD") {
     if (mode === localMode || modeLoading) return;
     setModeLoading(true);
-    const res = await changeGameModeAction(gameId, mode);
-    setModeLoading(false);
-    if (res.ok) {
-      setLocalMode(mode);
-      onChanged();
+    setError(null);
+    try {
+      const res = await changeGameModeAction(gameId, mode);
+      if (res.ok) {
+        setLocalMode(mode);
+        onModeChange(mode); // يحدّث الـ parent مباشرة بدون refresh
+      } else {
+        setError(res.error);
+      }
+    } catch {
+      setError("فشل تغيير نوع الصكة");
+    } finally {
+      setModeLoading(false);
     }
   }
 
