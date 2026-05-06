@@ -10,8 +10,14 @@ const readex = Readex_Pro({
 });
 
 export const metadata: Metadata = {
-  title: "بلوت — حاسبة احترافية",
-  description: "حاسبة بلوت مع شاشة تلفزيون وإحصائيات شهرية",
+  title: "أكك لايف | Akak Live",
+  description: "تسجيل نقاط البلوت المباشر",
+  manifest: "/manifest.json",
+  appleWebApp: {
+    capable: true,
+    statusBarStyle: "black-translucent",
+    title: "أكك لايف",
+  },
 };
 
 export default function RootLayout({

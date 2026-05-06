@@ -134,13 +134,13 @@ export default function TvBoard({
         style={styleVars}
       >
         <Header user={user} game={null} connected={connected} />
-        <div className="flex-1 flex items-center justify-center text-center">
+        <div className="flex-1 flex items-center justify-center text-center px-4">
           <div className="space-y-3">
-            <div className="text-9xl">🎴</div>
-            <div className="text-3xl text-white/80 font-bold">
+            <div className="text-6xl md:text-9xl">🎴</div>
+            <div className="text-xl md:text-3xl text-white/80 font-bold">
               بانتظار بداية المباراة
             </div>
-            <div className="text-white/50 text-lg">
+            <div className="text-white/50 text-base md:text-lg">
               الكود:{" "}
               <span className="tracking-widest" style={{ color: accent }}>
                 {code}
@@ -176,10 +176,10 @@ export default function TvBoard({
         <DonationStrip url={user.tvDonationUrl!} />
       )}
 
-      <div className="flex-1 flex items-stretch px-6 gap-6">
+      <div className="flex-1 flex items-stretch px-2 md:px-6 gap-2 md:gap-6">
         <div className={showChat ? "flex-[2]" : "flex-1"}>
           <div className="h-full flex items-center justify-center">
-            <div className="grid grid-cols-[1fr_auto_1fr] gap-6 w-full items-center">
+            <div className="grid grid-cols-[1fr_auto_1fr] gap-2 md:gap-6 w-full items-center">
               <ScoreColumn
                 label="لنا"
                 players={team1}
@@ -208,7 +208,7 @@ export default function TvBoard({
         </div>
 
         {showChat && (
-          <div className="w-80 shrink-0">
+          <div className="w-32 sm:w-48 md:w-80 shrink-0">
             <ChatPanel url={user.tvChatUrl!} variant="side" />
           </div>
         )}
@@ -272,15 +272,15 @@ function Header({
   connected: boolean;
 }) {
   return (
-    <div className="px-8 pt-6 pb-2 flex items-center justify-between">
-      <div className="text-3xl font-black" style={{ color: user.tvAccentColor }}>
+    <div className="px-3 md:px-8 pt-3 md:pt-6 pb-1 md:pb-2 flex items-center justify-between">
+      <div className="text-xl md:text-3xl font-black" style={{ color: user.tvAccentColor }}>
         بلوت
       </div>
-      <div className="flex items-center gap-3 text-sm text-white/60">
-        <span>{user.displayName}</span>
+      <div className="flex items-center gap-2 md:gap-3 text-xs md:text-sm text-white/60">
+        <span className="hidden sm:inline">{user.displayName}</span>
         {game?.mode === "MASHDOOD" && (
           <span
-            className="px-3 py-1 rounded-full font-bold"
+            className="px-2 md:px-3 py-0.5 md:py-1 rounded-full font-bold text-xs md:text-sm"
             style={{
               backgroundColor: `${user.tvAccentColor}33`,
               color: user.tvAccentColor,
@@ -289,9 +289,9 @@ function Header({
             مشدود
           </span>
         )}
-        {game && <span>الهدف: {game.targetScore}</span>}
+        {game && <span className="hidden sm:inline">الهدف: {game.targetScore}</span>}
         <span
-          className={`w-2 h-2 rounded-full ${
+          className={`w-2 h-2 rounded-full shrink-0 ${
             connected ? "bg-green-400 animate-pulse" : "bg-red-400"
           }`}
         />
@@ -303,21 +303,21 @@ function Header({
 function RoundsStrip({ rounds, accent }: { rounds: Round[]; accent: string }) {
   if (rounds.length === 0) return null;
   return (
-    <div className="px-8 pb-4">
-      <div className="bg-navy/60 rounded-2xl p-4 border border-white/5">
-        <div className="text-xs text-white/40 mb-2">آخر الجولات</div>
-        <div className="flex gap-2 overflow-x-auto">
+    <div className="px-3 md:px-8 pb-2 md:pb-4">
+      <div className="bg-navy/60 rounded-xl md:rounded-2xl p-2 md:p-4 border border-white/5">
+        <div className="text-xs text-white/40 mb-1 md:mb-2">آخر الجولات</div>
+        <div className="flex gap-1.5 md:gap-2 overflow-x-auto">
           {rounds.map((r) => (
             <div
               key={r.id}
-              className="bg-navy rounded-xl px-4 py-2 border border-white/10 flex items-center gap-3 shrink-0"
+              className="bg-navy rounded-lg md:rounded-xl px-2 md:px-4 py-1 md:py-2 border border-white/10 flex items-center gap-2 md:gap-3 shrink-0"
             >
               <span className="text-xs text-white/40">#{r.number}</span>
-              <span className="font-bold" style={{ color: accent }}>
+              <span className="font-bold text-sm md:text-base" style={{ color: accent }}>
                 {r.team1Score}
               </span>
-              <span className="text-white/30">-</span>
-              <span className="font-bold">{r.team2Score}</span>
+              <span className="text-white/30 text-xs">-</span>
+              <span className="font-bold text-sm md:text-base">{r.team2Score}</span>
             </div>
           ))}
         </div>
@@ -340,20 +340,20 @@ function WinnerOverlay({
   if (game.winner === null) return null;
   const winners = game.winner === 1 ? team1 : team2;
   return (
-    <div className="absolute inset-0 bg-black/80 flex items-center justify-center backdrop-blur-sm z-40">
+    <div className="absolute inset-0 bg-black/80 flex items-center justify-center backdrop-blur-sm z-40 px-4">
       <div className="text-center animate-pulse">
-        <div className="text-9xl mb-4">🏆</div>
+        <div className="text-5xl md:text-9xl mb-2 md:mb-4">🏆</div>
         <div
-          className="text-7xl font-black mb-3"
+          className="text-3xl md:text-7xl font-black mb-2 md:mb-3"
           style={{ color: accent }}
         >
           فوز للفريق {game.winner === 1 ? "لنا" : "لهم"}
         </div>
-        <div className="flex items-center justify-center gap-6 mt-6">
+        <div className="flex items-center justify-center gap-4 md:gap-6 mt-4 md:mt-6">
           {winners.map((p) => (
-            <div key={p.id} className="flex flex-col items-center gap-2">
-              <PlayerAvatar name={p.name} imageUrl={p.imageUrl} size="2xl" />
-              <span className="text-2xl text-white/80">{p.name}</span>
+            <div key={p.id} className="flex flex-col items-center gap-1 md:gap-2">
+              <PlayerAvatar name={p.name} imageUrl={p.imageUrl} size="xl" />
+              <span className="text-base md:text-2xl text-white/80">{p.name}</span>
             </div>
           ))}
         </div>
@@ -384,8 +384,8 @@ function ChatPanel({ url, variant }: { url: string; variant: "side" | "bottom" }
 
 function DonationStrip({ url }: { url: string }) {
   return (
-    <div className="mx-8 mb-2">
-      <div className="bg-navy rounded-xl border border-white/10 overflow-hidden h-20">
+    <div className="mx-3 md:mx-8 mb-2">
+      <div className="bg-navy rounded-xl border border-white/10 overflow-hidden h-14 md:h-20">
         <iframe
           src={url}
           className="w-full h-full border-0 bg-transparent"
@@ -421,16 +421,16 @@ function ScoreColumn({
   const color = isAccent || isWinner ? accent : "#ffffff";
   return (
     <div
-      className={`text-center relative rounded-3xl p-4 transition-all ${
+      className={`text-center relative rounded-2xl md:rounded-3xl p-2 md:p-4 transition-all ${
         flashing ? "panel-glow" : ""
       } ${isWinner ? "scale-105" : ""}`}
     >
-      <div className="text-2xl text-white/60 mb-3">{label}</div>
-      <div className="flex items-center justify-center gap-4 mb-4 min-h-20">
+      <div className="text-base md:text-2xl text-white/60 mb-1 md:mb-3">{label}</div>
+      <div className="flex items-center justify-center gap-2 md:gap-4 mb-2 md:mb-4 min-h-8 md:min-h-20">
         {players.map((p) => (
-          <div key={p.id} className="flex flex-col items-center gap-2">
-            <PlayerAvatar name={p.name} imageUrl={p.imageUrl} size="xl" />
-            <span className="text-base text-white/80 max-w-24 truncate">
+          <div key={p.id} className="flex flex-col items-center gap-1 md:gap-2">
+            <PlayerAvatar name={p.name} imageUrl={p.imageUrl} size="lg" />
+            <span className="text-xs md:text-base text-white/80 max-w-16 md:max-w-24 truncate">
               {p.name}
             </span>
           </div>
@@ -440,7 +440,7 @@ function ScoreColumn({
         {pops.map((p) => (
           <div
             key={p.id}
-            className="float-up text-4xl font-black"
+            className="float-up text-2xl md:text-4xl font-black"
             style={{ color, position: "absolute", left: 0, right: 0 }}
           >
             +{p.delta}
@@ -449,14 +449,14 @@ function ScoreColumn({
       </div>
       <div
         key={score}
-        className={`text-[10rem] md:text-[12rem] leading-none font-black mb-4 ${
+        className={`text-[3.5rem] sm:text-[5rem] md:text-[7rem] lg:text-[10rem] xl:text-[12rem] leading-none font-black mb-2 md:mb-4 ${
           flashing ? "score-flash" : ""
         }`}
         style={{ color }}
       >
         {score}
       </div>
-      <div className="bg-white/5 rounded-full h-2 overflow-hidden">
+      <div className="bg-white/5 rounded-full h-1.5 md:h-2 overflow-hidden">
         <div
           className="h-full transition-all duration-700"
           style={{ width: `${pct}%`, backgroundColor: color }}
@@ -477,15 +477,15 @@ function DiffPanel({
 }) {
   if (diff === 0) {
     return (
-      <div className="bg-navy rounded-2xl px-4 py-6 border border-white/10 text-center self-center">
+      <div className="bg-navy rounded-xl md:rounded-2xl px-2 md:px-4 py-3 md:py-6 border border-white/10 text-center self-center">
         <div className="text-xs text-white/40">الفرق</div>
-        <div className="text-3xl font-bold text-white/60">=</div>
+        <div className="text-xl md:text-3xl font-bold text-white/60">=</div>
       </div>
     );
   }
   return (
     <div
-      className="bg-navy rounded-2xl px-4 py-6 text-center self-center shadow-lg"
+      className="bg-navy rounded-xl md:rounded-2xl px-2 md:px-4 py-3 md:py-6 text-center self-center shadow-lg"
       style={{
         borderColor: `${accent}50`,
         borderWidth: 1,
@@ -493,10 +493,10 @@ function DiffPanel({
       }}
     >
       <div className="text-xs text-white/40 mb-1">الفرق</div>
-      <div className="text-4xl md:text-5xl font-black" style={{ color: accent }}>
+      <div className="text-2xl md:text-4xl lg:text-5xl font-black" style={{ color: accent }}>
         {diff}
       </div>
-      <div className="text-xs text-white/60 mt-1">
+      <div className="text-xs text-white/60 mt-1 hidden sm:block">
         {lead === 1 ? "← لنا" : "لهم →"}
       </div>
     </div>

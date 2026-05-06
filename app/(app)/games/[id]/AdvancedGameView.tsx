@@ -61,6 +61,16 @@ export default function AdvancedGameView({
   const [game, setGame] = useState<Game>(initial);
   useEffect(() => setGame(initial), [initial]);
 
+  // كشف لحظة الفوز
+  const prevWinnerRef = useRef<number | null>(initial.winner);
+  const [showCelebration, setShowCelebration] = useState(false);
+  useEffect(() => {
+    if (game.winner !== null && prevWinnerRef.current === null) {
+      setShowCelebration(true);
+    }
+    prevWinnerRef.current = game.winner;
+  }, [game.winner]);
+
   const [activeSide, setActiveSide] = useState<"us" | "them" | null>(null);
   const [usInput, setUsInput] = useState("");
   const [themInput, setThemInput] = useState("");
@@ -375,6 +385,21 @@ export default function AdvancedGameView({
         متقدمة
       </div>
 
+      {/* أنيميشن الفوز */}
+      {showCelebration && game.winner !== null && (
+        <WinCelebration
+          winner={game.winner}
+          team1={team1}
+          team2={team2}
+          team1Score={game.team1Score}
+          team2Score={game.team2Score}
+          onViewRounds={() => { setShowCelebration(false); setShowAllRounds(true); }}
+          onSettings={() => { setShowCelebration(false); setShowSettings(true); }}
+          onNewGame={() => router.push("/games/new")}
+          onClose={() => setShowCelebration(false)}
+        />
+      )}
+
       {showSettings && (
         <SettingsModal
           gameId={game.id}
@@ -437,6 +462,142 @@ function ScoreSide({
   );
 }
 
+// ============================================================
+// أنيميشن الفوز
+// ============================================================
+
+const CONFETTI_COLORS = ["#f5b042","#ff5e3a","#4ecdc4","#a29bfe","#fd79a8","#55efc4","#fdcb6e"];
+const CONFETTI = Array.from({ length: 65 }, (_, i) => ({
+  id: i,
+  color: CONFETTI_COLORS[i % 7],
+  left: (i * 1.57) % 100,
+  size: 5 + (i % 5) * 3,
+  dur: 2.2 + (i % 5) * 0.5,
+  delay: (i * 0.13) % 3.5,
+  circle: i % 3 !== 2,
+}));
+
+function WinCelebration({
+  winner, team1, team2, team1Score, team2Score,
+  onViewRounds, onSettings, onNewGame, onClose,
+}: {
+  winner: number;
+  team1: Player[];
+  team2: Player[];
+  team1Score: number;
+  team2Score: number;
+  onViewRounds: () => void;
+  onSettings: () => void;
+  onNewGame: () => void;
+  onClose: () => void;
+}) {
+  const [showButtons, setShowButtons] = useState(false);
+  useEffect(() => {
+    const t = setTimeout(() => setShowButtons(true), 3500);
+    return () => clearTimeout(t);
+  }, []);
+
+  const winners = winner === 1 ? team1 : team2;
+  const label   = winner === 1 ? "لنا" : "لهم";
+
+  return (
+    <div className="fixed inset-0 z-[100] flex flex-col items-center justify-center overflow-hidden">
+      <style>{`
+        @keyframes cRise {
+          0%   { transform: translateY(105vh) rotate(0deg);   opacity:1 }
+          80%  { opacity:1 }
+          100% { transform: translateY(-15vh) rotate(600deg); opacity:0 }
+        }
+        @keyframes cPop {
+          0%,100% { transform:scale(1) }
+          30%     { transform:scale(1.08) }
+          60%     { transform:scale(0.97) }
+        }
+        @keyframes cUp {
+          from { opacity:0; transform:translateY(28px) }
+          to   { opacity:1; transform:translateY(0) }
+        }
+      `}</style>
+
+      {/* خلفية */}
+      <div className="absolute inset-0 bg-black/88 backdrop-blur-sm" />
+
+      {/* فقاعات الكونفيتي */}
+      <div className="absolute inset-0 pointer-events-none overflow-hidden">
+        {CONFETTI.map(p => (
+          <div
+            key={p.id}
+            className="absolute bottom-0"
+            style={{
+              left: `${p.left}%`,
+              width:  p.size,
+              height: p.size,
+              background: p.circle ? p.color : undefined,
+              border: !p.circle ? `${Math.ceil(p.size/2)}px solid ${p.color}` : undefined,
+              borderRadius: p.circle ? "50%" : "2px",
+              animation: `cRise ${p.dur}s ease-out ${p.delay}s 3 forwards`,
+            }}
+          />
+        ))}
+      </div>
+
+      {/* المحتوى */}
+      <div className="relative z-10 text-center px-8" style={{ animation: "cPop 1.8s ease-in-out 4" }}>
+        <div className="text-7xl mb-3">🏆</div>
+        <div className="text-3xl sm:text-4xl font-black mb-1 text-gold">
+          فوز فريق {label}!
+        </div>
+        <div className="text-white/50 text-xl mb-6 tabular-nums">
+          {team1Score} — {team2Score}
+        </div>
+        <div className="flex justify-center gap-5">
+          {winners.map(p => (
+            <div key={p.id} className="flex flex-col items-center gap-2">
+              <PlayerAvatar name={p.name} imageUrl={p.imageUrl} size="xl" />
+              <span className="text-white/80 text-sm">{p.name}</span>
+            </div>
+          ))}
+        </div>
+      </div>
+
+      {/* أزرار الخيارات — تظهر بعد ٣.٥ ثانية */}
+      {showButtons && (
+        <div
+          className="relative z-10 w-full max-w-xs px-5 mt-8 space-y-2.5"
+          style={{ animation: "cUp 0.45s ease-out forwards" }}
+        >
+          <div className="grid grid-cols-2 gap-2">
+            <button
+              onClick={onViewRounds}
+              className="h-12 rounded-2xl bg-white/10 border border-white/15 text-sm font-bold hover:bg-white/20 transition"
+            >
+              📋 الجولات
+            </button>
+            <button
+              onClick={onSettings}
+              className="h-12 rounded-2xl bg-white/10 border border-white/15 text-sm font-bold hover:bg-white/20 transition"
+            >
+              ⚙️ الإعدادات
+            </button>
+          </div>
+          <button
+            onClick={onNewGame}
+            className="w-full h-14 rounded-2xl btn-grad font-bold text-lg"
+          >
+            🎮 مباراة جديدة
+          </button>
+          <button
+            onClick={onClose}
+            className="w-full text-white/35 text-sm py-2 hover:text-white/60 transition"
+          >
+            متابعة المشاهدة
+          </button>
+        </div>
+      )}
+    </div>
+  );
+}
+
 function RoundsPreview({
   rounds,
   onExpand,
@@ -452,18 +613,18 @@ function RoundsPreview({
     <div className="px-4 mt-6 mb-4">
       <div className="bg-[#0d0d0d] rounded-2xl border border-white/5 overflow-hidden">
         <div className="grid grid-cols-3 px-6 py-2 text-white/60 text-xs">
-          <div className="text-right">لهم</div>
+          <div className="text-right">#</div>
           <div className="text-center">لنا</div>
-          <div className="text-left">#</div>
+          <div className="text-left">لهم</div>
         </div>
         {visible.map((r) => (
           <div
             key={r.id}
             className="grid grid-cols-3 px-6 py-2 text-base border-t border-white/5"
           >
-            <div className="text-right tabular-nums">{r.team2Score}</div>
+            <div className="text-right tabular-nums text-white/50">{r.number}</div>
             <div className="text-center tabular-nums">{r.team1Score}</div>
-            <div className="text-left tabular-nums text-white/50">{r.number}</div>
+            <div className="text-left tabular-nums">{r.team2Score}</div>
           </div>
         ))}
         {rounds.length > 2 && (
