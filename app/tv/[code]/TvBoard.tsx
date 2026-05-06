@@ -426,10 +426,16 @@ function ScoreColumn({
       } ${isWinner ? "scale-105" : ""}`}
     >
       <div className="text-base md:text-2xl text-white/60 mb-1 md:mb-3">{label}</div>
-      <div className="flex items-center justify-center gap-2 md:gap-4 mb-2 md:mb-4 min-h-8 md:min-h-20">
+      <div className="flex items-center justify-center gap-2 md:gap-4 mb-2 md:mb-4 min-h-8 md:min-h-24">
         {players.map((p) => (
           <div key={p.id} className="flex flex-col items-center gap-1 md:gap-2">
-            <PlayerAvatar name={p.name} imageUrl={p.imageUrl} size="lg" />
+            {/* جوال: lg (64px) — شاشة كبيرة: xl (96px ≈ +50%) */}
+            <span className="block md:hidden">
+              <PlayerAvatar name={p.name} imageUrl={p.imageUrl} size="lg" />
+            </span>
+            <span className="hidden md:block">
+              <PlayerAvatar name={p.name} imageUrl={p.imageUrl} size="xl" />
+            </span>
             <span className="text-xs md:text-base text-white/80 max-w-16 md:max-w-24 truncate">
               {p.name}
             </span>
