@@ -41,6 +41,18 @@ type BannerItem = {
 
 type FloatPop = { id: number; team: 1 | 2; delta: number };
 
+// ─── بيانات الكونفيتي ───
+const C_COLORS = ["#f5b042","#ff5e3a","#4ecdc4","#a29bfe","#fd79a8","#55efc4","#fdcb6e","#74b9ff","#e17055"];
+const TV_CONFETTI = Array.from({ length: 80 }, (_, i) => ({
+  id: i,
+  color: C_COLORS[i % 9],
+  left: (i * 1.27) % 100,
+  size: 6 + (i % 6) * 3,
+  dur: 2.4 + (i % 5) * 0.55,
+  delay: (i * 0.11) % 3.8,
+  circle: i % 3 !== 2,
+}));
+
 export default function TvBoard({
   initialGame,
   initialUser,
@@ -60,12 +72,16 @@ export default function TvBoard({
     team2: false,
   });
   const [pops, setPops] = useState<FloatPop[]>([]);
+  const [showCelebration, setShowCelebration] = useState(
+    initialGame?.winner !== null && initialGame?.winner !== undefined,
+  );
   const popIdRef = useRef(0);
   const prevRef = useRef<{ gameId: string | null; t1: number; t2: number }>({
     gameId: initialGame?.id ?? null,
     t1: initialGame?.team1Score ?? 0,
     t2: initialGame?.team2Score ?? 0,
   });
+  const prevWinnerRef = useRef<number | null>(initialGame?.winner ?? null);
 
   useEffect(() => {
     const es = new EventSource(`/api/tv/${code}/stream`);
@@ -91,9 +107,16 @@ export default function TvBoard({
           const isNewGame = prevRef.current.gameId !== data.id;
           if (isNewGame) {
             prevRef.current = { gameId: data.id, t1: data.team1Score, t2: data.team2Score };
+            prevWinnerRef.current = data.winner ?? null;
+            setShowCelebration(data.winner !== null);
             setGame(data);
             return;
           }
+          // كشف فوز جديد — شغّل الاحتفال
+          if (data.winner !== null && prevWinnerRef.current === null) {
+            setShowCelebration(true);
+          }
+          prevWinnerRef.current = data.winner ?? null;
           const dt1 = data.team1Score - prevRef.current.t1;
           const dt2 = data.team2Score - prevRef.current.t2;
           if (dt1 > 0 || dt2 > 0) {
@@ -220,7 +243,14 @@ export default function TvBoard({
 
       {banners.length > 0 && <TvBannerBar banners={banners} />}
 
-      <WinnerOverlay game={game} team1={team1} team2={team2} accent={accent} />
+      {showCelebration && game.winner !== null && (
+        <TvWinCelebration
+          game={game}
+          team1={team1}
+          team2={team2}
+          accent={accent}
+        />
+      )}
     </>
   );
 
@@ -334,7 +364,7 @@ function RoundsStrip({ rounds, accent }: { rounds: Round[]; accent: string }) {
   );
 }
 
-function WinnerOverlay({
+function TvWinCelebration({
   game,
   team1,
   team2,
@@ -345,23 +375,77 @@ function WinnerOverlay({
   team2: Player[];
   accent: string;
 }) {
-  if (game.winner === null) return null;
   const winners = game.winner === 1 ? team1 : team2;
+  const label   = game.winner === 1 ? "لنا" : "لهم";
+  const winScore  = game.winner === 1 ? game.team1Score : game.team2Score;
+  const loseScore = game.winner === 1 ? game.team2Score : game.team1Score;
+
   return (
-    <div className="absolute inset-0 bg-black/80 flex items-center justify-center backdrop-blur-sm z-40 px-4">
-      <div className="text-center animate-pulse">
-        <div className="text-5xl md:text-9xl mb-2 md:mb-4">🏆</div>
+    <div className="absolute inset-0 z-50 flex flex-col items-center justify-center overflow-hidden">
+      <style>{`
+        @keyframes tvRise {
+          0%   { transform:translateY(105%) rotate(0deg);   opacity:1 }
+          80%  { opacity:1 }
+          100% { transform:translateY(-20%) rotate(600deg); opacity:0 }
+        }
+        @keyframes tvPop {
+          0%,100% { transform:scale(1)    }
+          30%     { transform:scale(1.06) }
+          60%     { transform:scale(0.97) }
+        }
+        @keyframes tvGlow {
+          0%,100% { text-shadow: 0 0 20px currentColor  }
+          50%     { text-shadow: 0 0 60px currentColor  }
+        }
+      `}</style>
+
+      {/* خلفية ضبابية */}
+      <div className="absolute inset-0 bg-black/85 backdrop-blur-sm" />
+
+      {/* كونفيتي لا ينتهي */}
+      <div className="absolute inset-0 pointer-events-none overflow-hidden">
+        {TV_CONFETTI.map((p) => (
+          <div
+            key={p.id}
+            className="absolute bottom-0"
+            style={{
+              left: `${p.left}%`,
+              width:  p.size,
+              height: p.size,
+              background:  p.circle ? p.color : undefined,
+              border: !p.circle ? `${Math.ceil(p.size / 2)}px solid ${p.color}` : undefined,
+              borderRadius: p.circle ? "50%" : "3px",
+              animation: `tvRise ${p.dur}s ease-out ${p.delay}s infinite`,
+            }}
+          />
+        ))}
+      </div>
+
+      {/* المحتوى */}
+      <div
+        className="relative z-10 text-center px-6"
+        style={{ animation: "tvPop 2s ease-in-out infinite" }}
+      >
+        <div className="text-5xl md:text-8xl mb-2 md:mb-4">🏆</div>
         <div
-          className="text-3xl md:text-7xl font-black mb-2 md:mb-3"
-          style={{ color: accent }}
+          className="text-4xl md:text-7xl font-black mb-1 md:mb-2"
+          style={{ color: accent, animation: "tvGlow 2s ease-in-out infinite" }}
         >
-          فوز للفريق {game.winner === 1 ? "لنا" : "لهم"}
+          فوز فريق {label}!
         </div>
-        <div className="flex items-center justify-center gap-4 md:gap-6 mt-4 md:mt-6">
+        <div className="text-white/50 text-lg md:text-3xl mb-5 md:mb-8 tabular-nums">
+          {winScore} — {loseScore}
+        </div>
+        <div className="flex justify-center gap-6 md:gap-12">
           {winners.map((p) => (
-            <div key={p.id} className="flex flex-col items-center gap-1 md:gap-2">
-              <PlayerAvatar name={p.name} imageUrl={p.imageUrl} size="xl" />
-              <span className="text-base md:text-2xl text-white/80">{p.name}</span>
+            <div key={p.id} className="flex flex-col items-center gap-2 md:gap-3">
+              <span className="block md:hidden">
+                <PlayerAvatar name={p.name} imageUrl={p.imageUrl} size="xl" />
+              </span>
+              <span className="hidden md:block">
+                <PlayerAvatar name={p.name} imageUrl={p.imageUrl} size="2xl" />
+              </span>
+              <span className="text-sm md:text-xl text-white/80">{p.name}</span>
             </div>
           ))}
         </div>
