@@ -235,18 +235,20 @@ export default function TvBoard({
       }) => {
         const msg = data.message?.[0] ?? {};
 
-        // لوج مؤقت للتشخيص — نشوف الحزمة الكاملة
-        console.log("[SL event]", JSON.stringify({ type: data.type, name: msg.name, amount: msg.amount, currency: msg.currency }));
+        // فلتر: فقط الأحداث الحقيقية — نتجاهل alertbox-test وأي حدث إعدادات
+        const REAL_EVENTS = new Set([
+          "donation", "follow", "subscription", "resub",
+          "bits", "host", "raid",
+          "follower-latest", "donation-latest",
+          "subscription-latest", "cheer-latest",
+        ]);
+        if (!REAL_EVENTS.has(data.type ?? "")) return;
 
-        // dedup متعدد الطبقات:
-        // 1) نطبّع المبلغ والاسم لتجنب "65" vs "65.00"
-        const nameNorm  = String(msg.name  ?? "").toLowerCase().trim();
-        const amtNorm   = String(Math.round(parseFloat(String(msg.amount ?? "0")) * 100) || "0");
-        const dedupKey  = `${nameNorm}:${amtNorm}`;
-        if (recentKeysRef.current.has(dedupKey)) {
-          console.log("[SL dedup blocked]", dedupKey);
-          return;
-        }
+        // dedup: نطبّع المبلغ والاسم لتجنب "65" vs "65.00"
+        const nameNorm = String(msg.name  ?? "").toLowerCase().trim();
+        const amtNorm  = String(Math.round(parseFloat(String(msg.amount ?? "0")) * 100) || "0");
+        const dedupKey = `${nameNorm}:${amtNorm}`;
+        if (recentKeysRef.current.has(dedupKey)) return;
         recentKeysRef.current.add(dedupKey);
         setTimeout(() => recentKeysRef.current.delete(dedupKey), 20_000);
 
