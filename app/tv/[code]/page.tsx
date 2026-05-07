@@ -21,6 +21,9 @@ export default async function TvPage({
       tvChatUrl: true,
       tvShowDonations: true,
       tvDonationUrl: true,
+      tvShowAlert: true,
+      tvAlertUrl: true,
+      tvStreamlabsToken: true,
     },
   });
   if (!user) notFound();

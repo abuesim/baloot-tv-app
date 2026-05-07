@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useRef, useState } from "react";
+import { io } from "socket.io-client";
 import { PlayerAvatar } from "@/components/PlayerAvatar";
 import { ImageCarousel } from "@/components/ImageCarousel";
 
@@ -30,6 +31,9 @@ type TvUser = {
   tvChatUrl: string | null;
   tvShowDonations: boolean;
   tvDonationUrl: string | null;
+  tvShowAlert: boolean;
+  tvAlertUrl: string | null;
+  tvStreamlabsToken: string | null;
 };
 
 type BannerItem = {
@@ -40,6 +44,14 @@ type BannerItem = {
 };
 
 type FloatPop = { id: number; team: 1 | 2; delta: number };
+type TvAlert = {
+  id: number;
+  listener: string;
+  name: string;
+  amount: string;
+  currency: string;
+  message: string;
+};
 
 // ─── بيانات الكونفيتي ───
 const C_COLORS = ["#f5b042","#ff5e3a","#4ecdc4","#a29bfe","#fd79a8","#55efc4","#fdcb6e","#74b9ff","#e17055"];
@@ -72,6 +84,8 @@ export default function TvBoard({
     team2: false,
   });
   const [pops, setPops] = useState<FloatPop[]>([]);
+  const [activeAlert, setActiveAlert] = useState<TvAlert | null>(null);
+  const alertTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const [showCelebration, setShowCelebration] = useState(
     initialGame?.winner !== null && initialGame?.winner !== undefined,
   );
@@ -100,6 +114,20 @@ export default function TvBoard({
               t2: msg.game.team2Score,
             };
           }
+          return;
+        }
+        if (msg.type === "alert") {
+          const id = ++popIdRef.current;
+          if (alertTimerRef.current) clearTimeout(alertTimerRef.current);
+          setActiveAlert({
+            id,
+            listener: msg.listener ?? "",
+            name: msg.name ?? "",
+            amount: msg.amount ?? "",
+            currency: msg.currency ?? "",
+            message: msg.message ?? "",
+          });
+          alertTimerRef.current = setTimeout(() => setActiveAlert(null), 8000);
           return;
         }
         if (msg.type === "game") {
@@ -153,11 +181,46 @@ export default function TvBoard({
     return () => es.close();
   }, [code]);
 
+  // ─── Streamlabs Socket.IO — اتصال مباشر لاستقبال التنبيهات ───
+  useEffect(() => {
+    const token = user.tvStreamlabsToken;
+    if (!token) return;
+
+    const socket = io("https://sockets.streamlabs.com", {
+      transports: ["websocket"],
+      query: { token },
+    });
+
+    socket.on("event", (data: {
+      type?: string;
+      for?: string;
+      message?: { name?: string; amount?: string | number; currency?: string; message?: string }[];
+    }) => {
+      const msg = data.message?.[0] ?? {};
+      const id = ++popIdRef.current;
+      if (alertTimerRef.current) clearTimeout(alertTimerRef.current);
+      setActiveAlert({
+        id,
+        listener: data.type ?? "",
+        name: msg.name ?? "",
+        amount: String(msg.amount ?? ""),
+        currency: msg.currency ?? "",
+        message: msg.message ?? "",
+      });
+      alertTimerRef.current = setTimeout(() => setActiveAlert(null), 8000);
+    });
+
+    return () => { socket.disconnect(); };
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [user.tvStreamlabsToken]);
+
   // المتغيرات اللازمة للستايل
   const accent = user.tvAccentColor || "#f5b042";
   const styleVars: React.CSSProperties = {
     ["--tv-accent" as never]: accent,
   };
+
+  const showAlert = user.tvShowAlert && !!user.tvAlertUrl;
 
   // حالة بدون صكة
   if (!game) {
@@ -204,6 +267,14 @@ export default function TvBoard({
 
         {/* الإعلانات في الأسفل */}
         {banners.length > 0 && <TvBannerBar banners={banners} />}
+
+        {/* صندوق التنبيهات — طبقة شفافة فوق كل شيء */}
+        {showAlert && <AlertBoxOverlay url={user.tvAlertUrl!} />}
+
+        {/* تنبيه Streamlabs النيتيف */}
+        {activeAlert && (
+          <TvAlertBadge key={activeAlert.id} alert={activeAlert} accent={accent} />
+        )}
       </div>
     );
   }
@@ -288,6 +359,11 @@ export default function TvBoard({
           accent={accent}
         />
       )}
+
+      {/* تنبيه Streamlabs النيتيف — يظهر فوق المحتوى */}
+      {activeAlert && (
+        <TvAlertBadge key={activeAlert.id} alert={activeAlert} accent={accent} />
+      )}
     </>
   );
 
@@ -313,6 +389,8 @@ export default function TvBoard({
           }}
         >
           {gameContent}
+          {/* صندوق التنبيهات داخل المحتوى المدوَّر حتى يتوافق مع اتجاه الشاشة */}
+          {showAlert && <AlertBoxOverlay url={user.tvAlertUrl!} />}
         </div>
       </div>
     );
@@ -325,6 +403,8 @@ export default function TvBoard({
       style={styleVars}
     >
       {gameContent}
+      {/* صندوق التنبيهات — طبقة شفافة فوق المحتوى */}
+      {showAlert && <AlertBoxOverlay url={user.tvAlertUrl!} />}
     </div>
   );
 }
@@ -491,6 +571,11 @@ function TvWinCelebration({
   );
 }
 
+/** يمرّر الرابط عبر الـ proxy لإزالة رؤوس X-Frame-Options و CSP frame-ancestors */
+function tvProxy(url: string) {
+  return `/api/tv-proxy?url=${encodeURIComponent(url)}`;
+}
+
 function ChatPanel({ url, variant }: { url: string; variant: "side" | "bottom" }) {
   const cls =
     variant === "side"
@@ -503,7 +588,7 @@ function ChatPanel({ url, variant }: { url: string; variant: "side" | "bottom" }
         <span>الشات المباشر</span>
       </div>
       <iframe
-        src={url}
+        src={tvProxy(url)}
         className="w-full h-[calc(100%-32px)] border-0 bg-transparent"
         sandbox="allow-scripts allow-same-origin allow-popups"
       />
@@ -516,7 +601,7 @@ function DonationStrip({ url }: { url: string }) {
     <div className="mx-3 md:mx-8 mb-2">
       <div className="bg-navy rounded-xl border border-white/10 overflow-hidden h-14 md:h-20">
         <iframe
-          src={url}
+          src={tvProxy(url)}
           className="w-full h-full border-0 bg-transparent"
           sandbox="allow-scripts allow-same-origin allow-popups"
         />
@@ -642,6 +727,130 @@ function DiffPanel({
       <div className="text-xs text-white/60 mt-1 hidden sm:block">
         {lead === 1 ? "لنا →" : "← لهم"}
       </div>
+    </div>
+  );
+}
+
+// ============================================================
+// بادج التنبيه النيتيف (يُطلق من Streamlabs Custom HTML)
+// ============================================================
+const ALERT_META: Record<string, { icon: string; label: string }> = {
+  // أنواع Streamlabs Socket المباشرة
+  "follow":              { icon: "❤️",  label: "متابع جديد"   },
+  "donation":            { icon: "💰",  label: "دونيشن"        },
+  "subscription":        { icon: "⭐",  label: "اشتراك جديد"  },
+  "resub":               { icon: "⭐",  label: "اشتراك مجدد"  },
+  "bits":                { icon: "💎",  label: "Bits"           },
+  "host":                { icon: "📡",  label: "هوست"           },
+  "raid":                { icon: "⚔️",  label: "ريد"            },
+  // أنواع push-alert (Custom HTML fallback)
+  "follower-latest":     { icon: "❤️",  label: "متابع جديد"   },
+  "donation-latest":     { icon: "💰",  label: "دونيشن"        },
+  "subscription-latest": { icon: "⭐",  label: "اشتراك جديد"  },
+  "cheer-latest":        { icon: "💎",  label: "Bits"           },
+  "alertbox-test":       { icon: "🔔",  label: "تجربة"         },
+};
+
+function TvAlertBadge({ alert, accent }: { alert: TvAlert; accent: string }) {
+  const meta = ALERT_META[alert.listener] ?? { icon: "🎉", label: "تنبيه" };
+  const hasDonation = !!alert.amount && alert.amount !== "0";
+
+  return (
+    <>
+      <style>{`
+        @keyframes alertSlide {
+          0%   { transform: translateX(110%); opacity: 0; }
+          12%  { transform: translateX(0);    opacity: 1; }
+          80%  { transform: translateX(0);    opacity: 1; }
+          100% { transform: translateX(110%); opacity: 0; }
+        }
+      `}</style>
+      <div
+        style={{
+          position: "absolute",
+          top: "1.5rem",
+          right: "1.5rem",
+          zIndex: 48,
+          animation: "alertSlide 8s ease-in-out forwards",
+          pointerEvents: "none",
+          maxWidth: "min(22rem, 90vw)",
+        }}
+      >
+        <div
+          className="rounded-2xl overflow-hidden shadow-2xl"
+          style={{
+            background: "rgba(10,15,28,0.92)",
+            border: `2px solid ${accent}`,
+            backdropFilter: "blur(12px)",
+          }}
+        >
+          {/* شريط العنوان */}
+          <div
+            className="flex items-center gap-2 px-4 py-2"
+            style={{ background: `${accent}25` }}
+          >
+            <span className="text-xl leading-none">{meta.icon}</span>
+            <span
+              className="font-black text-sm tracking-wide"
+              style={{ color: accent }}
+            >
+              {meta.label}
+            </span>
+            {hasDonation && (
+              <span
+                className="mr-auto font-black text-base"
+                style={{ color: accent }}
+              >
+                {alert.amount}
+                {alert.currency ? ` ${alert.currency}` : ""}
+              </span>
+            )}
+          </div>
+
+          {/* الاسم */}
+          <div className="px-4 py-1.5">
+            <div className="text-white font-bold text-lg leading-snug">
+              {alert.name || "—"}
+            </div>
+            {alert.message && (
+              <div className="text-white/60 text-sm mt-0.5 leading-snug line-clamp-2">
+                {alert.message}
+              </div>
+            )}
+          </div>
+        </div>
+      </div>
+    </>
+  );
+}
+
+// ============================================================
+// صندوق التنبيهات — طبقة شفافة مكتملة الحجم (Streamlabs / StreamElements)
+// ============================================================
+function AlertBoxOverlay({ url }: { url: string }) {
+  return (
+    <div
+      style={{
+        position: "absolute",
+        inset: 0,
+        zIndex: 45, // فوق المحتوى (40) وتحت الاحتفالية (50)
+        pointerEvents: "none",
+        overflow: "hidden",
+        background: "transparent",
+      }}
+    >
+      <iframe
+        src={tvProxy(url)}
+        style={{
+          width: "100%",
+          height: "100%",
+          border: "none",
+          background: "transparent",
+          display: "block",
+        }}
+        allow="autoplay"
+        sandbox="allow-scripts allow-same-origin allow-popups allow-forms"
+      />
     </div>
   );
 }

@@ -115,6 +115,13 @@ const studioSchema = z.object({
     .url("الرابط غير صالح")
     .optional()
     .or(z.literal("")),
+  tvShowAlert: z.boolean(),
+  tvAlertUrl: z
+    .string()
+    .url("الرابط غير صالح")
+    .optional()
+    .or(z.literal("")),
+  tvStreamlabsToken: z.string().max(512).optional().or(z.literal("")),
 });
 
 export async function updateTvStudioAction(
@@ -128,6 +135,9 @@ export async function updateTvStudioAction(
     tvChatUrl: String(formData.get("tvChatUrl") ?? "").trim(),
     tvShowDonations: formData.get("tvShowDonations") === "on",
     tvDonationUrl: String(formData.get("tvDonationUrl") ?? "").trim(),
+    tvShowAlert: formData.get("tvShowAlert") === "on",
+    tvAlertUrl: String(formData.get("tvAlertUrl") ?? "").trim(),
+    tvStreamlabsToken: String(formData.get("tvStreamlabsToken") ?? "").trim(),
   });
   if (!parsed.success) {
     return { ok: false, error: parsed.error.issues[0]?.message ?? "بيانات غير صالحة" };
@@ -142,6 +152,9 @@ export async function updateTvStudioAction(
       tvChatUrl: parsed.data.tvChatUrl || null,
       tvShowDonations: parsed.data.tvShowDonations,
       tvDonationUrl: parsed.data.tvDonationUrl || null,
+      tvShowAlert: parsed.data.tvShowAlert,
+      tvAlertUrl: parsed.data.tvAlertUrl || null,
+      tvStreamlabsToken: parsed.data.tvStreamlabsToken || null,
     },
   });
   revalidatePath("/profile");

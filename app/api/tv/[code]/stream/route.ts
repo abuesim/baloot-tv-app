@@ -13,6 +13,9 @@ const USER_TV_SELECT = {
   tvChatUrl: true,
   tvShowDonations: true,
   tvDonationUrl: true,
+  tvShowAlert: true,
+  tvAlertUrl: true,
+  tvStreamlabsToken: true,
 } as const;
 
 async function getCurrentGameForUser(userId: string) {

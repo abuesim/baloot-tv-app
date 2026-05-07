@@ -25,12 +25,16 @@ export default function TvStudioForm({
     tvChatUrl: string | null;
     tvShowDonations: boolean;
     tvDonationUrl: string | null;
+    tvShowAlert: boolean;
+    tvAlertUrl: string | null;
+    tvStreamlabsToken: string | null;
   };
 }) {
   const router = useRouter();
   const [color, setColor] = useState(initial.tvAccentColor);
   const [showChat, setShowChat] = useState(initial.tvShowChat);
   const [showDonations, setShowDonations] = useState(initial.tvShowDonations);
+  const [showAlert, setShowAlert] = useState(initial.tvShowAlert);
   const [showRounds, setShowRounds] = useState(initial.tvShowRounds);
   const [isPending, startTransition] = useTransition();
   const [msg, setMsg] = useState<{ ok: boolean; text: string } | null>(null);
@@ -40,6 +44,7 @@ export default function TvStudioForm({
     formData.set("tvAccentColor", color);
     if (showChat) formData.set("tvShowChat", "on");
     if (showDonations) formData.set("tvShowDonations", "on");
+    if (showAlert) formData.set("tvShowAlert", "on");
     if (showRounds) formData.set("tvShowRounds", "on");
     startTransition(async () => {
       const res = await updateTvStudioAction(formData);
@@ -148,6 +153,41 @@ export default function TvStudioForm({
             className="w-full bg-navy-light border border-white/10 rounded-lg px-3 py-2 text-sm mr-8"
           />
         )}
+
+        <ToggleRow
+          checked={showAlert}
+          onChange={setShowAlert}
+          label="صندوق التنبيهات (Alert Box)"
+          desc="يظهر فوق الشاشة بخلفية شفافة — متوافق مع Streamlabs و StreamElements"
+        />
+        {showAlert && (
+          <input
+            name="tvAlertUrl"
+            defaultValue={initial.tvAlertUrl ?? ""}
+            placeholder="https://streamlabs.com/alert-box/v3/..."
+            dir="ltr"
+            className="w-full bg-navy-light border border-white/10 rounded-lg px-3 py-2 text-sm mr-8"
+          />
+        )}
+      </div>
+
+      {/* Streamlabs Socket Token */}
+      <div>
+        <label className="block text-sm font-bold mb-1">
+          🔗 Streamlabs — Socket API Token
+        </label>
+        <p className="text-xs text-white/50 mb-2">
+          للاتصال المباشر واستقبال التنبيهات نيتيف (متابع، دونيشن، اشتراك…)
+          بدون iframe. احصل عليه من صفحة{" "}
+          <span className="text-gold">API Settings</span> في Streamlabs.
+        </p>
+        <input
+          name="tvStreamlabsToken"
+          defaultValue={initial.tvStreamlabsToken ?? ""}
+          placeholder="eyJ0eXAiOiJKV1Q..."
+          dir="ltr"
+          className="w-full bg-navy-light border border-white/10 rounded-lg px-3 py-2 text-sm font-mono"
+        />
       </div>
 
       {msg && (

@@ -53,6 +53,9 @@ model User {
   tvShowDonations Boolean  @default(false)
   tvDonationUrl   String? // رابط iframe للدونيشن
   tvLogoUrl       String? // لوغو شخصي اختياري (يحلّ محل "بلوت")
+  tvShowAlert     Boolean  @default(false)
+  tvAlertUrl      String? // رابط صندوق التنبيهات (Streamlabs / StreamElements)
+  tvStreamlabsToken String? // Socket API Token من Streamlabs (للاتصال المباشر)
 
   // اليوزر الفرعي — يشير إلى الحساب الأصل (صانع المحتوى)
   parentUserId String?
