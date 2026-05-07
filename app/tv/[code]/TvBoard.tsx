@@ -2,7 +2,6 @@
 
 import { useEffect, useRef, useState } from "react";
 import { PlayerAvatar } from "@/components/PlayerAvatar";
-import { ImageCarousel } from "@/components/ImageCarousel";
 
 type Player = { id: string; name: string; imageUrl: string | null };
 type Participant = { team: number; player: Player };
@@ -372,7 +371,12 @@ export default function TvBoard({
           </div>
         </div>
 
-        {/* الإعلانات في الأسفل */}
+        {/* إعلانات الصور في المنتصف */}
+        {banners.filter((b) => b.imageUrl).length > 0 && (
+          <TvImageBannerCenter banners={banners.filter((b) => b.imageUrl)} />
+        )}
+
+        {/* الإعلانات النصية في الأسفل */}
         {banners.length > 0 && <TvBannerBar banners={banners} />}
 
         {/* صندوق التنبيهات — طبقة شفافة فوق كل شيء */}
@@ -1101,9 +1105,9 @@ function AlertBoxOverlay({ url }: { url: string }) {
 // ============================================================
 // شريط الإعلانات — يُعرض داخل gameContent فيتدوّر مع الطولي
 // ============================================================
-/** شريط النص السفلي فقط — الصور تظهر في المنتصف عبر TvImageBannerCenter */
+/** شريط النص السفلي — يعرض كل البانرات التي لديها نص */
 function TvBannerBar({ banners }: { banners: BannerItem[] }) {
-  const textBanners = banners.filter((b) => b.text && !b.imageUrl);
+  const textBanners = banners.filter((b) => b.text); // صورة+نص أو نص فقط
   if (textBanners.length === 0) return null;
   return (
     <div className="bg-gold/95 text-navy-deep py-2 overflow-hidden whitespace-nowrap">
@@ -1119,17 +1123,27 @@ function TvBannerBar({ banners }: { banners: BannerItem[] }) {
   );
 }
 
-/** إعلانات الصور — تدور في المنتصف فوق النقاط */
+/** إعلانات الصور — تدور في المنتصف فوق النقاط (مستقل عن ImageCarousel) */
 function TvImageBannerCenter({ banners }: { banners: BannerItem[] }) {
+  const [index, setIndex] = useState(0);
+
+  useEffect(() => {
+    if (banners.length <= 1) return;
+    const t = setInterval(() => setIndex((i) => (i + 1) % banners.length), 5000);
+    return () => clearInterval(t);
+  }, [banners.length]);
+
+  const b = banners[index % banners.length];
+  if (!b?.imageUrl) return null;
+
   return (
-    <div className="flex justify-center px-4 py-1 shrink-0">
-      <ImageCarousel
-        banners={banners.map((b) => ({
-          id: b.id,
-          imageUrl: b.imageUrl!,
-          linkUrl: b.linkUrl,
-          text: b.text,
-        }))}
+    <div className="w-full flex justify-center items-center px-4 py-2 shrink-0">
+      {/* eslint-disable-next-line @next/next/no-img-element */}
+      <img
+        src={b.imageUrl}
+        alt={b.text ?? ""}
+        className="rounded-xl object-contain"
+        style={{ maxHeight: "clamp(60px, 10vh, 120px)", maxWidth: "min(500px, 75vw)" }}
       />
     </div>
   );
