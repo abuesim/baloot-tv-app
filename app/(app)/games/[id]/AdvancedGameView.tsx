@@ -143,7 +143,9 @@ export default function AdvancedGameView({
   }
 
   function undoLast() {
-    const last = [...game.rounds].sort((a, b) => b.number - a.number)[0];
+    // تجاهل جولة البداية (مشدود) عند التراجع
+    const regularRounds = game.rounds.filter((r) => r.number > 0);
+    const last = [...regularRounds].sort((a, b) => b.number - a.number)[0];
     if (!last) return;
     if (
       !confirm(
@@ -206,7 +208,7 @@ export default function AdvancedGameView({
         {!isOver ? (
           <button
             onClick={undoLast}
-            disabled={isPending || game.rounds.length === 0}
+            disabled={isPending || game.rounds.filter((r) => r.number > 0).length === 0}
             className="w-11 h-11 rounded-full flex items-center justify-center hover:bg-white/5 disabled:opacity-30"
             title="تراجع"
           >
@@ -606,8 +608,10 @@ function RoundsPreview({
   rounds: Round[];
   onExpand: () => void;
 }) {
-  if (rounds.length === 0) return null;
-  const newestFirst = [...rounds].sort((a, b) => b.number - a.number);
+  // عرض الجولات العادية فقط في المعاينة (تجاهل جولة البداية رقم 0)
+  const regular = rounds.filter((r) => r.number > 0);
+  if (regular.length === 0) return null;
+  const newestFirst = [...regular].sort((a, b) => b.number - a.number);
   const visible = newestFirst.slice(0, 2);
 
   return (
@@ -628,7 +632,7 @@ function RoundsPreview({
             <div className="text-left tabular-nums">{r.team2Score}</div>
           </div>
         ))}
-        {rounds.length > 2 && (
+        {regular.length > 2 && (
           <button
             onClick={onExpand}
             className="w-full flex items-center justify-center py-1.5 border-t border-white/5 text-white/40 hover:text-white/70 hover:bg-white/5"
@@ -656,7 +660,9 @@ function RoundsOverlay({
   onChanged: () => void;
 }) {
   const [isPending, startTransition] = useTransition();
+  // جولة البداية (مشدود) تظهر أولاً، ثم الجولات العادية تصاعدياً
   const ascending = [...rounds].sort((a, b) => a.number - b.number);
+  const regularCount = rounds.filter((r) => r.number > 0).length;
 
   function del(roundId: string, n: number) {
     if (!confirm(`حذف الجولة ${n}؟`)) return;
@@ -676,7 +682,7 @@ function RoundsOverlay({
         onClick={(e) => e.stopPropagation()}
       >
         <div className="px-5 py-4 flex items-center justify-between border-b border-white/5">
-          <h3 className="text-lg font-bold">الجولات ({rounds.length})</h3>
+          <h3 className="text-lg font-bold">الجولات ({regularCount})</h3>
           <button
             onClick={onClose}
             className="w-9 h-9 rounded-full border border-white/15 flex items-center justify-center hover:bg-white/5"
@@ -696,13 +702,18 @@ function RoundsOverlay({
           {ascending.map((r) => (
             <div
               key={r.id}
-              className="grid grid-cols-[auto_1fr_1fr_auto] gap-4 px-6 py-3 text-lg items-center border-b border-white/5"
+              className={`grid grid-cols-[auto_1fr_1fr_auto] gap-4 px-6 py-3 text-lg items-center border-b border-white/5 ${
+                r.number === 0 ? "bg-gold/5" : ""
+              }`}
             >
-              <div className="tabular-nums text-white/50">{r.number}</div>
-              <div className="text-center tabular-nums">{r.team1Score}</div>
-              <div className="text-center tabular-nums">{r.team2Score}</div>
+              <div className={`tabular-nums ${r.number === 0 ? "text-gold/70 text-xs font-bold" : "text-white/50"}`}>
+                {r.number === 0 ? "بداية" : r.number}
+              </div>
+              <div className={`text-center tabular-nums ${r.number === 0 ? "text-gold/70" : ""}`}>{r.team1Score}</div>
+              <div className={`text-center tabular-nums ${r.number === 0 ? "text-gold/70" : ""}`}>{r.team2Score}</div>
               <div>
-                {!isOver && (
+                {/* لا يمكن حذف جولة البداية */}
+                {!isOver && r.number > 0 && (
                   <button
                     disabled={isPending}
                     onClick={() => del(r.id, r.number)}
@@ -828,7 +839,8 @@ function SettingsModal({
       const res = await changeGameModeAction(gameId, mode);
       if (res.ok) {
         setLocalMode(mode);
-        onModeChange(mode); // يحدّث الـ parent مباشرة بدون refresh
+        onModeChange(mode);
+        onChanged(); // تحديث النقاط والجولات بعد تغيير النوع
       } else {
         setError(res.error);
       }

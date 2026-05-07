@@ -4,7 +4,7 @@ import { revalidatePath } from "next/cache";
 import { z } from "zod";
 import { db } from "@/lib/db";
 import { requireAdmin } from "@/lib/auth";
-import { saveUploadedImage, deleteUploadedImage } from "@/lib/upload";
+import { deleteUploadedImage } from "@/lib/upload";
 
 const baseSchema = z.object({
   text: z.string().max(300).optional(),
@@ -14,32 +14,41 @@ const baseSchema = z.object({
 
 export type ActionResult = { ok: true } | { ok: false; error: string };
 
-export async function createBannerAction(formData: FormData): Promise<ActionResult> {
+export async function createBannerAction(input: {
+  text?: string;
+  linkUrl?: string;
+  order: number;
+  imageBase64?: string;
+  imageUrl?: string;
+}): Promise<ActionResult> {
   await requireAdmin();
-  const parsed = baseSchema.safeParse({
-    text: String(formData.get("text") ?? "").trim() || undefined,
-    linkUrl: String(formData.get("linkUrl") ?? "").trim() || "",
-    order: Number(formData.get("order") ?? 0),
-  });
 
+  const parsed = baseSchema.safeParse({
+    text: input.text?.trim() || undefined,
+    linkUrl: input.linkUrl?.trim() || "",
+    order: input.order,
+  });
   if (!parsed.success) {
     return { ok: false, error: parsed.error.issues[0]?.message ?? "بيانات غير صالحة" };
   }
 
-  // الصورة: إما رابط مكتوب أو ملف مرفوع
-  const externalUrl = String(formData.get("imageUrl") ?? "").trim();
-  const file = formData.get("imageFile");
-
   let imageUrl: string | null = null;
-  if (file instanceof File && file.size > 0) {
-    const res = await saveUploadedImage(file, "banners");
-    if (!res.ok) return res;
-    imageUrl = res.url;
-  } else if (externalUrl) {
-    if (!/^https?:\/\//.test(externalUrl)) {
+
+  if (input.imageBase64) {
+    if (!input.imageBase64.startsWith("data:image/")) {
+      return { ok: false, error: "صورة غير صالحة" };
+    }
+    // حد أقصى ~600 KB بعد الضغط
+    if (input.imageBase64.length > 820_000) {
+      return { ok: false, error: "الصورة كبيرة جداً بعد الضغط" };
+    }
+    imageUrl = input.imageBase64;
+  } else if (input.imageUrl?.trim()) {
+    const url = input.imageUrl.trim();
+    if (!/^https?:\/\//.test(url)) {
       return { ok: false, error: "رابط الصورة لازم يبدأ بـ http(s)" };
     }
-    imageUrl = externalUrl;
+    imageUrl = url;
   }
 
   if (!parsed.data.text && !imageUrl) {
@@ -75,7 +84,7 @@ export async function deleteBannerAction(id: string): Promise<void> {
   const banner = await db.adBanner.findUnique({ where: { id } });
   if (!banner) return;
   await db.adBanner.delete({ where: { id } });
-  // إذا كانت صورة مرفوعة عندنا، احذفها من القرص
+  // إذا كانت صورة مرفوعة قديمة من القرص، احذفها
   if (banner.imageUrl?.startsWith("/uploads/")) {
     await deleteUploadedImage(banner.imageUrl);
   }

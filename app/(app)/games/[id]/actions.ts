@@ -26,17 +26,24 @@ async function broadcastGame(gameId: string, userId: string) {
   publish(`tv:user:${userId}`, { type: "game", game });
 }
 
+// الرقم التالي للجولة — يتجاهل الجولة 0 (بداية مشدود)
+function nextRoundNumber(rounds: { number: number }[]): number {
+  const regular = rounds.filter((r) => r.number > 0);
+  return regular.length === 0 ? 1 : Math.max(...regular.map((r) => r.number)) + 1;
+}
+
 export async function recordRoundAction(
   gameId: string,
   team1: number,
   team2: number,
 ): Promise<ActionResult> {
   const user = await requireUser();
+  const ownerUserId = user.parentUserId ?? user.id;
   const parsed = roundSchema.safeParse({ team1Score: team1, team2Score: team2 });
   if (!parsed.success) return { ok: false, error: "نقاط غير صالحة" };
 
   const game = await db.game.findFirst({
-    where: { id: gameId, userId: user.id },
+    where: { id: gameId, userId: ownerUserId },
     include: { rounds: true },
   });
   if (!game) return { ok: false, error: "الصكة غير موجودة" };
@@ -51,7 +58,7 @@ export async function recordRoundAction(
     db.round.create({
       data: {
         gameId: game.id,
-        number: game.rounds.length + 1,
+        number: nextRoundNumber(game.rounds),
         team1Score: parsed.data.team1Score,
         team2Score: parsed.data.team2Score,
       },
@@ -68,7 +75,7 @@ export async function recordRoundAction(
     }),
   ]);
 
-  await broadcastGame(game.id, user.id);
+  await broadcastGame(game.id, ownerUserId);
   revalidatePath(`/games/${game.id}`);
   return { ok: true };
 }
@@ -78,14 +85,20 @@ export async function deleteRoundAction(
   roundId: string,
 ): Promise<ActionResult> {
   const user = await requireUser();
+  const ownerUserId = user.parentUserId ?? user.id;
   const game = await db.game.findFirst({
-    where: { id: gameId, userId: user.id },
+    where: { id: gameId, userId: ownerUserId },
     include: { rounds: true },
   });
   if (!game) return { ok: false, error: "الصكة غير موجودة" };
 
   const round = game.rounds.find((r) => r.id === roundId);
   if (!round) return { ok: false, error: "الجولة غير موجودة" };
+
+  // منع حذف جولة البداية (مشدود)
+  if (round.number === 0) {
+    return { ok: false, error: "لا يمكن حذف جولة البداية — غيّر نوع اللعب إلى عادي أولاً" };
+  }
 
   const remaining = game.rounds.filter((r) => r.id !== roundId);
   const startBase =
@@ -97,10 +110,14 @@ export async function deleteRoundAction(
   const newTeam2 = startBase2 + remaining.reduce((s, r) => s + r.team2Score, 0);
   const winner = getWinner(newTeam1, newTeam2, game.targetScore);
 
-  const sortedRemaining = remaining.sort((a, b) => a.number - b.number);
+  // إعادة ترقيم الجولات العادية فقط (تجاهل الجولة 0)
+  const regularRemaining = remaining
+    .filter((r) => r.number > 0)
+    .sort((a, b) => a.number - b.number);
+
   await db.$transaction([
     db.round.delete({ where: { id: roundId } }),
-    ...sortedRemaining.map((r, i) =>
+    ...regularRemaining.map((r, i) =>
       db.round.update({ where: { id: r.id }, data: { number: i + 1 } }),
     ),
     db.game.update({
@@ -115,15 +132,16 @@ export async function deleteRoundAction(
     }),
   ]);
 
-  await broadcastGame(game.id, user.id);
+  await broadcastGame(game.id, ownerUserId);
   revalidatePath(`/games/${game.id}`);
   return { ok: true };
 }
 
 export async function abandonGameAction(gameId: string): Promise<ActionResult> {
   const user = await requireUser();
+  const ownerUserId = user.parentUserId ?? user.id;
   const game = await db.game.findFirst({
-    where: { id: gameId, userId: user.id },
+    where: { id: gameId, userId: ownerUserId },
   });
   if (!game) return { ok: false, error: "الصكة غير موجودة" };
 
@@ -131,7 +149,7 @@ export async function abandonGameAction(gameId: string): Promise<ActionResult> {
     where: { id: gameId },
     data: { status: "ABANDONED", endedAt: new Date() },
   });
-  await broadcastGame(gameId, user.id);
+  await broadcastGame(gameId, ownerUserId);
   revalidatePath(`/games/${gameId}`);
   return { ok: true };
 }
@@ -141,15 +159,63 @@ export async function changeGameModeAction(
   mode: "NORMAL" | "MASHDOOD",
 ): Promise<ActionResult> {
   const user = await requireUser();
+  const ownerUserId = user.parentUserId ?? user.id;
   const game = await db.game.findFirst({
-    where: { id: gameId, userId: user.id },
+    where: { id: gameId, userId: ownerUserId },
+    include: { rounds: true },
   });
   if (!game) return { ok: false, error: "الصكة غير موجودة" };
   if (game.status !== "IN_PROGRESS")
     return { ok: false, error: "الصكة منتهية" };
+  if (game.mode === mode) return { ok: true }; // بدون تغيير
 
-  await db.game.update({ where: { id: gameId }, data: { mode } });
-  await broadcastGame(gameId, user.id);
+  const mashdoodBase = game.rounds.find((r) => r.number === 0);
+
+  if (mode === "MASHDOOD" && !mashdoodBase) {
+    // التحويل عادي → مشدود: أضف جولة البداية (52-52) وحدّث النقاط
+    const newTeam1 = game.team1Score + 52;
+    const newTeam2 = game.team2Score + 52;
+    const winner = getWinner(newTeam1, newTeam2, game.targetScore);
+    await db.$transaction([
+      db.round.create({
+        data: { gameId, number: 0, team1Score: 52, team2Score: 52 },
+      }),
+      db.game.update({
+        where: { id: gameId },
+        data: {
+          mode,
+          team1Score: newTeam1,
+          team2Score: newTeam2,
+          winner,
+          status: winner !== null ? "COMPLETED" : "IN_PROGRESS",
+          endedAt: winner !== null ? new Date() : null,
+        },
+      }),
+    ]);
+  } else if (mode === "NORMAL" && mashdoodBase) {
+    // التحويل مشدود → عادي: احذف جولة البداية وحدّث النقاط
+    const newTeam1 = game.team1Score - 52;
+    const newTeam2 = game.team2Score - 52;
+    const winner = getWinner(newTeam1, newTeam2, game.targetScore);
+    await db.$transaction([
+      db.round.delete({ where: { id: mashdoodBase.id } }),
+      db.game.update({
+        where: { id: gameId },
+        data: {
+          mode,
+          team1Score: Math.max(0, newTeam1),
+          team2Score: Math.max(0, newTeam2),
+          winner,
+          status: winner !== null ? "COMPLETED" : "IN_PROGRESS",
+          endedAt: winner !== null ? new Date() : null,
+        },
+      }),
+    ]);
+  } else {
+    await db.game.update({ where: { id: gameId }, data: { mode } });
+  }
+
+  await broadcastGame(gameId, ownerUserId);
   revalidatePath(`/games/${gameId}`);
   return { ok: true };
 }
@@ -158,13 +224,14 @@ export async function createPlayerAction(
   name: string,
 ): Promise<{ ok: true; player: { id: string; name: string; imageUrl: string | null } } | { ok: false; error: string }> {
   const user = await requireUser();
+  const ownerUserId = user.parentUserId ?? user.id;
   const trimmed = name.trim();
   if (!trimmed) return { ok: false, error: "اسم اللاعب مطلوب" };
   if (trimmed.length > 50) return { ok: false, error: "الاسم طويل جداً (٥٠ حرف بحد أقصى)" };
 
   try {
     const player = await db.player.create({
-      data: { name: trimmed, userId: user.id },
+      data: { name: trimmed, userId: ownerUserId },
       select: { id: true, name: true, imageUrl: true },
     });
     revalidatePath("/players");
@@ -185,8 +252,9 @@ export async function deleteGameAction(
   gameId: string,
 ): Promise<ActionResult> {
   const user = await requireUser();
+  const ownerUserId = user.parentUserId ?? user.id;
   const game = await db.game.findFirst({
-    where: { id: gameId, userId: user.id },
+    where: { id: gameId, userId: ownerUserId },
   });
   if (!game) return { ok: false, error: "الصكة غير موجودة" };
 
@@ -211,6 +279,7 @@ export async function setGamePlayersAction(
   },
 ): Promise<ActionResult> {
   const user = await requireUser();
+  const ownerUserId = user.parentUserId ?? user.id;
   const parsed = playersSchema.safeParse(input);
   if (!parsed.success) return { ok: false, error: "بيانات غير صالحة" };
 
@@ -225,19 +294,17 @@ export async function setGamePlayersAction(
   }
 
   const game = await db.game.findFirst({
-    where: { id: gameId, userId: user.id },
+    where: { id: gameId, userId: ownerUserId },
   });
   if (!game) return { ok: false, error: "الصكة غير موجودة" };
 
-  // تحقق أن كل اللاعبين يخصّون المستخدم
   const players = await db.player.findMany({
-    where: { id: { in: ids }, userId: user.id },
+    where: { id: { in: ids }, userId: ownerUserId },
   });
   if (players.length !== 4) {
     return { ok: false, error: "أحد اللاعبين غير موجود في قائمتك" };
   }
 
-  // استبدل المشاركين الحاليين بدفعة جديدة
   await db.$transaction([
     db.gameParticipant.deleteMany({ where: { gameId } }),
     db.gameParticipant.createMany({
@@ -250,7 +317,7 @@ export async function setGamePlayersAction(
     }),
   ]);
 
-  await broadcastGame(gameId, user.id);
+  await broadcastGame(gameId, ownerUserId);
   revalidatePath(`/games/${gameId}`);
   return { ok: true };
 }

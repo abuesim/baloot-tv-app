@@ -54,6 +54,7 @@ export async function getCurrentUser() {
       role: true,
       active: true,
       tvOrientation: true,
+      parentUserId: true,
     },
   });
 

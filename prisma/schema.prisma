@@ -54,11 +54,17 @@ model User {
   tvDonationUrl   String? // رابط iframe للدونيشن
   tvLogoUrl       String? // لوغو شخصي اختياري (يحلّ محل "بلوت")
 
+  // اليوزر الفرعي — يشير إلى الحساب الأصل (صانع المحتوى)
+  parentUserId String?
+  parentUser   User?   @relation("SubUsers", fields: [parentUserId], references: [id], onDelete: SetNull)
+  subUsers     User[]  @relation("SubUsers")
+
   players Player[]
   games   Game[]
   banners AdBanner[]
 
   @@index([role])
+  @@index([parentUserId])
 }
 
 // ============================================================

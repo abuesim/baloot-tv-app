@@ -25,6 +25,7 @@ export async function createGameAction(input: {
   team2Player2Id?: string;
 }): Promise<ActionResult> {
   const user = await requireUser();
+  const ownerUserId = user.parentUserId ?? user.id;
   const parsed = schema.safeParse(input);
   if (!parsed.success) return { ok: false, error: "بيانات غير صالحة" };
 
@@ -49,7 +50,7 @@ export async function createGameAction(input: {
 
   if (ids.length === 4) {
     const players = await db.player.findMany({
-      where: { id: { in: ids }, userId: user.id },
+      where: { id: { in: ids }, userId: ownerUserId },
     });
     if (players.length !== 4) {
       return { ok: false, error: "أحد اللاعبين غير موجود في قائمتك" };
@@ -60,7 +61,7 @@ export async function createGameAction(input: {
 
   const game = await db.game.create({
     data: {
-      userId: user.id,
+      userId: ownerUserId,
       mode: parsed.data.mode,
       team1Score: modeConfig.startScore,
       team2Score: modeConfig.startScore,
@@ -83,6 +84,13 @@ export async function createGameAction(input: {
     },
   });
 
-  publish(`tv:user:${user.id}`, { type: "game", game });
+  // مشدود: أضف جولة البداية (52-52) تلقائياً
+  if (parsed.data.mode === "MASHDOOD") {
+    await db.round.create({
+      data: { gameId: game.id, number: 0, team1Score: 52, team2Score: 52 },
+    });
+  }
+
+  publish(`tv:user:${ownerUserId}`, { type: "game", game });
   redirect(`/games/${game.id}`);
 }
