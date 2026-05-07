@@ -235,12 +235,20 @@ export default function TvBoard({
       }) => {
         const msg = data.message?.[0] ?? {};
 
-        // dedup: نمنع نفس الحدث يضاف أكثر من مرة في 15 ثانية
-        // نتجاهل الـ type — Streamlabs يرسل نفس الدونيشن بأكثر من type مختلف
-        const dedupKey = `${msg.name ?? ""}:${String(msg.amount ?? "")}`;
-        if (recentKeysRef.current.has(dedupKey)) return;
+        // لوج مؤقت للتشخيص — نشوف الحزمة الكاملة
+        console.log("[SL event]", JSON.stringify({ type: data.type, name: msg.name, amount: msg.amount, currency: msg.currency }));
+
+        // dedup متعدد الطبقات:
+        // 1) نطبّع المبلغ والاسم لتجنب "65" vs "65.00"
+        const nameNorm  = String(msg.name  ?? "").toLowerCase().trim();
+        const amtNorm   = String(Math.round(parseFloat(String(msg.amount ?? "0")) * 100) || "0");
+        const dedupKey  = `${nameNorm}:${amtNorm}`;
+        if (recentKeysRef.current.has(dedupKey)) {
+          console.log("[SL dedup blocked]", dedupKey);
+          return;
+        }
         recentKeysRef.current.add(dedupKey);
-        setTimeout(() => recentKeysRef.current.delete(dedupKey), 15_000);
+        setTimeout(() => recentKeysRef.current.delete(dedupKey), 20_000);
 
         const alertId = ++popIdRef.current;
         setAlertQueue((q) => [
