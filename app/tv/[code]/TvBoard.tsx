@@ -1,7 +1,6 @@
 "use client";
 
 import { useEffect, useRef, useState } from "react";
-import { io } from "socket.io-client";
 import { PlayerAvatar } from "@/components/PlayerAvatar";
 import { ImageCarousel } from "@/components/ImageCarousel";
 
@@ -186,31 +185,40 @@ export default function TvBoard({
     const token = user.tvStreamlabsToken;
     if (!token) return;
 
-    const socket = io("https://sockets.streamlabs.com", {
-      transports: ["websocket"],
-      query: { token },
-    });
+    // dynamic import لتجنب مشاكل SSR في Next.js
+    let disconnected = false;
+    import("socket.io-client").then(({ io }) => {
+      if (disconnected) return;
 
-    socket.on("event", (data: {
-      type?: string;
-      for?: string;
-      message?: { name?: string; amount?: string | number; currency?: string; message?: string }[];
-    }) => {
-      const msg = data.message?.[0] ?? {};
-      const id = ++popIdRef.current;
-      if (alertTimerRef.current) clearTimeout(alertTimerRef.current);
-      setActiveAlert({
-        id,
-        listener: data.type ?? "",
-        name: msg.name ?? "",
-        amount: String(msg.amount ?? ""),
-        currency: msg.currency ?? "",
-        message: msg.message ?? "",
+      const socket = io("https://sockets.streamlabs.com", {
+        transports: ["websocket"],
+        query: { token },
       });
-      alertTimerRef.current = setTimeout(() => setActiveAlert(null), 8000);
+
+      socket.on("event", (data: {
+        type?: string;
+        for?: string;
+        message?: { name?: string; amount?: string | number; currency?: string; message?: string }[];
+      }) => {
+        const msg = data.message?.[0] ?? {};
+        const id = ++popIdRef.current;
+        if (alertTimerRef.current) clearTimeout(alertTimerRef.current);
+        setActiveAlert({
+          id,
+          listener: data.type ?? "",
+          name: msg.name ?? "",
+          amount: String(msg.amount ?? ""),
+          currency: msg.currency ?? "",
+          message: msg.message ?? "",
+        });
+        alertTimerRef.current = setTimeout(() => setActiveAlert(null), 8000);
+      });
+
+      // نحفظ disconnect في closure
+      return () => { socket.disconnect(); };
     });
 
-    return () => { socket.disconnect(); };
+    return () => { disconnected = true; };
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [user.tvStreamlabsToken]);
 
