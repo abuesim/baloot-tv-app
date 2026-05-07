@@ -187,19 +187,27 @@ export default function TvBoard({
   }, [code]);
 
   // ─── Streamlabs Socket.IO — اتصال مباشر لاستقبال التنبيهات ───
+  // نحتفظ بـ ref للـ socket حتى نقدر نقطعه صح في الـ cleanup
+  const slSocketRef = useRef<{ disconnect: () => void } | null>(null);
+  // deduplication: نتجاهل نفس الحدث إذا جاء مرتين خلال 5 ثوانٍ
+  const recentKeysRef = useRef<Set<string>>(new Set());
+
   useEffect(() => {
     const token = user.tvStreamlabsToken;
     if (!token) return;
 
-    // dynamic import لتجنب مشاكل SSR في Next.js
-    let disconnected = false;
+    let cancelled = false;
+
     import("socket.io-client").then(({ io }) => {
-      if (disconnected) return;
+      if (cancelled) return;
 
       const socket = io("https://sockets.streamlabs.com", {
         transports: ["websocket"],
         query: { token },
       });
+
+      // نحفظ المرجع فوراً حتى يقدر الـ cleanup يقطعه
+      slSocketRef.current = socket;
 
       socket.on("event", (data: {
         type?: string;
@@ -214,6 +222,13 @@ export default function TvBoard({
         }[];
       }) => {
         const msg = data.message?.[0] ?? {};
+
+        // dedup: نمنع نفس الحدث يضاف أكثر من مرة في 5 ثوانٍ
+        const dedupKey = `${data.type}:${msg.name ?? ""}:${String(msg.amount ?? "")}`;
+        if (recentKeysRef.current.has(dedupKey)) return;
+        recentKeysRef.current.add(dedupKey);
+        setTimeout(() => recentKeysRef.current.delete(dedupKey), 5000);
+
         setAlertQueue((q) => [
           ...q,
           {
@@ -228,12 +243,14 @@ export default function TvBoard({
           },
         ]);
       });
-
-      // نحفظ disconnect في closure
-      return () => { socket.disconnect(); };
     });
 
-    return () => { disconnected = true; };
+    // cleanup صح: يقطع الـ socket فعلاً
+    return () => {
+      cancelled = true;
+      slSocketRef.current?.disconnect();
+      slSocketRef.current = null;
+    };
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [user.tvStreamlabsToken]);
 
