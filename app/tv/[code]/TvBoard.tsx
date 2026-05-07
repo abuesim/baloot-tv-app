@@ -50,6 +50,8 @@ type TvAlert = {
   amount: string;
   currency: string;
   message: string;
+  image_href: string;
+  sound_href: string;
 };
 
 // ─── بيانات الكونفيتي ───
@@ -83,6 +85,7 @@ export default function TvBoard({
     team2: false,
   });
   const [pops, setPops] = useState<FloatPop[]>([]);
+  const [alertQueue, setAlertQueue] = useState<TvAlert[]>([]);
   const [activeAlert, setActiveAlert] = useState<TvAlert | null>(null);
   const alertTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const [showCelebration, setShowCelebration] = useState(
@@ -116,17 +119,19 @@ export default function TvBoard({
           return;
         }
         if (msg.type === "alert") {
-          const id = ++popIdRef.current;
-          if (alertTimerRef.current) clearTimeout(alertTimerRef.current);
-          setActiveAlert({
-            id,
-            listener: msg.listener ?? "",
-            name: msg.name ?? "",
-            amount: msg.amount ?? "",
-            currency: msg.currency ?? "",
-            message: msg.message ?? "",
-          });
-          alertTimerRef.current = setTimeout(() => setActiveAlert(null), 8000);
+          setAlertQueue((q) => [
+            ...q,
+            {
+              id: ++popIdRef.current,
+              listener: msg.listener ?? "",
+              name: msg.name ?? "",
+              amount: msg.amount ?? "",
+              currency: msg.currency ?? "",
+              message: msg.message ?? "",
+              image_href: msg.image_href ?? "",
+              sound_href: msg.sound_href ?? "",
+            },
+          ]);
           return;
         }
         if (msg.type === "game") {
@@ -198,20 +203,29 @@ export default function TvBoard({
       socket.on("event", (data: {
         type?: string;
         for?: string;
-        message?: { name?: string; amount?: string | number; currency?: string; message?: string }[];
+        message?: {
+          name?: string;
+          amount?: string | number;
+          currency?: string;
+          message?: string;
+          image_href?: string;
+          sound_href?: string;
+        }[];
       }) => {
         const msg = data.message?.[0] ?? {};
-        const id = ++popIdRef.current;
-        if (alertTimerRef.current) clearTimeout(alertTimerRef.current);
-        setActiveAlert({
-          id,
-          listener: data.type ?? "",
-          name: msg.name ?? "",
-          amount: String(msg.amount ?? ""),
-          currency: msg.currency ?? "",
-          message: msg.message ?? "",
-        });
-        alertTimerRef.current = setTimeout(() => setActiveAlert(null), 8000);
+        setAlertQueue((q) => [
+          ...q,
+          {
+            id: ++popIdRef.current,
+            listener: data.type ?? "",
+            name: msg.name ?? "",
+            amount: String(msg.amount ?? ""),
+            currency: msg.currency ?? "",
+            message: msg.message ?? "",
+            image_href: msg.image_href ?? "",
+            sound_href: msg.sound_href ?? "",
+          },
+        ]);
       });
 
       // نحفظ disconnect في closure
@@ -221,6 +235,15 @@ export default function TvBoard({
     return () => { disconnected = true; };
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [user.tvStreamlabsToken]);
+
+  // ─── معالجة طابور التنبيهات — واحد تلو الآخر ───
+  useEffect(() => {
+    if (alertQueue.length === 0 || activeAlert) return;
+    const next = alertQueue[0];
+    setAlertQueue((q) => q.slice(1));
+    setActiveAlert(next);
+    alertTimerRef.current = setTimeout(() => setActiveAlert(null), 7000);
+  }, [alertQueue, activeAlert]);
 
   // المتغيرات اللازمة للستايل
   const accent = user.tvAccentColor || "#f5b042";
@@ -764,100 +787,130 @@ function TvAlertBadge({ alert, accent }: { alert: TvAlert; accent: string }) {
   const meta = ALERT_META[alert.listener] ?? { icon: "🎉", label: "تنبيه" };
   const hasDonation = !!alert.amount && alert.amount !== "0";
 
+  // ─── تشغيل الصوت عند ظهور التنبيه ───
+  useEffect(() => {
+    if (!alert.sound_href) return;
+    const audio = new Audio(alert.sound_href);
+    audio.play().catch(() => {/* autoplay blocked — silent fail */});
+    return () => { audio.pause(); audio.src = ""; };
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+
   return (
     <>
       <style>{`
-        @keyframes alertSlideIn {
-          0%   { transform: translateX(110%) scale(0.85); opacity: 0; }
-          15%  { transform: translateX(0)    scale(1.03); opacity: 1; }
-          22%  { transform: translateX(0)    scale(1);    opacity: 1; }
-          78%  { transform: translateX(0)    scale(1);    opacity: 1; }
-          100% { transform: translateX(110%) scale(0.85); opacity: 0; }
+        @keyframes alertDrop {
+          0%   { transform: translateX(-50%) translateY(-120%) scale(0.8); opacity: 0; }
+          18%  { transform: translateX(-50%) translateY(0)     scale(1.04); opacity: 1; }
+          25%  { transform: translateX(-50%) translateY(0)     scale(1);    opacity: 1; }
+          75%  { transform: translateX(-50%) translateY(0)     scale(1);    opacity: 1; }
+          100% { transform: translateX(-50%) translateY(-120%) scale(0.8);  opacity: 0; }
         }
-        @keyframes alertPulse {
-          0%,100% { box-shadow: 0 0 0 0 ${accent}55; }
-          50%      { box-shadow: 0 0 30px 8px ${accent}33; }
+        @keyframes alertGlow {
+          0%,100% { box-shadow: 0 0 20px 0px ${accent}44; }
+          50%      { box-shadow: 0 0 50px 12px ${accent}55; }
+        }
+        @keyframes alertBar {
+          from { width: 100%; }
+          to   { width: 0%; }
         }
       `}</style>
+
       <div
         style={{
           position: "absolute",
-          top: "2rem",
-          right: "2rem",
+          top: "8%",
+          left: "50%",
           zIndex: 48,
-          animation: "alertSlideIn 8s cubic-bezier(.22,.68,0,1.2) forwards",
+          animation: "alertDrop 7s cubic-bezier(.22,.68,0,1.2) forwards",
           pointerEvents: "none",
-          minWidth: "min(20rem, 88vw)",
-          maxWidth: "min(28rem, 92vw)",
+          width: "min(36rem, 90vw)",
         }}
       >
         <div
           style={{
-            background: "rgba(8,12,24,0.97)",
+            background: "rgba(6,10,20,0.96)",
             border: `2px solid ${accent}`,
-            borderRadius: "1.25rem",
+            borderRadius: "1.5rem",
             overflow: "hidden",
-            backdropFilter: "blur(16px)",
-            animation: "alertPulse 2s ease-in-out 3",
+            backdropFilter: "blur(20px)",
+            animation: "alertGlow 1.8s ease-in-out 3",
           }}
         >
-          {/* شريط العنوان */}
-          <div
-            className="flex items-center gap-3 px-5 py-3"
-            style={{ background: `${accent}20` }}
-          >
-            <span className="text-3xl leading-none">{meta.icon}</span>
-            <span
-              className="font-black text-lg tracking-wide"
-              style={{ color: accent }}
-            >
-              {meta.label}
-            </span>
-            {hasDonation && (
-              <span
-                className="mr-auto font-black text-2xl"
-                style={{ color: accent }}
-              >
-                {alert.amount}
-                {alert.currency ? ` ${alert.currency}` : ""}
-              </span>
-            )}
-          </div>
+          {/* الصورة / GIF */}
+          {alert.image_href && (
+            /* eslint-disable-next-line @next/next/no-img-element */
+            <img
+              src={alert.image_href}
+              alt=""
+              style={{
+                display: "block",
+                width: "100%",
+                maxHeight: "200px",
+                objectFit: "contain",
+                background: "transparent",
+              }}
+            />
+          )}
 
-          {/* الاسم والرسالة */}
-          <div className="px-5 py-3">
+          {/* النص */}
+          <div className="px-6 py-4 text-center">
+            {/* نوع التنبيه */}
             <div
-              className="font-black text-2xl leading-snug"
-              style={{ color: "#fff" }}
+              className="text-sm font-bold uppercase tracking-widest mb-1"
+              style={{ color: `${accent}cc` }}
+            >
+              {meta.icon} {meta.label}
+            </div>
+
+            {/* الاسم */}
+            <div
+              className="font-black leading-tight"
+              style={{
+                color: accent,
+                fontSize: "clamp(1.6rem, 4vw, 3rem)",
+              }}
             >
               {alert.name || "—"}
             </div>
+
+            {/* المبلغ */}
+            {hasDonation && (
+              <div
+                className="font-black mt-1"
+                style={{
+                  color: "#fff",
+                  fontSize: "clamp(1.2rem, 3vw, 2rem)",
+                }}
+              >
+                {alert.amount}
+                {alert.currency ? ` ${alert.currency}` : ""}
+              </div>
+            )}
+
+            {/* الرسالة */}
             {alert.message && (
-              <div className="text-white/70 text-base mt-1 leading-snug line-clamp-2">
-                {alert.message}
+              <div
+                className="text-white/70 mt-2 leading-snug line-clamp-2"
+                style={{ fontSize: "clamp(0.9rem, 2vw, 1.1rem)" }}
+              >
+                &ldquo;{alert.message}&rdquo;
               </div>
             )}
           </div>
 
-          {/* شريط التقدم */}
-          <div className="h-1" style={{ background: `${accent}30` }}>
+          {/* شريط countdown */}
+          <div style={{ height: "3px", background: `${accent}30` }}>
             <div
               style={{
                 height: "100%",
                 background: accent,
-                animation: "alertProgress 8s linear forwards",
-                transformOrigin: "right",
+                animation: "alertBar 7s linear forwards",
               }}
             />
           </div>
         </div>
       </div>
-      <style>{`
-        @keyframes alertProgress {
-          from { width: 100%; }
-          to   { width: 0%; }
-        }
-      `}</style>
     </>
   );
 }
