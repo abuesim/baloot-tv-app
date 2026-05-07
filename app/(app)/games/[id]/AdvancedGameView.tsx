@@ -89,6 +89,9 @@ export default function AdvancedGameView({
   const [error, setError] = useState<string | null>(null);
   const [isPending, startTransition] = useTransition();
 
+  // أنيميشن تأكيد التسجيل
+  const [flashScore, setFlashScore] = useState<{ us: number; them: number; round: number } | null>(null);
+
   const isOver = game.status !== "IN_PROGRESS";
 
   const team1 = game.participants.filter((p) => p.team === 1).map((p) => p.player);
@@ -129,6 +132,15 @@ export default function AdvancedGameView({
       setError("أدخل نقاطاً");
       return;
     }
+
+    // حساب رقم الجولة القادمة (لعرضها في الأنيميشن)
+    const regularRounds = game.rounds.filter((r) => r.number > 0);
+    const hasBase = game.rounds.some((r) => r.number === 0);
+    const nextRound =
+      regularRounds.length === 0
+        ? hasBase ? 2 : 1
+        : Math.max(...regularRounds.map((r) => r.number)) + 1;
+
     startTransition(async () => {
       const res = await recordRoundAction(game.id, t1, t2);
       if (!res.ok) {
@@ -138,6 +150,9 @@ export default function AdvancedGameView({
       setUsInput("");
       setThemInput("");
       setActiveSide(null);
+      // أنيميشن تأكيد التسجيل — يختفي بعد 3 ثواني
+      setFlashScore({ us: t1, them: t2, round: nextRound });
+      setTimeout(() => setFlashScore(null), 3000);
       router.refresh();
     });
   }
@@ -399,6 +414,15 @@ export default function AdvancedGameView({
           onSettings={() => { setShowCelebration(false); setShowSettings(true); }}
           onNewGame={() => router.push("/games/new")}
           onClose={() => setShowCelebration(false)}
+        />
+      )}
+
+      {/* أنيميشن تأكيد تسجيل الجولة */}
+      {flashScore && (
+        <ScoreFlash
+          us={flashScore.us}
+          them={flashScore.them}
+          round={flashScore.round}
         />
       )}
 
@@ -753,6 +777,92 @@ function RoundsOverlay({
         >
           <ChevronDown size={20} strokeWidth={2} />
         </button>
+      </div>
+    </div>
+  );
+}
+
+// ============================================================
+// أنيميشن تأكيد تسجيل الجولة
+// ============================================================
+
+function ScoreFlash({
+  us,
+  them,
+  round,
+}: {
+  us: number;
+  them: number;
+  round: number;
+}) {
+  return (
+    <div className="fixed inset-0 z-[60] pointer-events-none flex items-center justify-center">
+      <style>{`
+        @keyframes scoreFlashIn {
+          0%   { opacity: 0; transform: scale(0.82) translateY(14px); }
+          14%  { opacity: 1; transform: scale(1.04) translateY(-2px); }
+          22%  { transform: scale(1) translateY(0); }
+          70%  { opacity: 1; }
+          100% { opacity: 0; transform: scale(0.97) translateY(-6px); }
+        }
+        @keyframes checkPop {
+          0%,100% { transform: scale(1); }
+          40%     { transform: scale(1.35); }
+        }
+      `}</style>
+
+      <div
+        className="relative text-center px-14 py-8 rounded-3xl overflow-hidden"
+        style={{
+          background: "rgba(10,10,10,0.88)",
+          backdropFilter: "blur(18px)",
+          border: "1px solid rgba(245,176,66,0.25)",
+          boxShadow: "0 8px 60px rgba(0,0,0,0.7), 0 0 0 1px rgba(255,255,255,0.05) inset",
+          animation: "scoreFlashIn 3s cubic-bezier(0.22,1,0.36,1) forwards",
+        }}
+      >
+        {/* رقم الجولة + علامة ✓ */}
+        <div className="flex items-center justify-center gap-2 mb-5">
+          <span className="text-sm text-white/40 tracking-widest uppercase">جولة</span>
+          <span className="text-sm font-black text-white/60 tabular-nums">{round}</span>
+          <span
+            className="text-gold text-base font-black"
+            style={{ animation: "checkPop 0.5s ease-out 0.15s both" }}
+          >
+            ✓
+          </span>
+        </div>
+
+        {/* النقاط */}
+        <div className="flex items-end justify-center gap-6">
+          <div className="text-center">
+            <div className="text-xs text-white/35 mb-1 tracking-wide">لنا</div>
+            <div
+              className="tabular-nums font-black leading-none"
+              style={{
+                fontSize: "clamp(3.5rem,14vw,5.5rem)",
+                background: "linear-gradient(160deg, #ffca6e 0%, #f5a623 100%)",
+                WebkitBackgroundClip: "text",
+                WebkitTextFillColor: "transparent",
+                backgroundClip: "text",
+              }}
+            >
+              {us}
+            </div>
+          </div>
+
+          <div className="text-white/20 text-3xl font-thin mb-3">—</div>
+
+          <div className="text-center">
+            <div className="text-xs text-white/35 mb-1 tracking-wide">لهم</div>
+            <div
+              className="text-white tabular-nums font-black leading-none"
+              style={{ fontSize: "clamp(3.5rem,14vw,5.5rem)" }}
+            >
+              {them}
+            </div>
+          </div>
+        </div>
       </div>
     </div>
   );
