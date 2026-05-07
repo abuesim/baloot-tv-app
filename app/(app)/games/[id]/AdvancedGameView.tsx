@@ -250,6 +250,7 @@ export default function AdvancedGameView({
           players={team1}
           score={usScore}
           isWinner={game.winner === 1}
+          isOurs
           flashing={!!usInput && activeSide === "us"}
         />
         <ScoreSide
@@ -461,12 +462,14 @@ function ScoreSide({
   players,
   score,
   isWinner,
+  isOurs = false,
   flashing,
 }: {
   label: string;
   players: Player[];
   score: number;
   isWinner: boolean;
+  isOurs?: boolean;
   flashing: boolean;
 }) {
   return (
@@ -476,11 +479,13 @@ function ScoreSide({
           <PlayerAvatar key={p.id} name={p.name} imageUrl={p.imageUrl} size="sm" />
         ))}
       </div>
-      <div className="text-xl font-medium mb-1 text-white/95">{label}</div>
+      <div className={`text-xl font-medium mb-1 ${isOurs ? "text-gold" : "text-white/95"}`}>
+        {label}
+      </div>
       <div
         key={score}
         className={`text-[6.5rem] sm:text-[7.5rem] leading-none font-black ${
-          isWinner ? "text-gold" : "text-white"
+          isWinner || isOurs ? "text-gold" : "text-white"
         }`}
       >
         {score}
