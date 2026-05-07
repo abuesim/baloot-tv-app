@@ -235,11 +235,12 @@ export default function TvBoard({
       }) => {
         const msg = data.message?.[0] ?? {};
 
-        // dedup: نمنع نفس الحدث يضاف أكثر من مرة في 5 ثوانٍ
-        const dedupKey = `${data.type}:${msg.name ?? ""}:${String(msg.amount ?? "")}`;
+        // dedup: نمنع نفس الحدث يضاف أكثر من مرة في 15 ثانية
+        // نتجاهل الـ type — Streamlabs يرسل نفس الدونيشن بأكثر من type مختلف
+        const dedupKey = `${msg.name ?? ""}:${String(msg.amount ?? "")}`;
         if (recentKeysRef.current.has(dedupKey)) return;
         recentKeysRef.current.add(dedupKey);
-        setTimeout(() => recentKeysRef.current.delete(dedupKey), 5000);
+        setTimeout(() => recentKeysRef.current.delete(dedupKey), 15_000);
 
         const alertId = ++popIdRef.current;
         setAlertQueue((q) => [
@@ -275,8 +276,8 @@ export default function TvBoard({
   }, [user.tvStreamlabsToken]);
 
   // ─── معالجة طابور التنبيهات — واحد تلو الآخر مع فجوة بينهما ───
-  const ALERT_SHOW_MS = 3_000; // مؤقت للتشخيص — كان 12_000
-  const ALERT_GAP_MS  = 600;   // مؤقت للتشخيص — كان 1_200
+  const ALERT_SHOW_MS = 12_000; // مدة عرض كل تنبيه
+  const ALERT_GAP_MS  = 1_200;  // فجوة بين تنبيه والتالي
 
   useEffect(() => {
     if (alertQueue.length === 0 || activeAlert || alertPaused) return;
@@ -927,7 +928,7 @@ function TvAlertBadge({ alert, accent }: { alert: TvAlert; accent: string }) {
           top: "8%",
           left: "50%",
           zIndex: 48,
-          animation: "alertDrop 3s cubic-bezier(.22,.68,0,1.2) forwards",
+          animation: "alertDrop 12s cubic-bezier(.22,.68,0,1.2) forwards",
           pointerEvents: "none",
           width: "min(36rem, 90vw)",
         }}
@@ -1010,7 +1011,7 @@ function TvAlertBadge({ alert, accent }: { alert: TvAlert; accent: string }) {
               style={{
                 height: "100%",
                 background: accent,
-                animation: "alertBar 3s linear forwards",
+                animation: "alertBar 12s linear forwards",
               }}
             />
           </div>
