@@ -4,7 +4,7 @@ import { revalidatePath } from "next/cache";
 import { z } from "zod";
 import { db } from "@/lib/db";
 import { canManageAds, requireUser } from "@/lib/auth";
-import { saveUploadedImage, deleteUploadedImage } from "@/lib/upload";
+import { deleteUploadedImage } from "@/lib/upload";
 
 const baseSchema = z.object({
   text: z.string().max(300).optional(),
@@ -35,14 +35,16 @@ export async function createMyBannerAction(
     return { ok: false, error: parsed.error.issues[0]?.message ?? "بيانات غير صالحة" };
   }
 
-  const externalUrl = String(formData.get("imageUrl") ?? "").trim();
-  const file = formData.get("imageFile");
+  const externalUrl = String(formData.get("imageUrl")    ?? "").trim();
+  const base64Input = String(formData.get("imageBase64") ?? "").trim();
 
   let imageUrl: string | null = null;
-  if (file instanceof File && file.size > 0) {
-    const res = await saveUploadedImage(file, "banners");
-    if (!res.ok) return res;
-    imageUrl = res.url;
+  if (base64Input && base64Input.startsWith("data:image/")) {
+    // حد أقصى ~800KB بعد الضغط في المتصفح
+    if (base64Input.length > 1_100_000) {
+      return { ok: false, error: "الصورة كبيرة جداً — حاول صورة أصغر" };
+    }
+    imageUrl = base64Input;
   } else if (externalUrl) {
     if (!/^https?:\/\//.test(externalUrl)) {
       return { ok: false, error: "رابط الصورة لازم يبدأ بـ http(s)" };

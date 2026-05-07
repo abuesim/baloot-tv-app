@@ -415,6 +415,11 @@ export default function TvBoard({
     <>
       <Header user={user} game={game} connected={connected} />
 
+      {/* إعلانات صور — تظهر في المنتصف فوق النقاط */}
+      {banners.filter((b) => b.imageUrl).length > 0 && (
+        <TvImageBannerCenter banners={banners.filter((b) => b.imageUrl)} />
+      )}
+
       <div className="flex-1 flex items-stretch px-2 md:px-6 gap-2 md:gap-6">
         <div className={showChat ? "flex-[2]" : "flex-1"}>
           <div className="h-full flex items-center justify-center">
@@ -1096,34 +1101,36 @@ function AlertBoxOverlay({ url }: { url: string }) {
 // ============================================================
 // شريط الإعلانات — يُعرض داخل gameContent فيتدوّر مع الطولي
 // ============================================================
+/** شريط النص السفلي فقط — الصور تظهر في المنتصف عبر TvImageBannerCenter */
 function TvBannerBar({ banners }: { banners: BannerItem[] }) {
-  const imageBanners = banners.filter((b) => b.imageUrl);
-  const textBanners  = banners.filter((b) => b.text && !b.imageUrl);
-
+  const textBanners = banners.filter((b) => b.text && !b.imageUrl);
+  if (textBanners.length === 0) return null;
   return (
-    <div>
-      {imageBanners.length > 0 && (
-        <ImageCarousel
-          banners={imageBanners.map((b) => ({
-            id: b.id,
-            imageUrl: b.imageUrl!,
-            linkUrl: b.linkUrl,
-            text: b.text,
-          }))}
-        />
-      )}
-      {textBanners.length > 0 && (
-        <div className="bg-gold/95 text-navy-deep py-2 overflow-hidden whitespace-nowrap">
-          <div className="inline-flex animate-marquee gap-12 font-bold text-sm">
-            {[...textBanners, ...textBanners].map((b, i) => (
-              <span key={`${b.id}-${i}`} className="px-6 inline-flex items-center gap-2">
-                <span className="opacity-50">📢</span>
-                {b.text}
-              </span>
-            ))}
-          </div>
-        </div>
-      )}
+    <div className="bg-gold/95 text-navy-deep py-2 overflow-hidden whitespace-nowrap">
+      <div className="inline-flex animate-marquee gap-12 font-bold text-sm">
+        {[...textBanners, ...textBanners].map((b, i) => (
+          <span key={`${b.id}-${i}`} className="px-6 inline-flex items-center gap-2">
+            <span className="opacity-50">📢</span>
+            {b.text}
+          </span>
+        ))}
+      </div>
+    </div>
+  );
+}
+
+/** إعلانات الصور — تدور في المنتصف فوق النقاط */
+function TvImageBannerCenter({ banners }: { banners: BannerItem[] }) {
+  return (
+    <div className="flex justify-center px-4 py-1 shrink-0">
+      <ImageCarousel
+        banners={banners.map((b) => ({
+          id: b.id,
+          imageUrl: b.imageUrl!,
+          linkUrl: b.linkUrl,
+          text: b.text,
+        }))}
+      />
     </div>
   );
 }

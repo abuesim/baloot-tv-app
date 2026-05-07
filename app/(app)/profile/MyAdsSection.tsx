@@ -9,30 +9,64 @@ import {
   deleteMyBannerAction,
 } from "./ads-actions";
 
+/** ضغط الصورة في المتصفح — عرض أقصى 1000px، ارتفاع أقصى 400px، JPEG 82% */
+function compressImage(file: File): Promise<string> {
+  return new Promise((resolve, reject) => {
+    const url = URL.createObjectURL(file);
+    const img = new Image();
+    img.onload = () => {
+      URL.revokeObjectURL(url);
+      const MAX_W = 1000, MAX_H = 400;
+      let { naturalWidth: w, naturalHeight: h } = img;
+      const scale = Math.min(w > MAX_W ? MAX_W / w : 1, h > MAX_H ? MAX_H / h : 1);
+      w = Math.round(w * scale); h = Math.round(h * scale);
+      const canvas = document.createElement("canvas");
+      canvas.width = w; canvas.height = h;
+      canvas.getContext("2d")!.drawImage(img, 0, 0, w, h);
+      resolve(canvas.toDataURL("image/jpeg", 0.82));
+    };
+    img.onerror = () => { URL.revokeObjectURL(url); reject(new Error("فشل")); };
+    img.src = url;
+  });
+}
+
 export default function MyAdsSection({ ads }: { ads: AdBanner[] }) {
   const router = useRouter();
   const [open, setOpen] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [preview, setPreview] = useState<string | null>(null);
+  const [imageBase64, setImageBase64] = useState<string | null>(null);
+  const [compressing, setCompressing] = useState(false);
   const [isPending, startTransition] = useTransition();
   const fileRef = useRef<HTMLInputElement>(null);
 
-  function onFileChange(e: React.ChangeEvent<HTMLInputElement>) {
+  async function onFileChange(e: React.ChangeEvent<HTMLInputElement>) {
     const file = e.target.files?.[0];
-    if (!file) {
-      setPreview(null);
-      return;
+    if (!file) { setPreview(null); setImageBase64(null); return; }
+    setCompressing(true);
+    setError(null);
+    try {
+      const b64 = await compressImage(file);
+      setImageBase64(b64);
+      setPreview(b64);
+    } catch {
+      setError("فشل معالجة الصورة");
+      setImageBase64(null); setPreview(null);
+    } finally {
+      setCompressing(false);
     }
-    setPreview(URL.createObjectURL(file));
   }
 
   function clearFile() {
     if (fileRef.current) fileRef.current.value = "";
     setPreview(null);
+    setImageBase64(null);
   }
 
   function onSubmit(formData: FormData) {
     setError(null);
+    // نمرر base64 بدل الملف المباشر — يعمل على Vercel
+    if (imageBase64) formData.set("imageBase64", imageBase64);
     startTransition(async () => {
       const res = await createMyBannerAction(formData);
       if (!res.ok) {
@@ -41,6 +75,7 @@ export default function MyAdsSection({ ads }: { ads: AdBanner[] }) {
       }
       (document.getElementById("my-ad-form") as HTMLFormElement)?.reset();
       setPreview(null);
+      setImageBase64(null);
       setOpen(false);
       router.refresh();
     });
@@ -100,13 +135,15 @@ export default function MyAdsSection({ ads }: { ads: AdBanner[] }) {
                 </button>
               </div>
             )}
+            {compressing && <div className="text-xs text-white/50 mb-1">⏳ جاري ضغط الصورة...</div>}
             <input
               ref={fileRef}
               name="imageFile"
               type="file"
               accept="image/jpeg,image/png,image/webp"
               onChange={onFileChange}
-              className="block w-full text-xs text-white/70 file:bg-accent/20 file:hover:bg-accent/30 file:border-0 file:rounded file:px-3 file:py-1 file:text-white file:cursor-pointer file:ml-2"
+              disabled={compressing}
+              className="block w-full text-xs text-white/70 file:bg-accent/20 file:hover:bg-accent/30 file:border-0 file:rounded file:px-3 file:py-1 file:text-white file:cursor-pointer file:ml-2 disabled:opacity-50"
             />
           </div>
 
