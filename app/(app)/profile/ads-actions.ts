@@ -83,6 +83,60 @@ export async function toggleMyBannerAction(id: string): Promise<void> {
   revalidatePath("/profile");
 }
 
+export async function updateMyBannerAction(
+  id: string,
+  formData: FormData,
+): Promise<ActionResult> {
+  const user = await requireCC();
+  const banner = await db.adBanner.findFirst({ where: { id, userId: user.id } });
+  if (!banner) return { ok: false, error: "الإعلان غير موجود" };
+
+  const parsed = baseSchema.safeParse({
+    text: String(formData.get("text") ?? "").trim() || undefined,
+    linkUrl: String(formData.get("linkUrl") ?? "").trim() || "",
+    order: Number(formData.get("order") ?? 0),
+  });
+  if (!parsed.success) {
+    return { ok: false, error: parsed.error.issues[0]?.message ?? "بيانات غير صالحة" };
+  }
+
+  const externalUrl = String(formData.get("imageUrl")    ?? "").trim();
+  const base64Input = String(formData.get("imageBase64") ?? "").trim();
+  const clearImage  = formData.get("clearImage") === "1";
+
+  let imageUrl: string | null = banner.imageUrl;
+
+  if (clearImage) {
+    imageUrl = null;
+  } else if (base64Input && base64Input.startsWith("data:image/")) {
+    if (base64Input.length > 1_100_000) {
+      return { ok: false, error: "الصورة كبيرة جداً — حاول صورة أصغر" };
+    }
+    imageUrl = base64Input;
+  } else if (externalUrl) {
+    if (!/^https?:\/\//.test(externalUrl)) {
+      return { ok: false, error: "رابط الصورة لازم يبدأ بـ http(s)" };
+    }
+    imageUrl = externalUrl;
+  }
+
+  if (!parsed.data.text && !imageUrl) {
+    return { ok: false, error: "أدخل نص أو صورة على الأقل" };
+  }
+
+  await db.adBanner.update({
+    where: { id },
+    data: {
+      text:    parsed.data.text    || null,
+      imageUrl,
+      linkUrl: parsed.data.linkUrl || null,
+      order:   parsed.data.order,
+    },
+  });
+  revalidatePath("/profile");
+  return { ok: true };
+}
+
 export async function deleteMyBannerAction(id: string): Promise<void> {
   const user = await requireCC();
   const banner = await db.adBanner.findFirst({
