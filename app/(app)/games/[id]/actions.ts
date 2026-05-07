@@ -26,10 +26,14 @@ async function broadcastGame(gameId: string, userId: string) {
   publish(`tv:user:${userId}`, { type: "game", game });
 }
 
-// الرقم التالي للجولة — يتجاهل الجولة 0 (بداية مشدود)
+// الرقم التالي للجولة
+// - لعب عادي: يبدأ من 1
+// - لعب مشدود: جولة البداية (رقم 0) تُعرض كـ #1، فالجولات العادية تبدأ من 2
 function nextRoundNumber(rounds: { number: number }[]): number {
   const regular = rounds.filter((r) => r.number > 0);
-  return regular.length === 0 ? 1 : Math.max(...regular.map((r) => r.number)) + 1;
+  const hasBase = rounds.some((r) => r.number === 0); // جولة البداية مشدود
+  if (regular.length === 0) return hasBase ? 2 : 1;
+  return Math.max(...regular.map((r) => r.number)) + 1;
 }
 
 export async function recordRoundAction(

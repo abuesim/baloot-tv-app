@@ -608,11 +608,19 @@ function RoundsPreview({
   rounds: Round[];
   onExpand: () => void;
 }) {
-  // عرض الجولات العادية فقط في المعاينة (تجاهل جولة البداية رقم 0)
   const regular = rounds.filter((r) => r.number > 0);
-  if (regular.length === 0) return null;
-  const newestFirst = [...regular].sort((a, b) => b.number - a.number);
-  const visible = newestFirst.slice(0, 2);
+  const base = rounds.find((r) => r.number === 0); // جولة البداية (مشدود)
+
+  // إذا في جولات عادية: اعرض آخر جولتين منها
+  // إذا ما في جولات بعد وفي جولة بداية: اعرضها (مشدود جديد)
+  const visible =
+    regular.length > 0
+      ? [...regular].sort((a, b) => b.number - a.number).slice(0, 2)
+      : base
+      ? [base]
+      : [];
+
+  if (visible.length === 0) return null;
 
   return (
     <div className="px-4 mt-6 mb-4">
@@ -625,11 +633,23 @@ function RoundsPreview({
         {visible.map((r) => (
           <div
             key={r.id}
-            className="grid grid-cols-3 px-6 py-2 text-base border-t border-white/5"
+            className={`grid grid-cols-3 px-6 py-2 text-base border-t border-white/5 ${
+              r.number === 0 ? "bg-gold/5" : ""
+            }`}
           >
-            <div className="text-right tabular-nums text-white/50">{r.number}</div>
-            <div className="text-center tabular-nums">{r.team1Score}</div>
-            <div className="text-left tabular-nums">{r.team2Score}</div>
+            <div
+              className={`text-right tabular-nums ${
+                r.number === 0 ? "text-gold/70 font-bold" : "text-white/50"
+              }`}
+            >
+              {r.number === 0 ? 1 : r.number}
+            </div>
+            <div className={`text-center tabular-nums ${r.number === 0 ? "text-gold/70" : ""}`}>
+              {r.team1Score}
+            </div>
+            <div className={`text-left tabular-nums ${r.number === 0 ? "text-gold/70" : ""}`}>
+              {r.team2Score}
+            </div>
           </div>
         ))}
         {regular.length > 2 && (
@@ -706,8 +726,8 @@ function RoundsOverlay({
                 r.number === 0 ? "bg-gold/5" : ""
               }`}
             >
-              <div className={`tabular-nums ${r.number === 0 ? "text-gold/70 text-xs font-bold" : "text-white/50"}`}>
-                {r.number === 0 ? "بداية" : r.number}
+              <div className={`tabular-nums ${r.number === 0 ? "text-gold/70 font-bold" : "text-white/50"}`}>
+                {r.number === 0 ? 1 : r.number}
               </div>
               <div className={`text-center tabular-nums ${r.number === 0 ? "text-gold/70" : ""}`}>{r.team1Score}</div>
               <div className={`text-center tabular-nums ${r.number === 0 ? "text-gold/70" : ""}`}>{r.team2Score}</div>
