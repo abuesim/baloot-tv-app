@@ -78,3 +78,56 @@ export async function deleteUploadedImage(url: string | null): Promise<void> {
 export const savePlayerImage = (file: File) =>
   saveUploadedImage(file, "players");
 export const deletePlayerImage = deleteUploadedImage;
+
+// ─── رفع الصوت ───────────────────────────────────────────────
+const ALLOWED_AUDIO_MIMES = new Set([
+  "audio/mpeg", "audio/mp3", "audio/wav",
+  "audio/ogg",  "audio/mp4", "audio/x-m4a",
+]);
+const AUDIO_EXT_MAP: Record<string, string> = {
+  "audio/mpeg": "mp3",
+  "audio/mp3":  "mp3",
+  "audio/wav":  "wav",
+  "audio/ogg":  "ogg",
+  "audio/mp4":  "m4a",
+  "audio/x-m4a":"m4a",
+};
+const MAX_AUDIO_SIZE = 5 * 1024 * 1024; // 5 MB
+
+export async function saveUploadedAudio(file: File): Promise<UploadResult> {
+  if (!ALLOWED_AUDIO_MIMES.has(file.type)) {
+    return { ok: false, error: "نوع الملف غير مدعوم (MP3 / WAV / OGG فقط)" };
+  }
+  if (file.size > MAX_AUDIO_SIZE) {
+    return { ok: false, error: "حجم الملف أكبر من ٥ ميجا" };
+  }
+  if (file.size === 0) {
+    return { ok: false, error: "الملف فارغ" };
+  }
+
+  const abs = path.join(PUBLIC_DIR, "uploads", "sounds");
+  await mkdir(abs, { recursive: true });
+
+  const ext = AUDIO_EXT_MAP[file.type] ?? "mp3";
+  const filename = `${randomBytes(12).toString("hex")}.${ext}`;
+  const absPath = path.join(abs, filename);
+
+  if (!absPath.startsWith(abs + path.sep)) {
+    return { ok: false, error: "مسار غير صالح" };
+  }
+
+  const buf = Buffer.from(await file.arrayBuffer());
+  await writeFile(absPath, buf);
+
+  return { ok: true, url: `/uploads/sounds/${filename}` };
+}
+
+export async function deleteUploadedAudio(url: string | null): Promise<void> {
+  if (!url || !url.startsWith("/uploads/sounds/")) return;
+  const filename = url.split("/").pop();
+  if (!filename) return;
+  const abs = path.join(PUBLIC_DIR, "uploads", "sounds");
+  const absPath = path.join(abs, filename);
+  if (!absPath.startsWith(abs + path.sep)) return;
+  try { await unlink(absPath); } catch { /* الملف غير موجود */ }
+}

@@ -56,6 +56,7 @@ model User {
   tvShowAlert     Boolean  @default(false)
   tvAlertUrl      String? // رابط صندوق التنبيهات (Streamlabs / StreamElements)
   tvStreamlabsToken String? // Socket API Token من Streamlabs (للاتصال المباشر)
+  tvAlertSound      String? // صوت مخصص للتنبيهات (مرفوع من الجهاز)
 
   // اليوزر الفرعي — يشير إلى الحساب الأصل (صانع المحتوى)
   parentUserId String?

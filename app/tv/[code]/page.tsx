@@ -24,6 +24,7 @@ export default async function TvPage({
       tvShowAlert: true,
       tvAlertUrl: true,
       tvStreamlabsToken: true,
+      tvAlertSound: true,
     },
   });
   if (!user) notFound();

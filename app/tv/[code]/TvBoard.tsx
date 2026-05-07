@@ -33,6 +33,7 @@ type TvUser = {
   tvShowAlert: boolean;
   tvAlertUrl: string | null;
   tvStreamlabsToken: string | null;
+  tvAlertSound: string | null;
 };
 
 type BannerItem = {
@@ -371,7 +372,7 @@ export default function TvBoard({
 
         {/* تنبيه Streamlabs النيتيف */}
         {activeAlert && (
-          <TvAlertBadge key={activeAlert.id} alert={activeAlert} accent={accent} />
+          <TvAlertBadge key={activeAlert.id} alert={activeAlert} accent={accent} customSound={user.tvAlertSound} />
         )}
       </div>
     );
@@ -461,7 +462,7 @@ export default function TvBoard({
 
       {/* تنبيه Streamlabs النيتيف — يظهر فوق المحتوى */}
       {activeAlert && (
-        <TvAlertBadge key={activeAlert.id} alert={activeAlert} accent={accent} />
+        <TvAlertBadge key={activeAlert.id} alert={activeAlert} accent={accent} customSound={user.tvAlertSound} />
       )}
     </>
   );
@@ -909,14 +910,16 @@ const ALERT_META: Record<string, { icon: string; label: string }> = {
   "alertbox-test":       { icon: "🔔",  label: "تجربة"         },
 };
 
-function TvAlertBadge({ alert, accent }: { alert: TvAlert; accent: string }) {
+function TvAlertBadge({ alert, accent, customSound }: { alert: TvAlert; accent: string; customSound: string | null }) {
   const meta = ALERT_META[alert.listener] ?? { icon: "🎉", label: "تنبيه" };
   const hasDonation = !!alert.amount && alert.amount !== "0";
 
   // ─── تشغيل الصوت عند ظهور التنبيه ───
+  // الأولوية: صوت مخصص من الاستوديو → صوت Streamlabs → لا صوت
   useEffect(() => {
-    if (!alert.sound_href) return;
-    const audio = new Audio(alert.sound_href);
+    const url = customSound || alert.sound_href;
+    if (!url) return;
+    const audio = new Audio(url);
     audio.play().catch(() => {/* autoplay blocked — silent fail */});
     return () => { audio.pause(); audio.src = ""; };
   // eslint-disable-next-line react-hooks/exhaustive-deps

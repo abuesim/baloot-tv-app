@@ -98,6 +98,43 @@ export async function regenerateTvCodeAction(): Promise<ActionResult> {
   return { ok: true };
 }
 
+// ─── رفع صوت التنبيه ──────────────────────────────────────────
+export async function uploadAlertSoundAction(
+  formData: FormData,
+): Promise<{ ok: boolean; url?: string; error?: string }> {
+  const { saveUploadedAudio, deleteUploadedAudio } = await import("@/lib/upload");
+  const user = await requireUser();
+  const file = formData.get("sound") as File | null;
+  if (!file || file.size === 0) return { ok: false, error: "لا يوجد ملف" };
+
+  const result = await saveUploadedAudio(file);
+  if (!result.ok) return result;
+
+  // احذف الصوت القديم إن وُجد
+  const current = await db.user.findUnique({
+    where: { id: user.id },
+    select: { tvAlertSound: true },
+  });
+  if (current?.tvAlertSound) await deleteUploadedAudio(current.tvAlertSound);
+
+  await db.user.update({ where: { id: user.id }, data: { tvAlertSound: result.url } });
+  revalidatePath("/profile");
+  return { ok: true, url: result.url };
+}
+
+export async function removeAlertSoundAction(): Promise<ActionResult> {
+  const { deleteUploadedAudio } = await import("@/lib/upload");
+  const user = await requireUser();
+  const current = await db.user.findUnique({
+    where: { id: user.id },
+    select: { tvAlertSound: true },
+  });
+  if (current?.tvAlertSound) await deleteUploadedAudio(current.tvAlertSound);
+  await db.user.update({ where: { id: user.id }, data: { tvAlertSound: null } });
+  revalidatePath("/profile");
+  return { ok: true };
+}
+
 const studioSchema = z.object({
   tvAccentColor: z
     .string()

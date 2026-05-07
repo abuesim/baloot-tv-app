@@ -1,8 +1,8 @@
 "use client";
 
-import { useState, useTransition } from "react";
+import { useState, useTransition, useRef } from "react";
 import { useRouter } from "next/navigation";
-import { updateTvStudioAction } from "./actions";
+import { updateTvStudioAction, uploadAlertSoundAction, removeAlertSoundAction } from "./actions";
 
 const PRESET_COLORS = [
   { name: "ذهبي", value: "#f5b042" },
@@ -28,6 +28,7 @@ export default function TvStudioForm({
     tvShowAlert: boolean;
     tvAlertUrl: string | null;
     tvStreamlabsToken: string | null;
+    tvAlertSound: string | null;
   };
 }) {
   const router = useRouter();
@@ -38,6 +39,39 @@ export default function TvStudioForm({
   const [showRounds, setShowRounds] = useState(initial.tvShowRounds);
   const [isPending, startTransition] = useTransition();
   const [msg, setMsg] = useState<{ ok: boolean; text: string } | null>(null);
+
+  // ─── صوت التنبيه ───
+  const [soundUrl, setSoundUrl] = useState<string | null>(initial.tvAlertSound);
+  const [soundName, setSoundName] = useState<string | null>(null);
+  const [soundUploading, setSoundUploading] = useState(false);
+  const soundInputRef = useRef<HTMLInputElement>(null);
+
+  async function handleSoundFile(e: React.ChangeEvent<HTMLInputElement>) {
+    const file = e.target.files?.[0];
+    if (!file) return;
+    setSoundName(file.name);
+    setSoundUploading(true);
+    const fd = new FormData();
+    fd.append("sound", file);
+    const res = await uploadAlertSoundAction(fd);
+    setSoundUploading(false);
+    if (res.ok && res.url) {
+      setSoundUrl(res.url);
+      setMsg({ ok: true, text: "✅ تم رفع الصوت" });
+    } else {
+      setMsg({ ok: false, text: res.error ?? "فشل رفع الصوت" });
+    }
+  }
+
+  async function handleRemoveSound() {
+    setSoundUploading(true);
+    await removeAlertSoundAction();
+    setSoundUrl(null);
+    setSoundName(null);
+    setSoundUploading(false);
+    if (soundInputRef.current) soundInputRef.current.value = "";
+    router.refresh();
+  }
 
   function onSubmit(formData: FormData) {
     setMsg(null);
@@ -188,6 +222,50 @@ export default function TvStudioForm({
           dir="ltr"
           className="w-full bg-navy-light border border-white/10 rounded-lg px-3 py-2 text-sm font-mono"
         />
+      </div>
+
+      {/* صوت التنبيه */}
+      <div>
+        <label className="block text-sm font-bold mb-1">🔊 صوت التنبيه</label>
+        <p className="text-xs text-white/50 mb-2">
+          MP3 أو WAV — حتى ٥ ميجا. يُشغَّل عند كل تنبيه على الشاشة.
+          {!soundUrl && " إذا فارغ يُستخدم صوت Streamlabs الافتراضي."}
+        </p>
+
+        {soundUrl ? (
+          <div className="flex items-center gap-3 bg-navy-light border border-white/10 rounded-xl px-3 py-2">
+            {/* مشغّل مدمج */}
+            {/* eslint-disable-next-line jsx-a11y/media-has-caption */}
+            <audio src={soundUrl} controls className="h-8 flex-1 min-w-0" />
+            <span className="text-xs text-white/40 truncate max-w-28">
+              {soundName ?? soundUrl.split("/").pop()}
+            </span>
+            <button
+              type="button"
+              onClick={handleRemoveSound}
+              disabled={soundUploading}
+              className="text-red-400 hover:text-red-300 text-lg leading-none shrink-0"
+              title="حذف الصوت"
+            >
+              ✕
+            </button>
+          </div>
+        ) : (
+          <label className="flex items-center gap-3 bg-navy-light border border-dashed border-white/20 rounded-xl px-4 py-3 cursor-pointer hover:border-white/40 transition-colors">
+            <span className="text-2xl">🎵</span>
+            <span className="text-sm text-white/60">
+              {soundUploading ? "⏳ جاري الرفع..." : "اضغط لاختيار ملف صوتي"}
+            </span>
+            <input
+              ref={soundInputRef}
+              type="file"
+              accept="audio/mpeg,audio/mp3,audio/wav,audio/ogg,.mp3,.wav,.ogg,.m4a"
+              onChange={handleSoundFile}
+              disabled={soundUploading}
+              className="hidden"
+            />
+          </label>
+        )}
       </div>
 
       {msg && (

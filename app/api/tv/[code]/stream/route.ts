@@ -16,6 +16,7 @@ const USER_TV_SELECT = {
   tvShowAlert: true,
   tvAlertUrl: true,
   tvStreamlabsToken: true,
+  tvAlertSound: true,
 } as const;
 
 async function getCurrentGameForUser(userId: string) {
