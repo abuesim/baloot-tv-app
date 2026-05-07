@@ -89,6 +89,9 @@ export default function TvBoard({
   const [activeAlert, setActiveAlert] = useState<TvAlert | null>(null);
   const [alertPaused, setAlertPaused] = useState(false);
   const alertTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const [recentDonations, setRecentDonations] = useState<
+    { id: number; name: string; amount: string; currency: string }[]
+  >([]);
   const [showCelebration, setShowCelebration] = useState(
     initialGame?.winner !== null && initialGame?.winner !== undefined,
   );
@@ -120,10 +123,11 @@ export default function TvBoard({
           return;
         }
         if (msg.type === "alert") {
+          const alertId = ++popIdRef.current;
           setAlertQueue((q) => [
             ...q,
             {
-              id: ++popIdRef.current,
+              id: alertId,
               listener: msg.listener ?? "",
               name: msg.name ?? "",
               amount: msg.amount ?? "",
@@ -133,6 +137,14 @@ export default function TvBoard({
               sound_href: msg.sound_href ?? "",
             },
           ]);
+          // تتبع الدونيشن لشريط التمرير النيتيف
+          const isDonation = (msg.listener ?? "").includes("donation");
+          if (isDonation && msg.name) {
+            setRecentDonations((prev) =>
+              [{ id: alertId, name: msg.name ?? "", amount: msg.amount ?? "", currency: msg.currency ?? "" },
+               ...prev].slice(0, 30)
+            );
+          }
           return;
         }
         if (msg.type === "game") {
@@ -229,10 +241,11 @@ export default function TvBoard({
         recentKeysRef.current.add(dedupKey);
         setTimeout(() => recentKeysRef.current.delete(dedupKey), 5000);
 
+        const alertId = ++popIdRef.current;
         setAlertQueue((q) => [
           ...q,
           {
-            id: ++popIdRef.current,
+            id: alertId,
             listener: data.type ?? "",
             name: msg.name ?? "",
             amount: String(msg.amount ?? ""),
@@ -242,6 +255,13 @@ export default function TvBoard({
             sound_href: msg.sound_href ?? "",
           },
         ]);
+        // تتبع الدونيشن لشريط التمرير النيتيف
+        if (data.type === "donation" && msg.name) {
+          setRecentDonations((prev) =>
+            [{ id: alertId, name: msg.name ?? "", amount: String(msg.amount ?? ""), currency: msg.currency ?? "" },
+             ...prev].slice(0, 30)
+          );
+        }
       });
     });
 
@@ -349,7 +369,8 @@ export default function TvBoard({
 
   const isPortrait = user.tvOrientation === "PORTRAIT";
   const showChat = user.tvShowChat && !!user.tvChatUrl;
-  const showDonations = user.tvShowDonations && !!user.tvDonationUrl;
+  // الدونيشن native — يظهر فقط لما تصل دونيشن فعلية (لا iframe)
+  const showDonations = user.tvShowDonations && recentDonations.length > 0;
 
   // ألوان الفريقين الثابتة
   const TEAM1_COLOR = "#ff7c2a"; // لنا  — برتقالي
@@ -361,7 +382,7 @@ export default function TvBoard({
       <Header user={user} game={game} connected={connected} />
 
       {showDonations && (
-        <DonationStrip url={user.tvDonationUrl!} />
+        <NativeDonationStrip donations={recentDonations} accent={accent} />
       )}
 
       <div className="flex-1 flex items-stretch px-2 md:px-6 gap-2 md:gap-6">
@@ -653,6 +674,65 @@ function ChatPanel({ url, variant }: { url: string; variant: "side" | "bottom" }
   );
 }
 
+/** شريط الدونيشن النيتيف — يُغذّى من Socket.IO بدون iframe */
+function NativeDonationStrip({
+  donations,
+  accent,
+}: {
+  donations: { id: number; name: string; amount: string; currency: string }[];
+  accent: string;
+}) {
+  if (donations.length === 0) return null;
+  // نكرر العناصر للتمرير السلس
+  const items = donations.length < 6
+    ? [...donations, ...donations, ...donations]
+    : [...donations, ...donations];
+
+  return (
+    <div className="mx-3 md:mx-8 mb-2 overflow-hidden">
+      <div
+        className="rounded-xl flex items-center h-10 md:h-12"
+        style={{
+          background: "rgba(6,10,20,0.88)",
+          border: `1px solid ${accent}35`,
+        }}
+      >
+        {/* تسمية ثابتة */}
+        <div
+          className="shrink-0 px-3 md:px-5 text-xs md:text-sm font-black flex items-center gap-1.5 h-full border-r"
+          style={{ color: accent, borderColor: `${accent}30` }}
+        >
+          💰 <span className="hidden sm:inline">دونيشن</span>
+        </div>
+
+        {/* شريط التمرير */}
+        <div className="flex-1 overflow-hidden flex items-center">
+          <div className="flex animate-marquee gap-10 whitespace-nowrap pl-4">
+            {items.map((d, i) => (
+              <span
+                key={`${d.id}-${i}`}
+                className="inline-flex items-center gap-2 text-sm"
+              >
+                <span className="font-black" style={{ color: accent }}>
+                  {d.name || "—"}
+                </span>
+                {d.amount && d.amount !== "0" && (
+                  <span className="font-bold text-white/90">
+                    {d.amount}
+                    {d.currency ? ` ${d.currency}` : ""}
+                  </span>
+                )}
+                <span className="text-white/20 text-lg">·</span>
+              </span>
+            ))}
+          </div>
+        </div>
+      </div>
+    </div>
+  );
+}
+
+/** محفوظ للتوافق مع ChatPanel — DonationStrip القديم (iframe) */
 function DonationStrip({ url }: { url: string }) {
   return (
     <div className="mx-3 md:mx-8 mb-2">
