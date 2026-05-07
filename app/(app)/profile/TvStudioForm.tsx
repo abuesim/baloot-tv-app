@@ -51,15 +51,34 @@ export default function TvStudioForm({
     if (!file) return;
     setSoundName(file.name);
     setSoundUploading(true);
-    const fd = new FormData();
-    fd.append("sound", file);
-    const res = await uploadAlertSoundAction(fd);
-    setSoundUploading(false);
-    if (res.ok && res.url) {
-      setSoundUrl(res.url);
-      setMsg({ ok: true, text: "✅ تم رفع الصوت" });
-    } else {
-      setMsg({ ok: false, text: res.error ?? "فشل رفع الصوت" });
+    setMsg(null);
+    try {
+      // نحوّل الملف إلى base64 في المتصفح — يعمل على Vercel
+      const MAX_BYTES = 5 * 1024 * 1024; // 5 MB
+      if (file.size > MAX_BYTES) {
+        setMsg({ ok: false, text: "حجم الملف أكبر من ٥ ميجا" });
+        setSoundUploading(false);
+        return;
+      }
+      const dataUri = await new Promise<string>((resolve, reject) => {
+        const reader = new FileReader();
+        reader.onload = () => resolve(reader.result as string);
+        reader.onerror = () => reject(new Error("فشل قراءة الملف"));
+        reader.readAsDataURL(file);
+      });
+      const fd = new FormData();
+      fd.append("soundBase64", dataUri);
+      const res = await uploadAlertSoundAction(fd);
+      if (res.ok && res.url) {
+        setSoundUrl(res.url);
+        setMsg({ ok: true, text: "✅ تم رفع الصوت" });
+      } else {
+        setMsg({ ok: false, text: res.error ?? "فشل رفع الصوت" });
+      }
+    } catch {
+      setMsg({ ok: false, text: "فشل معالجة الملف الصوتي" });
+    } finally {
+      setSoundUploading(false);
     }
   }
 

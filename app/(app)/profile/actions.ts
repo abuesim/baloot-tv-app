@@ -99,37 +99,50 @@ export async function regenerateTvCodeAction(): Promise<ActionResult> {
 }
 
 // ─── رفع صوت التنبيه ──────────────────────────────────────────
+// نخزّن الصوت كـ base64 data URI مباشرة في قاعدة البيانات
+// (الكتابة على القرص تفشل على Vercel)
 export async function uploadAlertSoundAction(
   formData: FormData,
 ): Promise<{ ok: boolean; url?: string; error?: string }> {
-  const { saveUploadedAudio, deleteUploadedAudio } = await import("@/lib/upload");
   const user = await requireUser();
-  const file = formData.get("sound") as File | null;
-  if (!file || file.size === 0) return { ok: false, error: "لا يوجد ملف" };
 
-  const result = await saveUploadedAudio(file);
-  if (!result.ok) return result;
+  const dataUri = String(formData.get("soundBase64") ?? "").trim();
+  if (!dataUri) return { ok: false, error: "لا يوجد ملف" };
 
-  // احذف الصوت القديم إن وُجد
-  const current = await db.user.findUnique({
-    where: { id: user.id },
-    select: { tvAlertSound: true },
-  });
-  if (current?.tvAlertSound) await deleteUploadedAudio(current.tvAlertSound);
+  // التحقق من نوع البيانات
+  const ALLOWED_AUDIO_PREFIXES = [
+    "data:audio/mpeg;base64,",
+    "data:audio/mp3;base64,",
+    "data:audio/wav;base64,",
+    "data:audio/ogg;base64,",
+    "data:audio/mp4;base64,",
+    "data:audio/x-m4a;base64,",
+  ];
+  const valid = ALLOWED_AUDIO_PREFIXES.some((p) => dataUri.startsWith(p));
+  if (!valid) return { ok: false, error: "نوع الملف غير مدعوم (MP3 / WAV / OGG فقط)" };
 
-  await db.user.update({ where: { id: user.id }, data: { tvAlertSound: result.url } });
+  // حجم تقريبي — base64 أكبر بـ ~33% من الأصل
+  const MAX_B64_LEN = 7_000_000; // ~5MB أصلية
+  if (dataUri.length > MAX_B64_LEN) {
+    return { ok: false, error: "حجم الملف أكبر من ٥ ميجا" };
+  }
+
+  await db.user.update({ where: { id: user.id }, data: { tvAlertSound: dataUri } });
   revalidatePath("/profile");
-  return { ok: true, url: result.url };
+  return { ok: true, url: dataUri };
 }
 
 export async function removeAlertSoundAction(): Promise<ActionResult> {
-  const { deleteUploadedAudio } = await import("@/lib/upload");
   const user = await requireUser();
+  // إذا كان الصوت القديم ملفًا مرفوعًا (مسار /uploads/)، احذفه من الديسك
   const current = await db.user.findUnique({
     where: { id: user.id },
     select: { tvAlertSound: true },
   });
-  if (current?.tvAlertSound) await deleteUploadedAudio(current.tvAlertSound);
+  if (current?.tvAlertSound?.startsWith("/uploads/")) {
+    const { deleteUploadedAudio } = await import("@/lib/upload");
+    await deleteUploadedAudio(current.tvAlertSound);
+  }
   await db.user.update({ where: { id: user.id }, data: { tvAlertSound: null } });
   revalidatePath("/profile");
   return { ok: true };
