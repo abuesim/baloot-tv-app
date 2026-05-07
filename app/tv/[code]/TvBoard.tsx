@@ -228,7 +228,8 @@ export default function TvBoard({
     ["--tv-accent" as never]: accent,
   };
 
-  const showAlert = user.tvShowAlert && !!user.tvAlertUrl;
+  // Streamlabs iframe مرفوض من المتصفح (X-Frame-Options) — التنبيهات تصل عبر Socket.IO
+  const showAlert = false;
 
   // حالة بدون صكة
   if (!game) {
@@ -766,47 +767,55 @@ function TvAlertBadge({ alert, accent }: { alert: TvAlert; accent: string }) {
   return (
     <>
       <style>{`
-        @keyframes alertSlide {
-          0%   { transform: translateX(110%); opacity: 0; }
-          12%  { transform: translateX(0);    opacity: 1; }
-          80%  { transform: translateX(0);    opacity: 1; }
-          100% { transform: translateX(110%); opacity: 0; }
+        @keyframes alertSlideIn {
+          0%   { transform: translateX(110%) scale(0.85); opacity: 0; }
+          15%  { transform: translateX(0)    scale(1.03); opacity: 1; }
+          22%  { transform: translateX(0)    scale(1);    opacity: 1; }
+          78%  { transform: translateX(0)    scale(1);    opacity: 1; }
+          100% { transform: translateX(110%) scale(0.85); opacity: 0; }
+        }
+        @keyframes alertPulse {
+          0%,100% { box-shadow: 0 0 0 0 ${accent}55; }
+          50%      { box-shadow: 0 0 30px 8px ${accent}33; }
         }
       `}</style>
       <div
         style={{
           position: "absolute",
-          top: "1.5rem",
-          right: "1.5rem",
+          top: "2rem",
+          right: "2rem",
           zIndex: 48,
-          animation: "alertSlide 8s ease-in-out forwards",
+          animation: "alertSlideIn 8s cubic-bezier(.22,.68,0,1.2) forwards",
           pointerEvents: "none",
-          maxWidth: "min(22rem, 90vw)",
+          minWidth: "min(20rem, 88vw)",
+          maxWidth: "min(28rem, 92vw)",
         }}
       >
         <div
-          className="rounded-2xl overflow-hidden shadow-2xl"
           style={{
-            background: "rgba(10,15,28,0.92)",
+            background: "rgba(8,12,24,0.97)",
             border: `2px solid ${accent}`,
-            backdropFilter: "blur(12px)",
+            borderRadius: "1.25rem",
+            overflow: "hidden",
+            backdropFilter: "blur(16px)",
+            animation: "alertPulse 2s ease-in-out 3",
           }}
         >
           {/* شريط العنوان */}
           <div
-            className="flex items-center gap-2 px-4 py-2"
-            style={{ background: `${accent}25` }}
+            className="flex items-center gap-3 px-5 py-3"
+            style={{ background: `${accent}20` }}
           >
-            <span className="text-xl leading-none">{meta.icon}</span>
+            <span className="text-3xl leading-none">{meta.icon}</span>
             <span
-              className="font-black text-sm tracking-wide"
+              className="font-black text-lg tracking-wide"
               style={{ color: accent }}
             >
               {meta.label}
             </span>
             {hasDonation && (
               <span
-                className="mr-auto font-black text-base"
+                className="mr-auto font-black text-2xl"
                 style={{ color: accent }}
               >
                 {alert.amount}
@@ -815,19 +824,40 @@ function TvAlertBadge({ alert, accent }: { alert: TvAlert; accent: string }) {
             )}
           </div>
 
-          {/* الاسم */}
-          <div className="px-4 py-1.5">
-            <div className="text-white font-bold text-lg leading-snug">
+          {/* الاسم والرسالة */}
+          <div className="px-5 py-3">
+            <div
+              className="font-black text-2xl leading-snug"
+              style={{ color: "#fff" }}
+            >
               {alert.name || "—"}
             </div>
             {alert.message && (
-              <div className="text-white/60 text-sm mt-0.5 leading-snug line-clamp-2">
+              <div className="text-white/70 text-base mt-1 leading-snug line-clamp-2">
                 {alert.message}
               </div>
             )}
           </div>
+
+          {/* شريط التقدم */}
+          <div className="h-1" style={{ background: `${accent}30` }}>
+            <div
+              style={{
+                height: "100%",
+                background: accent,
+                animation: "alertProgress 8s linear forwards",
+                transformOrigin: "right",
+              }}
+            />
+          </div>
         </div>
       </div>
+      <style>{`
+        @keyframes alertProgress {
+          from { width: 100%; }
+          to   { width: 0%; }
+        }
+      `}</style>
     </>
   );
 }
