@@ -9,6 +9,8 @@ export default async function ProfileLayout({
 }) {
   const me = await requireUser();
   const showStudio = canManageAds(me.role);
+  // تبويب المساعد: فقط لصانعي المحتوى (وليس للمستخدم الفرعي نفسه)
+  const showSubUser = me.role === "CONTENT_CREATOR" && !me.parentUserId;
 
   return (
     <div className="space-y-6 max-w-3xl">
@@ -20,7 +22,7 @@ export default async function ProfileLayout({
         </p>
       </div>
 
-      <ProfileTabs showStudio={showStudio} />
+      <ProfileTabs showStudio={showStudio} showSubUser={showSubUser} />
 
       {children}
     </div>

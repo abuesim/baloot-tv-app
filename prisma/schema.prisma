@@ -59,6 +59,12 @@ model User {
   parentUser   User?   @relation("SubUsers", fields: [parentUserId], references: [id], onDelete: SetNull)
   subUsers     User[]  @relation("SubUsers")
 
+  // صلاحيات المستخدم الفرعي — يُحددها صانع المحتوى (فقط ذات معنى عند parentUserId != null)
+  subCanStartGame   Boolean @default(true)
+  subCanAddPlayers  Boolean @default(true)
+  subCanViewHistory Boolean @default(true)
+  subCanViewStats   Boolean @default(true)
+
   players Player[]
   games   Game[]
   banners AdBanner[]

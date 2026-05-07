@@ -3,11 +3,18 @@
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 
-export default function ProfileTabs({ showStudio }: { showStudio: boolean }) {
+export default function ProfileTabs({
+  showStudio,
+  showSubUser,
+}: {
+  showStudio: boolean;
+  showSubUser: boolean;
+}) {
   const pathname = usePathname();
   const tabs = [
     { href: "/profile", label: "👤 ملفي", visible: true },
     { href: "/profile/studio", label: "🎬 الاستوديو", visible: showStudio },
+    { href: "/profile/sub-user", label: "👥 المساعد", visible: showSubUser },
   ].filter((t) => t.visible);
 
   return (
