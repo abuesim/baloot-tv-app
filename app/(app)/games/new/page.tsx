@@ -4,8 +4,9 @@ import NewGameForm from "./NewGameForm";
 
 export default async function NewGamePage() {
   const user = await requireUser();
+  const ownerUserId = user.parentUserId ?? user.id;
   const players = await db.player.findMany({
-    where: { userId: user.id },
+    where: { userId: ownerUserId },
     orderBy: { name: "asc" },
     select: { id: true, name: true, imageUrl: true },
   });

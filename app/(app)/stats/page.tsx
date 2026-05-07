@@ -26,6 +26,7 @@ export default async function StatsPage({
   searchParams: SearchParams;
 }) {
   const user = await requireUser();
+  const ownerUserId = user.parentUserId ?? user.id;
   const sp = await searchParams;
 
   const now = new Date();
@@ -37,7 +38,7 @@ export default async function StatsPage({
 
   const games = await db.game.findMany({
     where: {
-      userId: user.id,
+      userId: ownerUserId,
       status: "COMPLETED",
       startedAt: { gte: monthStart, lt: monthEnd },
     },

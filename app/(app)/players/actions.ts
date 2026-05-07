@@ -12,16 +12,17 @@ export type ActionResult = { ok: true } | { ok: false; error: string };
 
 export async function createPlayerAction(name: string): Promise<ActionResult> {
   const user = await requireUser();
+  const ownerUserId = user.parentUserId ?? user.id;
   const parsed = nameSchema.safeParse(name);
   if (!parsed.success) return { ok: false, error: parsed.error.issues[0]!.message };
 
   const exists = await db.player.findUnique({
-    where: { userId_name: { userId: user.id, name: parsed.data } },
+    where: { userId_name: { userId: ownerUserId, name: parsed.data } },
   });
   if (exists) return { ok: false, error: "اسم اللاعب موجود مسبقاً" };
 
   await db.player.create({
-    data: { userId: user.id, name: parsed.data },
+    data: { userId: ownerUserId, name: parsed.data },
   });
   revalidatePath("/players");
   revalidatePath("/games/new");
@@ -33,16 +34,17 @@ export async function renamePlayerAction(
   newName: string,
 ): Promise<ActionResult> {
   const user = await requireUser();
+  const ownerUserId = user.parentUserId ?? user.id;
   const parsed = nameSchema.safeParse(newName);
   if (!parsed.success) return { ok: false, error: parsed.error.issues[0]!.message };
 
   const player = await db.player.findFirst({
-    where: { id, userId: user.id },
+    where: { id, userId: ownerUserId },
   });
   if (!player) return { ok: false, error: "اللاعب غير موجود" };
 
   const exists = await db.player.findUnique({
-    where: { userId_name: { userId: user.id, name: parsed.data } },
+    where: { userId_name: { userId: ownerUserId, name: parsed.data } },
   });
   if (exists && exists.id !== id) return { ok: false, error: "الاسم محجوز" };
 
@@ -53,8 +55,9 @@ export async function renamePlayerAction(
 
 export async function deletePlayerAction(id: string): Promise<ActionResult> {
   const user = await requireUser();
+  const ownerUserId = user.parentUserId ?? user.id;
   const player = await db.player.findFirst({
-    where: { id, userId: user.id },
+    where: { id, userId: ownerUserId },
     include: { _count: { select: { participants: true } } },
   });
   if (!player) return { ok: false, error: "اللاعب غير موجود" };
@@ -72,21 +75,19 @@ export async function uploadPlayerImageAction(
   base64: string,
 ): Promise<ActionResult> {
   const user = await requireUser();
+  const ownerUserId = user.parentUserId ?? user.id;
   const player = await db.player.findFirst({
-    where: { id: playerId, userId: user.id },
+    where: { id: playerId, userId: ownerUserId },
   });
   if (!player) return { ok: false, error: "اللاعب غير موجود" };
 
-  // تحقق أنها data URL صالحة
   if (!base64.startsWith("data:image/")) {
     return { ok: false, error: "صورة غير صالحة" };
   }
-  // حد أقصى ~200 KB بعد الضغط (base64 = ~4/3 من الحجم الأصلي)
   if (base64.length > 280_000) {
     return { ok: false, error: "الصورة كبيرة جداً بعد الضغط" };
   }
 
-  // احذف الملف القديم إن كان من النظام القديم (يبدأ بـ /uploads/)
   if (player.imageUrl?.startsWith("/uploads/")) {
     await deletePlayerImage(player.imageUrl);
   }
@@ -105,8 +106,9 @@ export async function removePlayerImageAction(
   playerId: string,
 ): Promise<ActionResult> {
   const user = await requireUser();
+  const ownerUserId = user.parentUserId ?? user.id;
   const player = await db.player.findFirst({
-    where: { id: playerId, userId: user.id },
+    where: { id: playerId, userId: ownerUserId },
   });
   if (!player) return { ok: false, error: "اللاعب غير موجود" };
   if (!player.imageUrl) return { ok: true };

@@ -35,13 +35,14 @@ export default async function HistoryPage({
   searchParams: SearchParams;
 }) {
   const user = await requireUser();
+  const ownerUserId = user.parentUserId ?? user.id;
   const sp = await searchParams;
   const filter = FILTERS.find((f) => f.key === sp.filter)?.key ?? "week";
   const dateRange = getDateRange(filter);
 
   const games = await db.game.findMany({
     where: {
-      userId: user.id,
+      userId: ownerUserId,
       ...(dateRange.gte ? { startedAt: dateRange } : {}),
     },
     orderBy: { startedAt: "desc" },

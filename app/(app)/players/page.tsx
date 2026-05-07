@@ -4,8 +4,9 @@ import PlayersManager from "./PlayersManager";
 
 export default async function PlayersPage() {
   const user = await requireUser();
+  const ownerUserId = user.parentUserId ?? user.id;
   const players = await db.player.findMany({
-    where: { userId: user.id },
+    where: { userId: ownerUserId },
     orderBy: { name: "asc" },
     include: {
       _count: { select: { participants: true } },

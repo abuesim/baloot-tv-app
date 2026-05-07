@@ -12,8 +12,9 @@ export default async function GamePage({
 }) {
   const { id } = await params;
   const me = await requireUser();
+  const ownerUserId = me.parentUserId ?? me.id;
   const game = await db.game.findFirst({
-    where: { id, userId: me.id },
+    where: { id, userId: ownerUserId },
     include: {
       participants: { include: { player: true } },
       rounds: { orderBy: { number: "desc" } },
@@ -21,13 +22,14 @@ export default async function GamePage({
   });
   if (!game) notFound();
 
+  // إعدادات الحاسبة تُقرأ من الحساب الأصل دائماً (صانع المحتوى)
   const userRow = await db.user.findUnique({
-    where: { id: me.id },
+    where: { id: ownerUserId },
     select: { tvCode: true, calculatorStyle: true },
   });
 
   const allPlayers = await db.player.findMany({
-    where: { userId: me.id },
+    where: { userId: ownerUserId },
     orderBy: { name: "asc" },
     select: { id: true, name: true, imageUrl: true },
   });

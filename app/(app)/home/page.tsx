@@ -5,20 +5,21 @@ import { RecentGamesList } from "./RecentGamesList";
 
 export default async function HomePage() {
   const user = await requireUser();
+  const ownerUserId = user.parentUserId ?? user.id;
 
   const [recentGames, playersCount, monthGames] = await Promise.all([
     db.game.findMany({
-      where: { userId: user.id },
+      where: { userId: ownerUserId },
       orderBy: { startedAt: "desc" },
       take: 5,
       include: {
         participants: { include: { player: true } },
       },
     }),
-    db.player.count({ where: { userId: user.id } }),
+    db.player.count({ where: { userId: ownerUserId } }),
     db.game.count({
       where: {
-        userId: user.id,
+        userId: ownerUserId,
         startedAt: { gte: new Date(new Date().setDate(1)) },
         status: "COMPLETED",
       },
