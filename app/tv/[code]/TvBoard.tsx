@@ -275,8 +275,8 @@ export default function TvBoard({
   }, [user.tvStreamlabsToken]);
 
   // ─── معالجة طابور التنبيهات — واحد تلو الآخر مع فجوة بينهما ───
-  const ALERT_SHOW_MS = 12_000; // مدة عرض كل تنبيه
-  const ALERT_GAP_MS  = 1_200;  // فجوة بين تنبيه والتالي
+  const ALERT_SHOW_MS = 3_000; // مؤقت للتشخيص — كان 12_000
+  const ALERT_GAP_MS  = 600;   // مؤقت للتشخيص — كان 1_200
 
   useEffect(() => {
     if (alertQueue.length === 0 || activeAlert || alertPaused) return;
@@ -927,7 +927,7 @@ function TvAlertBadge({ alert, accent }: { alert: TvAlert; accent: string }) {
           top: "8%",
           left: "50%",
           zIndex: 48,
-          animation: "alertDrop 12s cubic-bezier(.22,.68,0,1.2) forwards",
+          animation: "alertDrop 3s cubic-bezier(.22,.68,0,1.2) forwards",
           pointerEvents: "none",
           width: "min(36rem, 90vw)",
         }}
@@ -1010,7 +1010,7 @@ function TvAlertBadge({ alert, accent }: { alert: TvAlert; accent: string }) {
               style={{
                 height: "100%",
                 background: accent,
-                animation: "alertBar 12s linear forwards",
+                animation: "alertBar 3s linear forwards",
               }}
             />
           </div>
