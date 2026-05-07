@@ -93,6 +93,14 @@ export default function TvBoard({
   const [recentDonations, setRecentDonations] = useState<
     { id: number; name: string; amount: string; currency: string }[]
   >([]);
+  // استشعار حجم الشاشة لعكس الاتجاه على الجوال
+  const [isMobileView, setIsMobileView] = useState(false);
+  useEffect(() => {
+    function check() { setIsMobileView(window.innerWidth < 768); }
+    check();
+    window.addEventListener("resize", check);
+    return () => window.removeEventListener("resize", check);
+  }, []);
   const [showCelebration, setShowCelebration] = useState(
     initialGame?.winner !== null && initialGame?.winner !== undefined,
   );
@@ -389,7 +397,11 @@ export default function TvBoard({
       ? 1
       : 2;
 
-  const isPortrait = user.tvOrientation === "PORTRAIT";
+  // على الجوال: عكس الاتجاه (PORTRAIT → landscape / LANDSCAPE → portrait)
+  // على الكمبيوتر: الإعداد العادي
+  const isPortrait = isMobileView
+    ? user.tvOrientation === "LANDSCAPE"
+    : user.tvOrientation === "PORTRAIT";
   const showChat = user.tvShowChat && !!user.tvChatUrl;
   // الدونيشن native — يظهر فقط لما تصل دونيشن فعلية (لا iframe)
   const showDonations = user.tvShowDonations && recentDonations.length > 0;
@@ -402,10 +414,6 @@ export default function TvBoard({
   const gameContent = (
     <>
       <Header user={user} game={game} connected={connected} />
-
-      {showDonations && (
-        <NativeDonationStrip donations={recentDonations} accent={accent} />
-      )}
 
       <div className="flex-1 flex items-stretch px-2 md:px-6 gap-2 md:gap-6">
         <div className={showChat ? "flex-[2]" : "flex-1"}>
@@ -445,8 +453,20 @@ export default function TvBoard({
         )}
       </div>
 
-      {user.tvShowRounds && lastRounds.length > 0 && (
-        <RoundsStrip rounds={lastRounds} accent={accent} />
+      {/* شريط سفلي: الدونيشن (يسار) + الجولات (يمين) في صف واحد */}
+      {(showDonations || (user.tvShowRounds && lastRounds.length > 0)) && (
+        <div className="flex items-center gap-2 px-3 md:px-8 pb-2 md:pb-4">
+          {showDonations && (
+            <div className="flex-1 min-w-0">
+              <NativeDonationStrip donations={recentDonations} accent={accent} />
+            </div>
+          )}
+          {user.tvShowRounds && lastRounds.length > 0 && (
+            <div className="shrink-0">
+              <RoundsStrip rounds={lastRounds} accent={accent} />
+            </div>
+          )}
+        </div>
       )}
 
       {banners.length > 0 && <TvBannerBar banners={banners} />}
@@ -558,10 +578,9 @@ function Header({
 function RoundsStrip({ rounds, accent }: { rounds: Round[]; accent: string }) {
   if (rounds.length === 0) return null;
   return (
-    <div className="px-3 md:px-8 pb-2 md:pb-4">
-      <div className="bg-navy/60 rounded-xl md:rounded-2xl p-2 md:p-4 border border-white/5">
-        <div className="text-xs text-white/40 mb-1 md:mb-2">آخر الجولات</div>
-        <div className="flex gap-1.5 md:gap-2 overflow-x-auto">
+    <div className="bg-navy/60 rounded-xl md:rounded-2xl p-2 md:p-3 border border-white/5">
+      <div className="text-xs text-white/40 mb-1">آخر الجولات</div>
+      <div className="flex gap-1.5 md:gap-2 overflow-x-auto">
           {rounds.map((r) => (
             <div
               key={r.id}
@@ -576,7 +595,6 @@ function RoundsStrip({ rounds, accent }: { rounds: Round[]; accent: string }) {
             </div>
           ))}
         </div>
-      </div>
     </div>
   );
 }
@@ -711,7 +729,7 @@ function NativeDonationStrip({
     : [...donations, ...donations];
 
   return (
-    <div className="mx-3 md:mx-8 mb-2 overflow-hidden">
+    <div className="overflow-hidden">
       <div
         className="rounded-xl flex items-center h-10 md:h-12"
         style={{
