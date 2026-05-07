@@ -87,6 +87,7 @@ export default function TvBoard({
   const [pops, setPops] = useState<FloatPop[]>([]);
   const [alertQueue, setAlertQueue] = useState<TvAlert[]>([]);
   const [activeAlert, setActiveAlert] = useState<TvAlert | null>(null);
+  const [alertPaused, setAlertPaused] = useState(false);
   const alertTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const [showCelebration, setShowCelebration] = useState(
     initialGame?.winner !== null && initialGame?.winner !== undefined,
@@ -236,14 +237,21 @@ export default function TvBoard({
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [user.tvStreamlabsToken]);
 
-  // ─── معالجة طابور التنبيهات — واحد تلو الآخر ───
+  // ─── معالجة طابور التنبيهات — واحد تلو الآخر مع فجوة بينهما ───
+  const ALERT_SHOW_MS = 12_000; // مدة عرض كل تنبيه
+  const ALERT_GAP_MS  = 1_200;  // فجوة بين تنبيه والتالي
+
   useEffect(() => {
-    if (alertQueue.length === 0 || activeAlert) return;
+    if (alertQueue.length === 0 || activeAlert || alertPaused) return;
     const next = alertQueue[0];
     setAlertQueue((q) => q.slice(1));
     setActiveAlert(next);
-    alertTimerRef.current = setTimeout(() => setActiveAlert(null), 7000);
-  }, [alertQueue, activeAlert]);
+    alertTimerRef.current = setTimeout(() => {
+      setActiveAlert(null);
+      setAlertPaused(true);
+      setTimeout(() => setAlertPaused(false), ALERT_GAP_MS);
+    }, ALERT_SHOW_MS);
+  }, [alertQueue, activeAlert, alertPaused]);
 
   // المتغيرات اللازمة للستايل
   const accent = user.tvAccentColor || "#f5b042";
@@ -801,9 +809,9 @@ function TvAlertBadge({ alert, accent }: { alert: TvAlert; accent: string }) {
       <style>{`
         @keyframes alertDrop {
           0%   { transform: translateX(-50%) translateY(-120%) scale(0.8); opacity: 0; }
-          18%  { transform: translateX(-50%) translateY(0)     scale(1.04); opacity: 1; }
-          25%  { transform: translateX(-50%) translateY(0)     scale(1);    opacity: 1; }
-          75%  { transform: translateX(-50%) translateY(0)     scale(1);    opacity: 1; }
+          12%  { transform: translateX(-50%) translateY(0)     scale(1.04); opacity: 1; }
+          18%  { transform: translateX(-50%) translateY(0)     scale(1);    opacity: 1; }
+          80%  { transform: translateX(-50%) translateY(0)     scale(1);    opacity: 1; }
           100% { transform: translateX(-50%) translateY(-120%) scale(0.8);  opacity: 0; }
         }
         @keyframes alertGlow {
@@ -822,7 +830,7 @@ function TvAlertBadge({ alert, accent }: { alert: TvAlert; accent: string }) {
           top: "8%",
           left: "50%",
           zIndex: 48,
-          animation: "alertDrop 7s cubic-bezier(.22,.68,0,1.2) forwards",
+          animation: "alertDrop 12s cubic-bezier(.22,.68,0,1.2) forwards",
           pointerEvents: "none",
           width: "min(36rem, 90vw)",
         }}
@@ -834,7 +842,7 @@ function TvAlertBadge({ alert, accent }: { alert: TvAlert; accent: string }) {
             borderRadius: "1.5rem",
             overflow: "hidden",
             backdropFilter: "blur(20px)",
-            animation: "alertGlow 1.8s ease-in-out 3",
+            animation: "alertGlow 1.8s ease-in-out 4",
           }}
         >
           {/* الصورة / GIF */}
@@ -905,7 +913,7 @@ function TvAlertBadge({ alert, accent }: { alert: TvAlert; accent: string }) {
               style={{
                 height: "100%",
                 background: accent,
-                animation: "alertBar 7s linear forwards",
+                animation: "alertBar 12s linear forwards",
               }}
             />
           </div>
