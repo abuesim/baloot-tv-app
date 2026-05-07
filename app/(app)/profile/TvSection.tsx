@@ -8,10 +8,12 @@ export default function TvSection({
   code,
   tvUrl,
   qrSvg,
+  canRegenerate = true,
 }: {
   code: string | null;
   tvUrl: string | null;
   qrSvg: string | null;
+  canRegenerate?: boolean;
 }) {
   const router = useRouter();
   const [isPending, startTransition] = useTransition();
@@ -34,6 +36,7 @@ export default function TvSection({
   }
 
   if (!code || !tvUrl) {
+    if (!canRegenerate) return null;
     return (
       <div className="text-center py-4">
         <button
@@ -99,13 +102,15 @@ export default function TvSection({
           >
             ↗ افتح الشاشة
           </a>
-          <button
-            onClick={regenerate}
-            disabled={isPending}
-            className="bg-white/10 hover:bg-white/20 px-4 py-2 rounded-xl text-sm"
-          >
-            🔄 توليد كود جديد
-          </button>
+          {canRegenerate && (
+            <button
+              onClick={regenerate}
+              disabled={isPending}
+              className="bg-white/10 hover:bg-white/20 px-4 py-2 rounded-xl text-sm"
+            >
+              🔄 توليد كود جديد
+            </button>
+          )}
         </div>
       </div>
     </div>

@@ -23,7 +23,7 @@ function teamPlayers(game: Game, team: 1 | 2) {
   return game.participants.filter((p) => p.team === team).map((p) => p.player);
 }
 
-function GameRow({ game, onDeleted }: { game: Game; onDeleted: (id: string) => void }) {
+function GameRow({ game, canDelete, onDeleted }: { game: Game; canDelete: boolean; onDeleted: (id: string) => void }) {
   const [confirming, setConfirming] = useState(false);
   const [isPending, startTransition] = useTransition();
 
@@ -93,8 +93,8 @@ function GameRow({ game, onDeleted }: { game: Game; onDeleted: (id: string) => v
         </div>
       </Link>
 
-      {/* Delete button */}
-      {!confirming ? (
+      {/* Delete button — مخفي للمستخدم الفرعي */}
+      {canDelete && !confirming ? (
         <button
           onClick={(e) => { e.preventDefault(); setConfirming(true); }}
           className="absolute top-3 left-3 text-white/20 hover:text-red-400 transition-colors p-1 rounded"
@@ -107,7 +107,7 @@ function GameRow({ game, onDeleted }: { game: Game; onDeleted: (id: string) => v
             <path d="M9 6V4a1 1 0 0 1 1-1h4a1 1 0 0 1 1 1v2" />
           </svg>
         </button>
-      ) : (
+      ) : canDelete && confirming ? (
         <div className="absolute inset-0 bg-navy/95 rounded-2xl flex items-center justify-center gap-3 z-10">
           <span className="text-sm text-white/80">حذف الصكة؟</span>
           <button
@@ -125,12 +125,18 @@ function GameRow({ game, onDeleted }: { game: Game; onDeleted: (id: string) => v
             إلغاء
           </button>
         </div>
-      )}
+      ) : null}
     </div>
   );
 }
 
-export function RecentGamesList({ initialGames }: { initialGames: Game[] }) {
+export function RecentGamesList({
+  initialGames,
+  canDelete = true,
+}: {
+  initialGames: Game[];
+  canDelete?: boolean;
+}) {
   const [games, setGames] = useState(initialGames);
   const router = useRouter();
 
@@ -150,7 +156,7 @@ export function RecentGamesList({ initialGames }: { initialGames: Game[] }) {
   return (
     <div className="space-y-3">
       {games.map((g) => (
-        <GameRow key={g.id} game={g} onDeleted={handleDeleted} />
+        <GameRow key={g.id} game={g} canDelete={canDelete} onDeleted={handleDeleted} />
       ))}
     </div>
   );

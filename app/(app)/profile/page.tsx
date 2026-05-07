@@ -8,8 +8,12 @@ import TvSection from "./TvSection";
 
 export default async function ProfilePage() {
   const me = await requireUser();
+  const isSubUser = !!me.parentUserId;
+
+  // المستخدم الفرعي يرى بيانات الحساب الأصلي (إعدادات الحاسبة + كود TV)
+  const profileId = me.parentUserId ?? me.id;
   const userRow = await db.user.findUnique({
-    where: { id: me.id },
+    where: { id: profileId },
     select: {
       id: true,
       username: true,
@@ -32,18 +36,26 @@ export default async function ProfilePage() {
 
   return (
     <div className="space-y-6">
-      <section className="bg-navy rounded-2xl p-6 border border-white/10">
-        <h2 className="font-bold text-lg mb-4">المعلومات الأساسية</h2>
-        <ProfileForm
-          displayName={userRow.displayName}
-          tvOrientation={userRow.tvOrientation}
-          calculatorStyle={userRow.calculatorStyle}
-        />
-      </section>
+      {/* المستخدم الفرعي لا يرى إعدادات الملف الشخصي */}
+      {!isSubUser && (
+        <section className="bg-navy rounded-2xl p-6 border border-white/10">
+          <h2 className="font-bold text-lg mb-4">المعلومات الأساسية</h2>
+          <ProfileForm
+            displayName={userRow.displayName}
+            tvOrientation={userRow.tvOrientation}
+            calculatorStyle={userRow.calculatorStyle}
+          />
+        </section>
+      )}
 
       <section className="bg-navy rounded-2xl p-6 border border-white/10">
         <h2 className="font-bold text-lg mb-4">شاشة التلفزيون — رابط الاتصال</h2>
-        <TvSection code={userRow.tvCode} tvUrl={tvUrl} qrSvg={qr} />
+        <TvSection
+          code={userRow.tvCode}
+          tvUrl={tvUrl}
+          qrSvg={qr}
+          canRegenerate={!isSubUser}
+        />
       </section>
 
       <section className="bg-navy rounded-2xl p-6 border border-white/10">

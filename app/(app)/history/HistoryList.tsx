@@ -63,7 +63,7 @@ function statusBadge(game: Game) {
   return null;
 }
 
-function GameRow({ game, onDeleted }: { game: Game; onDeleted: (id: string) => void }) {
+function GameRow({ game, canDelete, onDeleted }: { game: Game; canDelete: boolean; onDeleted: (id: string) => void }) {
   const [confirming, setConfirming] = useState(false);
   const [isPending, startTransition] = useTransition();
 
@@ -115,8 +115,8 @@ function GameRow({ game, onDeleted }: { game: Game; onDeleted: (id: string) => v
         </div>
       </Link>
 
-      {/* زر الحذف */}
-      {!confirming ? (
+      {/* زر الحذف — مخفي للمستخدم الفرعي */}
+      {canDelete && !confirming && (
         <button
           onClick={(e) => { e.preventDefault(); setConfirming(true); }}
           className="absolute top-2.5 left-2.5 text-white/15 hover:text-red-400 transition-colors p-1 rounded"
@@ -129,7 +129,8 @@ function GameRow({ game, onDeleted }: { game: Game; onDeleted: (id: string) => v
             <path d="M9 6V4a1 1 0 0 1 1-1h4a1 1 0 0 1 1 1v2" />
           </svg>
         </button>
-      ) : (
+      )}
+      {canDelete && confirming && (
         <div className="absolute inset-0 bg-navy/95 rounded-xl flex items-center justify-center gap-3 z-10">
           <span className="text-sm text-white/80">تحذف الصكة؟</span>
           <button
@@ -152,7 +153,7 @@ function GameRow({ game, onDeleted }: { game: Game; onDeleted: (id: string) => v
   );
 }
 
-export function HistoryList({ initialGames }: { initialGames: Game[] }) {
+export function HistoryList({ initialGames, canDelete = true }: { initialGames: Game[]; canDelete?: boolean }) {
   const [games, setGames] = useState(initialGames);
   const router = useRouter();
 
@@ -184,7 +185,7 @@ export function HistoryList({ initialGames }: { initialGames: Game[] }) {
           </div>
           <div className="space-y-2">
             {group.games.map((g) => (
-              <GameRow key={g.id} game={g} onDeleted={handleDeleted} />
+              <GameRow key={g.id} game={g} canDelete={canDelete} onDeleted={handleDeleted} />
             ))}
           </div>
         </div>

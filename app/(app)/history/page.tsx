@@ -79,7 +79,7 @@ export default async function HistoryPage({
         </div>
       </div>
 
-      <HistoryList initialGames={games} />
+      <HistoryList initialGames={games} canDelete={!user.parentUserId} />
     </div>
   );
 }
