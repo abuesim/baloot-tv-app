@@ -228,7 +228,8 @@ export default function TvBoard({
     ["--tv-accent" as never]: accent,
   };
 
-  const showAlert = user.tvShowAlert && !!user.tvAlertUrl;
+  // AlertBoxOverlay (iframe) أُزيل — التنبيهات تصل نيتيف عبر Socket.IO
+  const showAlert = false;
 
   // حالة بدون صكة
   if (!game) {
