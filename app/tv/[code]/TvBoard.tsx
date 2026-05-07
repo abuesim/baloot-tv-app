@@ -201,8 +201,10 @@ export default function TvBoard({
   // ─── Streamlabs Socket.IO — اتصال مباشر لاستقبال التنبيهات ───
   // نحتفظ بـ ref للـ socket حتى نقدر نقطعه صح في الـ cleanup
   const slSocketRef = useRef<{ disconnect: () => void } | null>(null);
-  // deduplication: نتجاهل نفس الحدث إذا جاء مرتين خلال 5 ثوانٍ
-  const recentKeysRef = useRef<Set<string>>(new Set());
+  // deduplication: نتجاهل نفس الحدث إذا جاء مرتين
+  const recentKeysRef  = useRef<Set<string>>(new Set());
+  // وقت آخر اتصال — نتجاهل أي حدث يصل خلال أول 3 ثواني (replay من Streamlabs)
+  const slConnectedAtRef = useRef(0);
 
   useEffect(() => {
     const token = user.tvStreamlabsToken;
@@ -221,6 +223,11 @@ export default function TvBoard({
       // نحفظ المرجع فوراً حتى يقدر الـ cleanup يقطعه
       slSocketRef.current = socket;
 
+      // نسجل وقت الاتصال — أي حدث قبل 3 ثوانٍ منه هو replay نتجاهله
+      socket.on("connect", () => {
+        slConnectedAtRef.current = Date.now();
+      });
+
       socket.on("event", (data: {
         type?: string;
         for?: string;
@@ -233,6 +240,9 @@ export default function TvBoard({
           sound_href?: string;
         }[];
       }) => {
+        // تجاهل أي حدث يصل في أول 3 ثوانٍ بعد الاتصال — هذه replays من Streamlabs
+        if (Date.now() - slConnectedAtRef.current < 3_000) return;
+
         const msg = data.message?.[0] ?? {};
 
         // فلتر: فقط الأحداث الحقيقية — نتجاهل alertbox-test وأي حدث إعدادات
