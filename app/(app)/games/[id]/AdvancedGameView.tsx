@@ -153,7 +153,7 @@ export default function AdvancedGameView({
       setActiveSide(null);
       // أنيميشن تأكيد التسجيل — يختفي بعد 3 ثواني
       setFlashScore({ us: t1, them: t2, round: nextRound });
-      setTimeout(() => setFlashScore(null), 3000);
+      setTimeout(() => setFlashScore(null), 6000);
       router.refresh();
     });
   }
@@ -824,7 +824,7 @@ function ScoreFlash({
           backdropFilter: "blur(22px)",
           border: "1px solid rgba(245,176,66,0.30)",
           boxShadow: "0 12px 60px rgba(0,0,0,0.75), 0 0 0 1px rgba(255,255,255,0.05) inset",
-          animation: "scoreFlashIn 3s cubic-bezier(0.22,1,0.36,1) forwards",
+          animation: "scoreFlashIn 6s cubic-bezier(0.22,1,0.36,1) forwards",
         }}
       >
         {/* رقم الجولة + علامة ✓ */}
