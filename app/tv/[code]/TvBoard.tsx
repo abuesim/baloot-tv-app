@@ -723,8 +723,13 @@ function TvWinCelebration({
   );
 }
 
-/** يمرّر الرابط عبر الـ proxy لإزالة رؤوس X-Frame-Options و CSP frame-ancestors */
+/**
+ * يمرّر الرابط عبر الـ proxy لإزالة رؤوس X-Frame-Options و CSP frame-ancestors.
+ * استثناء: overlay.creators.sa مصمّمة للـ OBS Browser Source وما ترسل X-Frame-Options،
+ * لذا نحمّلها مباشرةً حتى لا تتكسر الـ WebSocket/API connections في الـ proxy.
+ */
 function tvProxy(url: string) {
+  if (url.includes("overlay.creators.sa")) return url;
   return `/api/tv-proxy?url=${encodeURIComponent(url)}`;
 }
 
@@ -742,7 +747,8 @@ function ChatPanel({ url, variant }: { url: string; variant: "side" | "bottom" }
       <iframe
         src={tvProxy(url)}
         className="w-full h-[calc(100%-32px)] border-0 bg-transparent"
-        sandbox="allow-scripts allow-same-origin allow-popups allow-forms allow-storage-access-by-user-activation"
+        allow="autoplay; fullscreen"
+        sandbox="allow-scripts allow-same-origin allow-popups allow-forms allow-modals allow-orientation-lock allow-presentation allow-storage-access-by-user-activation"
       />
     </div>
   );

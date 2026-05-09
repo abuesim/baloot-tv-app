@@ -94,6 +94,19 @@ export async function GET(req: NextRequest) {
     if (cleaned) out.set("content-security-policy", cleaned);
   }
 
+  // لو الاستجابة HTML — نحقن <base> لإصلاح الـ relative URLs
+  // بدونها تُحمَّل الملفات من domain خادمنا بدل overlay.creators.sa
+  if (ct?.includes("text/html")) {
+    const html = await upstream.text();
+    const origin = new URL(target).origin;
+    // نحقن <base href="..."> مباشرةً بعد <head> أو في بداية الصفحة
+    const fixed = /<head/i.test(html)
+      ? html.replace(/(<head[^>]*>)/i, `$1<base href="${origin}/">`)
+      : `<base href="${origin}/">${html}`;
+    out.set("content-type", "text/html; charset=utf-8");
+    return new Response(fixed, { status: upstream.status, headers: out });
+  }
+
   return new Response(upstream.body, {
     status: upstream.status,
     headers: out,
