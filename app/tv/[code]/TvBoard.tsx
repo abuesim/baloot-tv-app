@@ -347,8 +347,8 @@ export default function TvBoard({
     ["--tv-accent" as never]: accent,
   };
 
-  // Streamlabs iframe مرفوض من المتصفح (X-Frame-Options) — التنبيهات تصل عبر Socket.IO
-  const showAlert = false;
+  // overlay.creators.sa و streamelements تشتغل عبر الـ proxy — نفعّل الـ iframe
+  const showAlert = user.tvShowAlert && !!user.tvAlertUrl;
 
   // حالة بدون صكة
   if (!game) {
@@ -402,7 +402,7 @@ export default function TvBoard({
         {banners.length > 0 && <TvBannerBar banners={banners} />}
 
         {/* صندوق التنبيهات — طبقة شفافة فوق كل شيء */}
-        {showAlert && <AlertBoxOverlay url={user.tvAlertUrl!} />}
+        {showAlert && <AlertBoxOverlay url={tvProxy(user.tvAlertUrl!)} />}
 
         {/* تنبيه Streamlabs النيتيف */}
         {activeAlert && (
@@ -544,7 +544,7 @@ export default function TvBoard({
         >
           {gameContent}
           {/* صندوق التنبيهات داخل المحتوى المدوَّر حتى يتوافق مع اتجاه الشاشة */}
-          {showAlert && <AlertBoxOverlay url={user.tvAlertUrl!} />}
+          {showAlert && <AlertBoxOverlay url={tvProxy(user.tvAlertUrl!)} />}
         </div>
       </div>
     );
@@ -558,7 +558,7 @@ export default function TvBoard({
     >
       {gameContent}
       {/* صندوق التنبيهات — طبقة شفافة فوق المحتوى */}
-      {showAlert && <AlertBoxOverlay url={user.tvAlertUrl!} />}
+      {showAlert && <AlertBoxOverlay url={tvProxy(user.tvAlertUrl!)} />}
     </div>
   );
 }
