@@ -12,6 +12,8 @@ import {
   Camera,
   Pencil,
   Trash2,
+  Volume2,
+  VolumeX,
 } from "lucide-react";
 import { PlayerAvatar } from "@/components/PlayerAvatar";
 import {
@@ -47,18 +49,6 @@ type Game = {
 
 const QUICK_CHIPS = [16, 18, 26, 30];
 
-/** نطق النص بالعربي عبر Web Speech API */
-function speak(text: string) {
-  if (typeof window === "undefined") return;
-  if (!("speechSynthesis" in window)) return;
-  window.speechSynthesis.cancel();
-  const u = new SpeechSynthesisUtterance(text);
-  u.lang  = "ar-SA";
-  u.rate  = 0.92;
-  u.pitch = 1.0;
-  window.speechSynthesis.speak(u);
-}
-
 export default function AdvancedGameView({
   game: initial,
   tvCode,
@@ -73,6 +63,44 @@ export default function AdvancedGameView({
   const router = useRouter();
   const [game, setGame] = useState<Game>(initial);
   useEffect(() => setGame(initial), [initial]);
+
+  // ── نطق النشرة ──────────────────────────────────────────────
+  const [ttsOn, setTtsOn] = useState(() => {
+    if (typeof window === "undefined") return true;
+    return localStorage.getItem("baloot_tts") !== "off";
+  });
+  const ttsRef = useRef(ttsOn);
+
+  function toggleTts() {
+    const next = !ttsRef.current;
+    ttsRef.current = next;
+    setTtsOn(next);
+    localStorage.setItem("baloot_tts", next ? "on" : "off");
+    if (!next) window.speechSynthesis?.cancel();
+  }
+
+  /** ينطق نتيجة الجولة فوراً، ثم بعد 2 ث ينطق المجموع */
+  function speakRound(t1: number, t2: number, total1: number, total2: number) {
+    if (!ttsRef.current) return;
+    if (typeof window === "undefined" || !("speechSynthesis" in window)) return;
+    window.speechSynthesis.cancel();
+
+    const u1 = new SpeechSynthesisUtterance(`لنا ${t1}.. لهم ${t2}`);
+    u1.lang  = "ar-SA";
+    u1.rate  = 0.9;
+    u1.onend = () => {
+      setTimeout(() => {
+        if (!ttsRef.current) return;
+        const u2 = new SpeechSynthesisUtterance(
+          `المجموع.. لنا ${total1}.. لهم ${total2}`
+        );
+        u2.lang = "ar-SA";
+        u2.rate = 0.9;
+        window.speechSynthesis.speak(u2);
+      }, 2000);
+    };
+    window.speechSynthesis.speak(u1);
+  }
 
   // كشف لحظة الفوز
   const prevWinnerRef = useRef<number | null>(initial.winner);
@@ -132,9 +160,8 @@ export default function AdvancedGameView({
   const themScore = game.team2Score + (Number(themInput) || 0);
 
   function clickChip(value: number) {
-    if (activeSide === "us")   setUsInput(String(value));
+    if (activeSide === "us")        setUsInput(String(value));
     else if (activeSide === "them") setThemInput(String(value));
-    speak(String(value));
   }
 
   function record() {
@@ -167,7 +194,7 @@ export default function AdvancedGameView({
       // أنيميشن تأكيد التسجيل — يختفي بعد 3 ثواني
       setFlashScore({ us: t1, them: t2, round: nextRound });
       setTimeout(() => setFlashScore(null), 6000);
-      speak(`لنا ${t1} .. لهم ${t2}`);
+      speakRound(t1, t2, game.team1Score + t1, game.team2Score + t2);
       router.refresh();
     });
   }
@@ -224,13 +251,28 @@ export default function AdvancedGameView({
         <h1 className="text-xl font-bold">
           {game.mode === "MASHDOOD" ? "بلوت — مشدود" : "حاسبة بلوت"}
         </h1>
-        <button
-          onClick={() => setShowSettings(true)}
-          className="w-10 h-10 rounded-full border border-white/15 bg-white/5 flex items-center justify-center"
-          title="الإعدادات"
-        >
-          <Settings size={18} />
-        </button>
+        <div className="flex items-center gap-2">
+          {/* زر تفعيل/إيقاف النطق */}
+          <button
+            onClick={toggleTts}
+            className={`w-10 h-10 rounded-full border flex items-center justify-center transition ${
+              ttsOn
+                ? "border-amber-500/60 bg-amber-500/15 text-amber-400"
+                : "border-white/15 bg-white/5 text-white/40"
+            }`}
+            title={ttsOn ? "إيقاف النطق" : "تفعيل النطق"}
+          >
+            {ttsOn ? <Volume2 size={17} /> : <VolumeX size={17} />}
+          </button>
+
+          <button
+            onClick={() => setShowSettings(true)}
+            className="w-10 h-10 rounded-full border border-white/15 bg-white/5 flex items-center justify-center"
+            title="الإعدادات"
+          >
+            <Settings size={18} />
+          </button>
+        </div>
       </div>
 
       {/* Timer + undo */}
