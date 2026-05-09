@@ -82,22 +82,16 @@ export async function GET(req: NextRequest) {
   if (ct) out.set("content-type", ct);
   out.set("cache-control", "no-cache, no-store");
 
-  // X-Frame-Options — نحذفه تماماً (لا نمرره للمتصفح)
-  // Content-Security-Policy — نحذفه كلياً لأنه قد يحتوي على script-src 'self'
-  // أو default-src 'self' يمنع تحميل الملفات من الـ domain الأصلي بعد الـ proxy
-  // (الأمان محفوظ لأن الـ ALLOWED_HOSTS يقصر الطلبات على نطاقات موثوقة)
-
-  // لو الاستجابة HTML — نحقن <base> لإصلاح الـ relative URLs
-  // بدونها تُحمَّل الملفات من domain خادمنا بدل overlay.creators.sa
-  if (ct?.includes("text/html")) {
-    const html = await upstream.text();
-    const origin = new URL(target).origin;
-    // نحقن <base href="..."> مباشرةً بعد <head> أو في بداية الصفحة
-    const fixed = /<head/i.test(html)
-      ? html.replace(/(<head[^>]*>)/i, `$1<base href="${origin}/">`)
-      : `<base href="${origin}/">${html}`;
-    out.set("content-type", "text/html; charset=utf-8");
-    return new Response(fixed, { status: upstream.status, headers: out });
+  // X-Frame-Options — نحذفه تماماً (لا نمرره)
+  // Content-Security-Policy — نزيل directive الـ frame-ancestors فقط، نبقي الباقي
+  const csp = upstream.headers.get("content-security-policy");
+  if (csp) {
+    const cleaned = csp
+      .split(";")
+      .map((d) => d.trim())
+      .filter((d) => !d.toLowerCase().startsWith("frame-ancestors"))
+      .join("; ");
+    if (cleaned) out.set("content-security-policy", cleaned);
   }
 
   return new Response(upstream.body, {
