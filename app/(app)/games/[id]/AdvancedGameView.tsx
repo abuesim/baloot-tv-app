@@ -47,6 +47,18 @@ type Game = {
 
 const QUICK_CHIPS = [16, 18, 26, 30];
 
+/** نطق النص بالعربي عبر Web Speech API */
+function speak(text: string) {
+  if (typeof window === "undefined") return;
+  if (!("speechSynthesis" in window)) return;
+  window.speechSynthesis.cancel();
+  const u = new SpeechSynthesisUtterance(text);
+  u.lang  = "ar-SA";
+  u.rate  = 0.92;
+  u.pitch = 1.0;
+  window.speechSynthesis.speak(u);
+}
+
 export default function AdvancedGameView({
   game: initial,
   tvCode,
@@ -120,8 +132,9 @@ export default function AdvancedGameView({
   const themScore = game.team2Score + (Number(themInput) || 0);
 
   function clickChip(value: number) {
-    if (activeSide === "us") setUsInput(String(value));
+    if (activeSide === "us")   setUsInput(String(value));
     else if (activeSide === "them") setThemInput(String(value));
+    speak(String(value));
   }
 
   function record() {
@@ -154,6 +167,7 @@ export default function AdvancedGameView({
       // أنيميشن تأكيد التسجيل — يختفي بعد 3 ثواني
       setFlashScore({ us: t1, them: t2, round: nextRound });
       setTimeout(() => setFlashScore(null), 6000);
+      speak(`لنا ${t1} .. لهم ${t2}`);
       router.refresh();
     });
   }
