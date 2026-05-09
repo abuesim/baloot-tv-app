@@ -194,33 +194,29 @@ export default function TvStudioForm({
         <ToggleRow
           checked={showDonations}
           onChange={setShowDonations}
-          label="إشعارات الدونيشن"
-          desc="iframe لإشعارات التبرعات"
+          label="💰 شريط الدونيشن"
+          desc="يظهر شريط تمرير أسفل الشاشة بأسماء المتبرعين — يصل تلقائياً عبر Streamlabs"
         />
-        {showDonations && (
-          <input
-            name="tvDonationUrl"
-            defaultValue={initial.tvDonationUrl ?? ""}
-            placeholder="https://..."
-            dir="ltr"
-            className="w-full bg-navy-light border border-white/10 rounded-lg px-3 py-2 text-sm mr-8"
-          />
-        )}
 
         <ToggleRow
           checked={showAlert}
           onChange={setShowAlert}
-          label="صندوق التنبيهات (Alert Box)"
-          desc="يظهر فوق الشاشة بخلفية شفافة — متوافق مع Streamlabs و StreamElements"
+          label="🎁 شريط التنبيهات"
+          desc="هدايا TikTok، اشتراكات، متابعين — overlay.creators.sa أو Streamlabs أو StreamElements"
         />
         {showAlert && (
-          <input
-            name="tvAlertUrl"
-            defaultValue={initial.tvAlertUrl ?? ""}
-            placeholder="https://streamlabs.com/alert-box/v3/..."
-            dir="ltr"
-            className="w-full bg-navy-light border border-white/10 rounded-lg px-3 py-2 text-sm mr-8"
-          />
+          <div className="mr-8 space-y-2">
+            <input
+              name="tvAlertUrl"
+              defaultValue={initial.tvAlertUrl ?? ""}
+              placeholder="https://overlay.creators.sa/alerts/CREATORS_..."
+              dir="ltr"
+              className="w-full bg-navy-light border border-white/10 rounded-lg px-3 py-2 text-sm"
+            />
+            <p className="text-xs text-white/40">
+              💡 يظهر فوق الشاشة بخلفية شفافة — مثل OBS Browser Source
+            </p>
+          </div>
         )}
       </div>
 
