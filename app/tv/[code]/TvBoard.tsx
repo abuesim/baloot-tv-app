@@ -94,8 +94,13 @@ export default function TvBoard({
   >([]);
   // استشعار حجم الشاشة لعكس الاتجاه على الجوال
   const [isMobileView, setIsMobileView] = useState(false);
+  // هل الشاشة الفعلية أفقية (TV / كمبيوتر) ؟
+  const [isScreenLandscape, setIsScreenLandscape] = useState(true);
   useEffect(() => {
-    function check() { setIsMobileView(window.innerWidth < 768); }
+    function check() {
+      setIsMobileView(window.innerWidth < 768);
+      setIsScreenLandscape(window.innerWidth > window.innerHeight);
+    }
     check();
     window.addEventListener("resize", check);
     return () => window.removeEventListener("resize", check);
@@ -401,11 +406,14 @@ export default function TvBoard({
       ? 1
       : 2;
 
-  // على الجوال: عكس الاتجاه (PORTRAIT → landscape / LANDSCAPE → portrait)
-  // على الكمبيوتر: الإعداد العادي
-  const isPortrait = isMobileView
-    ? user.tvOrientation === "LANDSCAPE"
-    : user.tvOrientation === "PORTRAIT";
+  // شاشة أفقية فعلية (TV / كمبيوتر landscape) → landscape دائماً بصرف النظر عن الإعداد
+  // جوال أفقي  → portrait (لأنه في يد اللاعب عادةً بالطول)
+  // جوال عمودي → حسب الإعداد مع الـ flip
+  const isPortrait = isScreenLandscape
+    ? false
+    : isMobileView
+      ? user.tvOrientation === "LANDSCAPE"
+      : user.tvOrientation === "PORTRAIT";
   const showChat = user.tvShowChat && !!user.tvChatUrl;
   // الدونيشن native — يظهر فقط لما تصل دونيشن فعلية (لا iframe)
   const showDonations = user.tvShowDonations && recentDonations.length > 0;
