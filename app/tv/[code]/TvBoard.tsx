@@ -968,7 +968,6 @@ function TvAlertBadge({ alert, accent, customSound }: { alert: TvAlert; accent: 
   const hasDonation = !!alert.amount && alert.amount !== "0";
 
   // ─── تشغيل الصوت عند ظهور التنبيه ───
-  // الأولوية: صوت مخصص من الاستوديو → صوت Streamlabs → لا صوت
   useEffect(() => {
     const url = customSound || alert.sound_href;
     if (!url) return;
@@ -989,15 +988,50 @@ function TvAlertBadge({ alert, accent, customSound }: { alert: TvAlert; accent: 
           100% { transform: translateX(-50%) translateY(-120%) scale(0.8);  opacity: 0; }
         }
         @keyframes alertGlow {
-          0%,100% { box-shadow: 0 0 20px 0px ${accent}44; }
-          50%      { box-shadow: 0 0 50px 12px ${accent}55; }
+          0%,100% { box-shadow: 0 0 30px 0px ${accent}55; }
+          50%      { box-shadow: 0 0 70px 18px ${accent}77; }
         }
         @keyframes alertBar {
           from { width: 100%; }
           to   { width: 0%; }
         }
+        @keyframes alertConfettiRise {
+          0%   { transform: translateY(110%) rotate(0deg);   opacity: 1; }
+          75%  { opacity: 1; }
+          100% { transform: translateY(-15%) rotate(600deg); opacity: 0; }
+        }
       `}</style>
 
+      {/* ─── كونفيتي يغطي كامل الشاشة ─── */}
+      <div
+        style={{
+          position: "fixed",
+          inset: 0,
+          zIndex: 47,
+          pointerEvents: "none",
+          overflow: "hidden",
+        }}
+      >
+        {TV_CONFETTI.map((p) => (
+          <div
+            key={p.id}
+            style={{
+              position: "absolute",
+              bottom: 0,
+              left: `${p.left}%`,
+              width: p.size,
+              height: p.size,
+              background: p.circle ? p.color : undefined,
+              border: !p.circle ? `${Math.ceil(p.size / 2)}px solid ${p.color}` : undefined,
+              borderRadius: p.circle ? "50%" : "3px",
+              // كل جزيء يتكرر مرتين ويكمل ضمن مدة التنبيه (12ث)
+              animation: `alertConfettiRise ${p.dur * 0.8}s ease-out ${p.delay * 0.35}s 2 both`,
+            }}
+          />
+        ))}
+      </div>
+
+      {/* ─── بادج التنبيه ─── */}
       <div
         style={{
           position: "absolute",
@@ -1006,16 +1040,16 @@ function TvAlertBadge({ alert, accent, customSound }: { alert: TvAlert; accent: 
           zIndex: 48,
           animation: "alertDrop 12s cubic-bezier(.22,.68,0,1.2) forwards",
           pointerEvents: "none",
-          width: "min(36rem, 90vw)",
+          width: "min(48rem, 94vw)",
         }}
       >
         <div
           style={{
-            background: "rgba(6,10,20,0.96)",
+            background: "rgba(6,10,20,0.97)",
             border: `2px solid ${accent}`,
-            borderRadius: "1.5rem",
+            borderRadius: "1.8rem",
             overflow: "hidden",
-            backdropFilter: "blur(20px)",
+            backdropFilter: "blur(24px)",
             animation: "alertGlow 1.8s ease-in-out 4",
           }}
         >
@@ -1028,7 +1062,7 @@ function TvAlertBadge({ alert, accent, customSound }: { alert: TvAlert; accent: 
               style={{
                 display: "block",
                 width: "100%",
-                maxHeight: "200px",
+                maxHeight: "220px",
                 objectFit: "contain",
                 background: "transparent",
               }}
@@ -1036,10 +1070,10 @@ function TvAlertBadge({ alert, accent, customSound }: { alert: TvAlert; accent: 
           )}
 
           {/* النص */}
-          <div className="px-6 py-4 text-center">
+          <div className="px-8 py-6 text-center">
             {/* نوع التنبيه */}
             <div
-              className="text-sm font-bold uppercase tracking-widest mb-1"
+              className="text-lg font-bold uppercase tracking-widest mb-2"
               style={{ color: `${accent}cc` }}
             >
               {meta.icon} {meta.label}
@@ -1050,7 +1084,7 @@ function TvAlertBadge({ alert, accent, customSound }: { alert: TvAlert; accent: 
               className="font-black leading-tight"
               style={{
                 color: accent,
-                fontSize: "clamp(1.6rem, 4vw, 3rem)",
+                fontSize: "clamp(2.4rem, 6vw, 5rem)",
               }}
             >
               {alert.name || "—"}
@@ -1059,10 +1093,10 @@ function TvAlertBadge({ alert, accent, customSound }: { alert: TvAlert; accent: 
             {/* المبلغ */}
             {hasDonation && (
               <div
-                className="font-black mt-1"
+                className="font-black mt-2"
                 style={{
                   color: "#fff",
-                  fontSize: "clamp(1.2rem, 3vw, 2rem)",
+                  fontSize: "clamp(1.8rem, 4.5vw, 3.5rem)",
                 }}
               >
                 {alert.amount}
@@ -1073,8 +1107,8 @@ function TvAlertBadge({ alert, accent, customSound }: { alert: TvAlert; accent: 
             {/* الرسالة */}
             {alert.message && (
               <div
-                className="text-white/70 mt-2 leading-snug line-clamp-2"
-                style={{ fontSize: "clamp(0.9rem, 2vw, 1.1rem)" }}
+                className="text-white/70 mt-3 leading-snug line-clamp-2"
+                style={{ fontSize: "clamp(1.05rem, 2.5vw, 1.5rem)" }}
               >
                 &ldquo;{alert.message}&rdquo;
               </div>
@@ -1082,7 +1116,7 @@ function TvAlertBadge({ alert, accent, customSound }: { alert: TvAlert; accent: 
           </div>
 
           {/* شريط countdown */}
-          <div style={{ height: "3px", background: `${accent}30` }}>
+          <div style={{ height: "4px", background: `${accent}30` }}>
             <div
               style={{
                 height: "100%",
