@@ -13,12 +13,31 @@ export const dynamic = "force-dynamic";
  */
 
 const ALLOWED_HOSTS = [
+  // ── Streamlabs / StreamElements ──
   "streamlabs.com",
   "streamelements.com",
-  "overlay.creators.sa",
+  "cdn.streamelements.com",
+  // ── KapChat / NightDev ──
   "nightdev.com",
   "kapchat.nightdev.com",
-  "cdn.streamelements.com",
+  // ── TikTok ──
+  "tiktok.com",
+  "www.tiktok.com",
+  "live.tiktok.com",
+  // ── TikTok Chat Overlays ──
+  "tikfinity.zerody.one",
+  "streamticker.com",
+  "tiktoklivechat.com",
+  "ownchat.me",
+  "own3d.pro",
+  "app.own3d.pro",
+  "streamchat.live",
+  "chat.overlay.gg",
+  "overlay.gg",
+  "touch.tiktok.com",
+  "webcast.tiktok.com",
+  // ── Local / custom ──
+  "overlay.creators.sa",
 ];
 
 function isAllowed(rawUrl: string): boolean {

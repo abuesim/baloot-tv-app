@@ -481,7 +481,7 @@ export default function TvBoard({
         </div>
 
         {showChat && (
-          <div className="w-32 sm:w-48 md:w-80 shrink-0">
+          <div className="w-48 sm:w-64 md:w-80 lg:w-96 xl:w-[26rem] shrink-0">
             <ChatPanel url={user.tvChatUrl!} variant="side" />
           </div>
         )}
@@ -742,7 +742,7 @@ function ChatPanel({ url, variant }: { url: string; variant: "side" | "bottom" }
       <iframe
         src={tvProxy(url)}
         className="w-full h-[calc(100%-32px)] border-0 bg-transparent"
-        sandbox="allow-scripts allow-same-origin allow-popups"
+        sandbox="allow-scripts allow-same-origin allow-popups allow-forms allow-storage-access-by-user-activation"
       />
     </div>
   );
