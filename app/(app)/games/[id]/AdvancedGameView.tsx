@@ -11,6 +11,7 @@ import {
   X,
   Camera,
   Pencil,
+  Trash2,
 } from "lucide-react";
 import { PlayerAvatar } from "@/components/PlayerAvatar";
 import {
@@ -654,7 +655,7 @@ function RoundsPreview({
   return (
     <div className="px-4 mt-6 mb-4">
       <div className="bg-[#0d0d0d] rounded-2xl border border-white/5 overflow-hidden">
-        <div className="grid grid-cols-3 px-6 py-2 text-white/60 text-xs">
+        <div className="grid grid-cols-3 px-6 py-2 text-white/60 text-sm">
           <div className="text-right">#</div>
           <div className="text-center">لنا</div>
           <div className="text-left">لهم</div>
@@ -662,7 +663,7 @@ function RoundsPreview({
         {visible.map((r) => (
           <div
             key={r.id}
-            className={`grid grid-cols-3 px-6 py-2 text-base border-t border-white/5 ${
+            className={`grid grid-cols-3 px-6 py-2.5 text-xl border-t border-white/5 ${
               r.number === 0 ? "bg-gold/5" : ""
             }`}
           >
@@ -751,7 +752,7 @@ function RoundsOverlay({
           {ascending.map((r) => (
             <div
               key={r.id}
-              className={`grid grid-cols-[auto_1fr_1fr_auto] gap-4 px-6 py-3 text-lg items-center border-b border-white/5 ${
+              className={`grid grid-cols-[auto_1fr_1fr_auto] gap-4 px-6 py-3 text-xl items-center border-b border-white/5 ${
                 r.number === 0 ? "bg-gold/5" : ""
               }`}
             >
@@ -761,14 +762,14 @@ function RoundsOverlay({
               <div className={`text-center tabular-nums ${r.number === 0 ? "text-gold/70" : ""}`}>{r.team1Score}</div>
               <div className={`text-center tabular-nums ${r.number === 0 ? "text-gold/70" : ""}`}>{r.team2Score}</div>
               <div>
-                {/* لا يمكن حذف جولة البداية */}
                 {!isOver && r.number > 0 && (
                   <button
                     disabled={isPending}
                     onClick={() => del(r.id, r.number)}
-                    className="text-xs text-red-400 hover:text-red-300"
+                    className="p-1.5 rounded-lg text-red-400/60 hover:text-red-400 hover:bg-red-400/10 transition disabled:opacity-30"
+                    title={`حذف الجولة ${r.number}`}
                   >
-                    حذف
+                    <Trash2 size={16} strokeWidth={2} />
                   </button>
                 )}
               </div>
@@ -801,14 +802,14 @@ function ScoreFlash({
   round: number;
 }) {
   return (
-    <div className="fixed inset-0 z-[60] pointer-events-none flex items-center justify-center">
+    <div className="fixed inset-x-0 top-0 z-[60] pointer-events-none flex items-start justify-center pt-10 px-4">
       <style>{`
         @keyframes scoreFlashIn {
-          0%   { opacity: 0; transform: scale(0.82) translateY(14px); }
-          14%  { opacity: 1; transform: scale(1.04) translateY(-2px); }
+          0%   { opacity: 0; transform: scale(0.86) translateY(-18px); }
+          14%  { opacity: 1; transform: scale(1.04) translateY(3px); }
           22%  { transform: scale(1) translateY(0); }
           70%  { opacity: 1; }
-          100% { opacity: 0; transform: scale(0.97) translateY(-6px); }
+          100% { opacity: 0; transform: scale(0.97) translateY(-8px); }
         }
         @keyframes checkPop {
           0%,100% { transform: scale(1); }
@@ -817,21 +818,21 @@ function ScoreFlash({
       `}</style>
 
       <div
-        className="relative text-center px-14 py-8 rounded-3xl overflow-hidden"
+        className="relative text-center px-16 py-9 rounded-3xl overflow-hidden w-full max-w-xs"
         style={{
-          background: "rgba(10,10,10,0.88)",
-          backdropFilter: "blur(18px)",
-          border: "1px solid rgba(245,176,66,0.25)",
-          boxShadow: "0 8px 60px rgba(0,0,0,0.7), 0 0 0 1px rgba(255,255,255,0.05) inset",
+          background: "rgba(10,10,10,0.92)",
+          backdropFilter: "blur(22px)",
+          border: "1px solid rgba(245,176,66,0.30)",
+          boxShadow: "0 12px 60px rgba(0,0,0,0.75), 0 0 0 1px rgba(255,255,255,0.05) inset",
           animation: "scoreFlashIn 3s cubic-bezier(0.22,1,0.36,1) forwards",
         }}
       >
         {/* رقم الجولة + علامة ✓ */}
-        <div className="flex items-center justify-center gap-2 mb-5">
-          <span className="text-sm text-white/40 tracking-widest uppercase">جولة</span>
-          <span className="text-sm font-black text-white/60 tabular-nums">{round}</span>
+        <div className="flex items-center justify-center gap-2 mb-6">
+          <span className="text-base text-white/40 tracking-widest">جولة</span>
+          <span className="text-base font-black text-white/60 tabular-nums">{round}</span>
           <span
-            className="text-gold text-base font-black"
+            className="text-gold text-lg font-black"
             style={{ animation: "checkPop 0.5s ease-out 0.15s both" }}
           >
             ✓
@@ -839,13 +840,13 @@ function ScoreFlash({
         </div>
 
         {/* النقاط */}
-        <div className="flex items-end justify-center gap-6">
+        <div className="flex items-end justify-center gap-8">
           <div className="text-center">
-            <div className="text-xs text-white/35 mb-1 tracking-wide">لنا</div>
+            <div className="text-sm text-white/35 mb-1 tracking-wide">لنا</div>
             <div
               className="tabular-nums font-black leading-none"
               style={{
-                fontSize: "clamp(3.5rem,14vw,5.5rem)",
+                fontSize: "clamp(4.5rem,18vw,7rem)",
                 background: "linear-gradient(160deg, #ffca6e 0%, #f5a623 100%)",
                 WebkitBackgroundClip: "text",
                 WebkitTextFillColor: "transparent",
@@ -856,13 +857,13 @@ function ScoreFlash({
             </div>
           </div>
 
-          <div className="text-white/20 text-3xl font-thin mb-3">—</div>
+          <div className="text-white/20 text-4xl font-thin mb-4">—</div>
 
           <div className="text-center">
-            <div className="text-xs text-white/35 mb-1 tracking-wide">لهم</div>
+            <div className="text-sm text-white/35 mb-1 tracking-wide">لهم</div>
             <div
               className="text-white tabular-nums font-black leading-none"
-              style={{ fontSize: "clamp(3.5rem,14vw,5.5rem)" }}
+              style={{ fontSize: "clamp(4.5rem,18vw,7rem)" }}
             >
               {them}
             </div>
