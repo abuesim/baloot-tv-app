@@ -82,17 +82,10 @@ export async function GET(req: NextRequest) {
   if (ct) out.set("content-type", ct);
   out.set("cache-control", "no-cache, no-store");
 
-  // X-Frame-Options — نحذفه تماماً
-  // Content-Security-Policy — نزيل directive الـ frame-ancestors فقط
-  const csp = upstream.headers.get("content-security-policy");
-  if (csp) {
-    const cleaned = csp
-      .split(";")
-      .map((d) => d.trim())
-      .filter((d) => !d.toLowerCase().startsWith("frame-ancestors"))
-      .join("; ");
-    if (cleaned) out.set("content-security-policy", cleaned);
-  }
+  // X-Frame-Options — نحذفه تماماً (لا نمرره للمتصفح)
+  // Content-Security-Policy — نحذفه كلياً لأنه قد يحتوي على script-src 'self'
+  // أو default-src 'self' يمنع تحميل الملفات من الـ domain الأصلي بعد الـ proxy
+  // (الأمان محفوظ لأن الـ ALLOWED_HOSTS يقصر الطلبات على نطاقات موثوقة)
 
   // لو الاستجابة HTML — نحقن <base> لإصلاح الـ relative URLs
   // بدونها تُحمَّل الملفات من domain خادمنا بدل overlay.creators.sa

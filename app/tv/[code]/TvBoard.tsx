@@ -723,13 +723,8 @@ function TvWinCelebration({
   );
 }
 
-/**
- * يمرّر الرابط عبر الـ proxy لإزالة رؤوس X-Frame-Options و CSP frame-ancestors.
- * استثناء: overlay.creators.sa مصمّمة للـ OBS Browser Source وما ترسل X-Frame-Options،
- * لذا نحمّلها مباشرةً حتى لا تتكسر الـ WebSocket/API connections في الـ proxy.
- */
+/** يمرّر الرابط عبر الـ proxy لإزالة رؤوس X-Frame-Options و CSP frame-ancestors */
 function tvProxy(url: string) {
-  if (url.includes("overlay.creators.sa")) return url;
   return `/api/tv-proxy?url=${encodeURIComponent(url)}`;
 }
 
