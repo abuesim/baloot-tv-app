@@ -94,16 +94,33 @@ export default function TvBoard({
   >([]);
   // استشعار حجم الشاشة لعكس الاتجاه على الجوال
   const [isMobileView, setIsMobileView] = useState(false);
-  // هل الشاشة الفعلية أفقية (TV / كمبيوتر) ؟
+  // هل الشاشة الفعلية أفقية؟ — نستخدم screen.orientation أو أبعاد الشاشة الحقيقية
   const [isScreenLandscape, setIsScreenLandscape] = useState(true);
   useEffect(() => {
     function check() {
-      setIsMobileView(window.innerWidth < 768);
-      setIsScreenLandscape(window.innerWidth > window.innerHeight);
+      const w = window.innerWidth;
+      const h = window.innerHeight;
+      setIsMobileView(w < 768);
+
+      // screen.orientation أدق من innerWidth لأنه لا يتأثر بالـ viewport meta
+      const orientType = (window.screen as Screen & { orientation?: { type: string } })
+        .orientation?.type ?? "";
+      if (orientType) {
+        setIsScreenLandscape(orientType.includes("landscape"));
+      } else {
+        // fallback: قارن أبعاد الشاشة الفعلية
+        setIsScreenLandscape(
+          window.screen.availWidth > window.screen.availHeight || w > h
+        );
+      }
     }
     check();
     window.addEventListener("resize", check);
-    return () => window.removeEventListener("resize", check);
+    window.addEventListener("orientationchange", check);
+    return () => {
+      window.removeEventListener("resize", check);
+      window.removeEventListener("orientationchange", check);
+    };
   }, []);
   const [showCelebration, setShowCelebration] = useState(
     initialGame?.winner !== null && initialGame?.winner !== undefined,
