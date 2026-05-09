@@ -56,6 +56,8 @@ type TvAlert = {
 
 // ─── بيانات الكونفيتي ───
 const C_COLORS = ["#f5b042","#ff5e3a","#4ecdc4","#a29bfe","#fd79a8","#55efc4","#fdcb6e","#74b9ff","#e17055"];
+
+// كونفيتي شاشة الفوز (يرتفع من الأسفل)
 const TV_CONFETTI = Array.from({ length: 80 }, (_, i) => ({
   id: i,
   color: C_COLORS[i % 9],
@@ -64,6 +66,18 @@ const TV_CONFETTI = Array.from({ length: 80 }, (_, i) => ({
   dur: 2.4 + (i % 5) * 0.55,
   delay: (i * 0.11) % 3.8,
   circle: i % 3 !== 2,
+}));
+
+// كونفيتي التنبيهات — يتساقط من الأعلى ويغطي الشاشة طوال 12 ثانية
+const ALERT_CONFETTI = Array.from({ length: 180 }, (_, i) => ({
+  id: i,
+  color: C_COLORS[i % 9],
+  left: (i * 0.556) % 100,          // توزيع منتظم على عرض الشاشة
+  size: 6 + (i % 8) * 2,            // 6 → 20px
+  dur: 2.8 + (i % 10) * 0.32,       // 2.8 → 5.9ث لكل جزيء
+  delay: (i * 0.065) % 9.2,         // 0 → 9.2ث تأخير متدرج
+  circle: i % 4 !== 3,              // 75% دوائر ، 25% أشكال
+  thin: i % 5 === 0,                // 20% خيوط طويلة رفيعة
 }));
 
 export default function TvBoard({
@@ -995,14 +1009,21 @@ function TvAlertBadge({ alert, accent, customSound }: { alert: TvAlert; accent: 
           from { width: 100%; }
           to   { width: 0%; }
         }
-        @keyframes alertConfettiRise {
-          0%   { transform: translateY(110%) rotate(0deg);   opacity: 1; }
-          75%  { opacity: 1; }
-          100% { transform: translateY(-15%) rotate(600deg); opacity: 0; }
+        @keyframes alertFall {
+          0%   { transform: translateY(-6vh)  rotate(0deg)   scaleX(1);   opacity: 1; }
+          20%  { transform: translateY(20vh)  rotate(140deg) scaleX(0.9); opacity: 1; }
+          50%  { transform: translateY(55vh)  rotate(310deg) scaleX(1.1); opacity: 1; }
+          80%  { transform: translateY(85vh)  rotate(510deg) scaleX(0.8); opacity: 0.9; }
+          100% { transform: translateY(112vh) rotate(660deg) scaleX(1);   opacity: 0; }
+        }
+        @keyframes alertFallSway {
+          0%,100% { margin-left: 0px; }
+          30%     { margin-left: 18px; }
+          70%     { margin-left: -18px; }
         }
       `}</style>
 
-      {/* ─── كونفيتي يغطي كامل الشاشة ─── */}
+      {/* ─── كونفيتي احترافي يتساقط من الأعلى — يغطي الشاشة طوال 12 ثانية ─── */}
       <div
         style={{
           position: "fixed",
@@ -1012,20 +1033,23 @@ function TvAlertBadge({ alert, accent, customSound }: { alert: TvAlert; accent: 
           overflow: "hidden",
         }}
       >
-        {TV_CONFETTI.map((p) => (
+        {ALERT_CONFETTI.map((p) => (
           <div
             key={p.id}
             style={{
               position: "absolute",
-              bottom: 0,
+              top: 0,
               left: `${p.left}%`,
-              width: p.size,
-              height: p.size,
-              background: p.circle ? p.color : undefined,
-              border: !p.circle ? `${Math.ceil(p.size / 2)}px solid ${p.color}` : undefined,
-              borderRadius: p.circle ? "50%" : "3px",
-              // كل جزيء يتكرر مرتين ويكمل ضمن مدة التنبيه (12ث)
-              animation: `alertConfettiRise ${p.dur * 0.8}s ease-out ${p.delay * 0.35}s 2 both`,
+              width:  p.thin ? Math.max(3, p.size * 0.3) : p.size,
+              height: p.thin ? p.size * 3 : (p.circle ? p.size : p.size * 0.55),
+              background: p.color,
+              borderRadius: p.circle || p.thin ? "99px" : "2px",
+              opacity: 0,
+              // تساقط + تأرجح جانبي
+              animation: [
+                `alertFall     ${p.dur}s ease-in     ${p.delay}s 1 both`,
+                `alertFallSway ${p.dur * 1.3}s ease-in-out ${p.delay}s 1 both`,
+              ].join(", "),
             }}
           />
         ))}
