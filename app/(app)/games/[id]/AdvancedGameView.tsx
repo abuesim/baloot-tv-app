@@ -49,6 +49,47 @@ type Game = {
 
 const QUICK_CHIPS = [16, 18, 26, 30];
 
+/** صوت احتفال بسيط مُولَّد بـ Web Audio API */
+function playCelebration() {
+  if (typeof window === "undefined") return;
+  try {
+    const AudioCtx =
+      window.AudioContext ?? (window as unknown as { webkitAudioContext: typeof AudioContext }).webkitAudioContext;
+    if (!AudioCtx) return;
+    const ctx = new AudioCtx();
+
+    // سلم C ماجور تصاعدي ثم وتر مفتوح
+    const notes: [number, number, number, number][] = [
+      // [تردد Hz, بداية ث, مدة ث, حجم]
+      [523.25, 0.00, 0.13, 0.30],  // C5
+      [659.25, 0.12, 0.13, 0.30],  // E5
+      [783.99, 0.24, 0.13, 0.30],  // G5
+      [1046.5, 0.36, 0.75, 0.32],  // C6 — ممتد
+      [783.99, 0.36, 0.75, 0.18],  // G5 هارموني
+      [659.25, 0.36, 0.75, 0.12],  // E5 هارموني
+      [1046.5, 0.54, 0.50, 0.14],  // C6 صدى
+    ];
+
+    notes.forEach(([freq, start, dur, vol]) => {
+      const osc  = ctx.createOscillator();
+      const gain = ctx.createGain();
+      osc.type           = "sine";
+      osc.frequency.value = freq;
+      osc.connect(gain);
+      gain.connect(ctx.destination);
+      const t = ctx.currentTime;
+      gain.gain.setValueAtTime(0, t + start);
+      gain.gain.linearRampToValueAtTime(vol, t + start + 0.015);
+      gain.gain.setValueAtTime(vol, t + start + dur - 0.06);
+      gain.gain.linearRampToValueAtTime(0, t + start + dur);
+      osc.start(t + start);
+      osc.stop(t  + start + dur + 0.1);
+    });
+  } catch {
+    /* AudioContext غير مدعوم */
+  }
+}
+
 export default function AdvancedGameView({
   game: initial,
   tvCode,
@@ -108,6 +149,19 @@ export default function AdvancedGameView({
   useEffect(() => {
     if (game.winner !== null && prevWinnerRef.current === null) {
       setShowCelebration(true);
+
+      // انتظر انتهاء أي نطق جارٍ ثم شغّل صوت الاحتفال
+      function tryPlayCelebration() {
+        if (
+          typeof window !== "undefined" &&
+          window.speechSynthesis?.speaking
+        ) {
+          setTimeout(tryPlayCelebration, 150);
+        } else {
+          playCelebration();
+        }
+      }
+      setTimeout(tryPlayCelebration, 100);
     }
     prevWinnerRef.current = game.winner;
   }, [game.winner]);
