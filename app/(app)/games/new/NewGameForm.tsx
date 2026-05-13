@@ -53,16 +53,13 @@ export default function NewGameForm({ players }: { players: Player[] }) {
             <option value="" className="bg-navy-light">
               — اختر —
             </option>
-            {players.map((p) => (
-              <option
-                key={p.id}
-                value={p.id}
-                disabled={selected.includes(p.id) && p.id !== value}
-                className="bg-navy-light"
-              >
-                {p.name}
-              </option>
-            ))}
+            {players
+              .filter((p) => !selected.includes(p.id) || p.id === value)
+              .map((p) => (
+                <option key={p.id} value={p.id} className="bg-navy-light">
+                  {p.name}
+                </option>
+              ))}
           </select>
         </div>
       </div>
