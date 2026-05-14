@@ -1,8 +1,9 @@
 import type { Viewport } from "next";
 
-// viewport مخصص لشاشة TV — نفرض عرض 1920 حتى تشتغل Tailwind breakpoints صح
+// device-width يشتغل على التلفزيون (1920px) والجوال (390px) صح
+// لا داعي لتثبيت 1920 — Tailwind breakpoints تشتغل حسب العرض الفعلي للشاشة
 export const viewport: Viewport = {
-  width: 1920,
+  width: "device-width",
   initialScale: 1,
   minimumScale: 1,
 };
