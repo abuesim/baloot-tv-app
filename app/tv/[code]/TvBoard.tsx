@@ -501,16 +501,16 @@ export default function TvBoard({
         )}
       </div>
 
-      {/* شريط سفلي: الدونيشن (يسار) + الجولات (يمين) في صف واحد */}
+      {/* شريط سفلي: الدونيشن + الجولات — عمودي على الجوال / أفقي على الشاشة */}
       {(showDonations || (user.tvShowRounds && lastRounds.length > 0)) && (
-        <div className="flex items-center gap-2 px-3 md:px-8 pb-2 md:pb-4">
+        <div className="flex flex-col sm:flex-row sm:items-center gap-1.5 sm:gap-2 px-2 sm:px-3 md:px-8 pb-2 md:pb-4">
           {showDonations && (
-            <div className="flex-1 min-w-0">
+            <div className="w-full sm:flex-1 sm:min-w-0">
               <NativeDonationStrip donations={recentDonations} accent={accent} />
             </div>
           )}
           {user.tvShowRounds && lastRounds.length > 0 && (
-            <div className="shrink-0">
+            <div className="w-full sm:w-auto sm:shrink-0">
               <RoundsStrip rounds={lastRounds} accent={accent} />
             </div>
           )}
@@ -866,23 +866,23 @@ function ScoreColumn({
       } ${isWinner ? "scale-105" : ""}`}
     >
       <div
-        className="text-base md:text-2xl font-bold mb-1 md:mb-3"
+        className="text-sm md:text-2xl font-bold mb-0.5 md:mb-3"
         style={{ color }}
       >
         {label}
       </div>
-      <div className="flex items-center justify-center gap-2 md:gap-4 mb-2 md:mb-4 min-h-8 md:min-h-24">
+      <div className="flex items-center justify-center gap-1.5 md:gap-4 mb-1 md:mb-4 min-h-6 md:min-h-24">
         {players.map((p) => (
-          <div key={p.id} className="flex flex-col items-center gap-1 md:gap-2">
-            {/* جوال: lg (64px) — شاشة كبيرة: xl (96px ≈ +50%) */}
+          <div key={p.id} className="flex flex-col items-center gap-0.5 md:gap-2">
+            {/* جوال: md (48px) — شاشة كبيرة: xl (96px) */}
             <span className="block md:hidden">
-              <PlayerAvatar name={p.name} imageUrl={p.imageUrl} size="lg" />
+              <PlayerAvatar name={p.name} imageUrl={p.imageUrl} size="md" />
             </span>
             <span className="hidden md:block">
               <PlayerAvatar name={p.name} imageUrl={p.imageUrl} size="xl" />
             </span>
             <span
-              className="text-xs md:text-base max-w-16 md:max-w-24 truncate font-medium"
+              className="text-[10px] md:text-base max-w-14 md:max-w-24 truncate font-medium"
               style={{ color }}
             >
               {p.name}
@@ -894,7 +894,7 @@ function ScoreColumn({
         {pops.map((p) => (
           <div
             key={p.id}
-            className="float-up text-2xl md:text-4xl font-black"
+            className="float-up text-xl md:text-4xl font-black"
             style={{ color, position: "absolute", left: 0, right: 0 }}
           >
             +{p.delta}
@@ -903,14 +903,14 @@ function ScoreColumn({
       </div>
       <div
         key={score}
-        className={`text-[3.5rem] sm:text-[5rem] md:text-[7rem] lg:text-[10rem] xl:text-[12rem] leading-none font-black mb-2 md:mb-4 ${
+        className={`text-[2.6rem] sm:text-[4rem] md:text-[7rem] lg:text-[10rem] xl:text-[12rem] leading-none font-black mb-1 md:mb-4 ${
           flashing ? "score-flash" : ""
         }`}
         style={{ color }}
       >
         {score}
       </div>
-      <div className="bg-white/5 rounded-full h-1.5 md:h-2 overflow-hidden">
+      <div className="bg-white/5 rounded-full h-1 md:h-2 overflow-hidden">
         <div
           className="h-full transition-all duration-700"
           style={{ width: `${pct}%`, backgroundColor: color }}
@@ -931,26 +931,26 @@ function DiffPanel({
 }) {
   if (diff === 0) {
     return (
-      <div className="bg-navy rounded-xl md:rounded-2xl px-2 md:px-4 py-3 md:py-6 border border-white/10 text-center self-center">
-        <div className="text-xs text-white/40">الفرق</div>
-        <div className="text-xl md:text-3xl font-bold text-white/60">=</div>
+      <div className="bg-navy rounded-lg md:rounded-2xl px-1.5 md:px-4 py-2 md:py-6 border border-white/10 text-center self-center">
+        <div className="text-[10px] md:text-xs text-white/40">الفرق</div>
+        <div className="text-lg md:text-3xl font-bold text-white/60">=</div>
       </div>
     );
   }
   return (
     <div
-      className="bg-navy rounded-xl md:rounded-2xl px-2 md:px-4 py-3 md:py-6 text-center self-center shadow-lg"
+      className="bg-navy rounded-lg md:rounded-2xl px-1.5 md:px-4 py-2 md:py-6 text-center self-center shadow-lg"
       style={{
         borderColor: `${accent}50`,
         borderWidth: 1,
         boxShadow: `0 10px 25px -10px ${accent}33`,
       }}
     >
-      <div className="text-xs text-white/40 mb-1">الفرق</div>
-      <div className="text-2xl md:text-4xl lg:text-5xl font-black" style={{ color: accent }}>
+      <div className="text-[10px] md:text-xs text-white/40 mb-0.5 md:mb-1">الفرق</div>
+      <div className="text-xl md:text-4xl lg:text-5xl font-black" style={{ color: accent }}>
         {diff}
       </div>
-      <div className="text-xs text-white/60 mt-1 hidden sm:block">
+      <div className="text-[10px] md:text-xs text-white/60 mt-0.5 md:mt-1 hidden sm:block">
         {lead === 1 ? "لنا →" : "← لهم"}
       </div>
     </div>
