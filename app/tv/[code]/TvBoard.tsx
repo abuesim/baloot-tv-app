@@ -463,59 +463,71 @@ export default function TvBoard({
         <TvImageBannerCenter banners={banners.filter((b) => b.imageUrl)} />
       )}
 
-      <div className="flex-1 flex items-stretch px-2 md:px-6 gap-2 md:gap-6">
-        <div className={showChat ? "flex-[2]" : "flex-1"}>
-          <div className="h-full flex items-center justify-center">
-            <div className="grid grid-cols-[1fr_auto_1fr] gap-2 md:gap-6 w-full items-center">
-              <ScoreColumn
-                label="لنا"
-                players={team1}
-                score={game.team1Score}
-                isWinner={game.winner === 1}
-                target={game.targetScore}
-                accent={accent}
-                isAccent
-                flashing={flash.team1}
-                pops={pops.filter((p) => p.team === 1)}
-              />
-              <DiffPanel diff={diff} lead={lead} accent={accent} />
-              <ScoreColumn
-                label="لهم"
-                players={team2}
-                score={game.team2Score}
-                isWinner={game.winner === 2}
-                target={game.targetScore}
-                accent={accent}
-                isAccent={false}
-                flashing={flash.team2}
-                pops={pops.filter((p) => p.team === 2)}
-              />
+      {/*
+        wrapper ذكي:
+        • الجوال (< md): flex-1 flex-col justify-center
+          → يأخذ كل المساحة المتبقية بعد الهيدر ويمركز النقاط + الشريط عمودياً
+          → لا فراغات فوق أو تحت — المحتوى في المنتصف
+        • الشاشة (md+): display:contents → شفاف تماماً، أبناؤه يرثون الـ flex مباشرة
+          → النقاط flex-1 تملأ المساحة كما كانت على TV
+      */}
+      <div className="flex-1 flex flex-col justify-center md:[display:contents]">
+
+        <div className="flex items-stretch px-2 md:px-6 gap-2 md:gap-6 py-3 md:py-0 md:flex-1">
+          <div className={showChat ? "flex-[2]" : "flex-1"}>
+            <div className="flex items-center justify-center md:h-full">
+              <div className="grid grid-cols-[1fr_auto_1fr] gap-2 md:gap-6 w-full items-center">
+                <ScoreColumn
+                  label="لنا"
+                  players={team1}
+                  score={game.team1Score}
+                  isWinner={game.winner === 1}
+                  target={game.targetScore}
+                  accent={accent}
+                  isAccent
+                  flashing={flash.team1}
+                  pops={pops.filter((p) => p.team === 1)}
+                />
+                <DiffPanel diff={diff} lead={lead} accent={accent} />
+                <ScoreColumn
+                  label="لهم"
+                  players={team2}
+                  score={game.team2Score}
+                  isWinner={game.winner === 2}
+                  target={game.targetScore}
+                  accent={accent}
+                  isAccent={false}
+                  flashing={flash.team2}
+                  pops={pops.filter((p) => p.team === 2)}
+                />
+              </div>
             </div>
           </div>
+
+          {showChat && (
+            <div className="w-48 sm:w-64 md:w-80 lg:w-96 xl:w-[26rem] shrink-0">
+              <ChatPanel url={user.tvChatUrl!} variant="side" />
+            </div>
+          )}
         </div>
 
-        {showChat && (
-          <div className="w-48 sm:w-64 md:w-80 lg:w-96 xl:w-[26rem] shrink-0">
-            <ChatPanel url={user.tvChatUrl!} variant="side" />
+        {/* شريط سفلي: الدونيشن + الجولات — عمودي على الجوال / أفقي على الشاشة */}
+        {(showDonations || (user.tvShowRounds && lastRounds.length > 0)) && (
+          <div className="flex flex-col sm:flex-row sm:items-center gap-1.5 sm:gap-2 px-2 sm:px-3 md:px-8 pb-3 md:pb-4 pt-1 md:pt-0">
+            {showDonations && (
+              <div className="w-full sm:flex-1 sm:min-w-0">
+                <NativeDonationStrip donations={recentDonations} accent={accent} />
+              </div>
+            )}
+            {user.tvShowRounds && lastRounds.length > 0 && (
+              <div className="w-full sm:w-auto sm:shrink-0">
+                <RoundsStrip rounds={lastRounds} accent={accent} />
+              </div>
+            )}
           </div>
         )}
-      </div>
 
-      {/* شريط سفلي: الدونيشن + الجولات — عمودي على الجوال / أفقي على الشاشة */}
-      {(showDonations || (user.tvShowRounds && lastRounds.length > 0)) && (
-        <div className="flex flex-col sm:flex-row sm:items-center gap-1.5 sm:gap-2 px-2 sm:px-3 md:px-8 pb-2 md:pb-4">
-          {showDonations && (
-            <div className="w-full sm:flex-1 sm:min-w-0">
-              <NativeDonationStrip donations={recentDonations} accent={accent} />
-            </div>
-          )}
-          {user.tvShowRounds && lastRounds.length > 0 && (
-            <div className="w-full sm:w-auto sm:shrink-0">
-              <RoundsStrip rounds={lastRounds} accent={accent} />
-            </div>
-          )}
-        </div>
-      )}
+      </div>{/* end smart wrapper */}
 
       {banners.length > 0 && <TvBannerBar banners={banners} />}
 
@@ -903,7 +915,7 @@ function ScoreColumn({
       </div>
       <div
         key={score}
-        className={`text-[2.6rem] sm:text-[4rem] md:text-[7rem] lg:text-[10rem] xl:text-[12rem] leading-none font-black mb-1 md:mb-4 ${
+        className={`text-[3rem] sm:text-[4.5rem] md:text-[7rem] lg:text-[10rem] xl:text-[12rem] leading-none font-black mb-1 md:mb-4 ${
           flashing ? "score-flash" : ""
         }`}
         style={{ color }}
