@@ -120,10 +120,12 @@ export default async function StatsPage({
     games: number;
     wins: number;
     losses: number;
+    lastWinAt: Date | null; // وقت آخر فوز — للفصل عند التساوي
   };
   const teams = new Map<string, Team>();
   for (const g of games) {
     if (g.winner === null) continue;
+    const gameTime = g.endedAt ?? g.startedAt; // وقت انتهاء الصكة
     for (const team of [1, 2] as const) {
       const members = g.participants
         .filter((p) => p.team === team)
@@ -139,16 +141,31 @@ export default async function StatsPage({
         games: 0,
         wins: 0,
         losses: 0,
+        lastWinAt: null,
       };
       stat.games++;
-      if (team === g.winner) stat.wins++;
-      else stat.losses++;
+      if (team === g.winner) {
+        stat.wins++;
+        // نحتفظ بتاريخ أحدث فوز
+        if (!stat.lastWinAt || gameTime > stat.lastWinAt) {
+          stat.lastWinAt = gameTime;
+        }
+      } else {
+        stat.losses++;
+      }
       teams.set(key, stat);
     }
   }
-  const teamsArr = Array.from(teams.values()).sort(
-    (a, b) => b.wins - a.wins || b.games - a.games,
-  );
+  const teamsArr = Array.from(teams.values()).sort((a, b) => {
+    // ١. الأكثر فوزاً
+    if (b.wins !== a.wins) return b.wins - a.wins;
+    // ٢. الأقل خسارة
+    if (a.losses !== b.losses) return a.losses - b.losses;
+    // ٣. آخر من حقق فوزاً (الأحدث في المقدمة)
+    const tA = a.lastWinAt?.getTime() ?? 0;
+    const tB = b.lastWinAt?.getTime() ?? 0;
+    return tB - tA;
+  });
 
   const champion = individualsArr[0];
 
