@@ -3,7 +3,7 @@ import { db } from "@/lib/db";
 import { requireUser } from "@/lib/auth";
 import { PlayerAvatar } from "@/components/PlayerAvatar";
 
-type SearchParams = Promise<{ month?: string }>;
+type SearchParams = Promise<{ period?: string }>;
 
 const MONTHS_AR = [
   "يناير",
@@ -20,6 +20,39 @@ const MONTHS_AR = [
   "ديسمبر",
 ];
 
+/** حوّل قيمة الـ period إلى نطاق تاريخ ووصف */
+function resolvePeriod(period: string | undefined, now: Date) {
+  if (period === "24h") {
+    const start = new Date(now.getTime() - 24 * 60 * 60 * 1000);
+    return { start, end: now, label: "آخر ٢٤ ساعة", championLabel: "بطل اليوم" };
+  }
+  if (period === "72h") {
+    const start = new Date(now.getTime() - 72 * 60 * 60 * 1000);
+    return { start, end: now, label: "آخر ٧٢ ساعة", championLabel: "بطل آخر ٣ أيام" };
+  }
+  if (period === "7d") {
+    const start = new Date(now.getTime() - 7 * 24 * 60 * 60 * 1000);
+    return { start, end: now, label: "آخر أسبوع", championLabel: "بطل الأسبوع" };
+  }
+
+  // شهر محدد أو الشهر الحالي افتراضياً
+  const [yStr, mStr] = (period ?? "").split("-");
+  const year  = Number(yStr)  || now.getFullYear();
+  const month = (Number(mStr) || now.getMonth() + 1) - 1;
+  const start = new Date(year, month, 1);
+  const end   = new Date(year, month + 1, 1);
+  const isCurrentMonth =
+    year === now.getFullYear() && month === now.getMonth();
+  const label = `${MONTHS_AR[month]} ${year}`;
+  return {
+    start,
+    end,
+    label,
+    championLabel: isCurrentMonth ? "بطل الشهر" : `بطل ${label}`,
+    monthKey: `${year}-${month + 1}`,
+  };
+}
+
 export default async function StatsPage({
   searchParams,
 }: {
@@ -27,20 +60,20 @@ export default async function StatsPage({
 }) {
   const user = await requireUser();
   const ownerUserId = user.parentUserId ?? user.id;
-  const sp = await searchParams;
+  const sp   = await searchParams;
+  const now  = new Date();
 
-  const now = new Date();
-  const [yStr, mStr] = (sp.month ?? "").split("-");
-  const year = Number(yStr) || now.getFullYear();
-  const month = (Number(mStr) || now.getMonth() + 1) - 1;
-  const monthStart = new Date(year, month, 1);
-  const monthEnd = new Date(year, month + 1, 1);
+  const { start, end, label, championLabel, monthKey } = resolvePeriod(
+    sp.period,
+    now,
+  );
+  const activePeriod = sp.period ?? `${now.getFullYear()}-${now.getMonth() + 1}`;
 
   const games = await db.game.findMany({
     where: {
       userId: ownerUserId,
       status: "COMPLETED",
-      startedAt: { gte: monthStart, lt: monthEnd },
+      startedAt: { gte: start, lt: end },
     },
     include: {
       participants: { include: { player: true } },
@@ -129,22 +162,50 @@ export default async function StatsPage({
     });
   }
 
+  // فلاتر الفترات القصيرة
+  const quickFilters = [
+    { value: "24h", label: "٢٤ ساعة" },
+    { value: "72h", label: "٧٢ ساعة" },
+    { value: "7d",  label: "أسبوع"   },
+  ];
+
   return (
     <div className="space-y-6">
       <div className="flex flex-wrap items-end justify-between gap-3">
         <div>
           <h1 className="text-3xl font-bold mb-1">الإحصائيات</h1>
-          <p className="text-white/60">{games.length} صكة في هذا الشهر</p>
+          <p className="text-white/60">{games.length} صكة · {label}</p>
         </div>
-        <div>
-          <label className="block text-xs mb-1 text-white/60">الشهر</label>
+
+        {/* ── الفلاتر ── */}
+        <div className="flex flex-col gap-2">
+          {/* فترات قصيرة */}
           <div className="flex flex-wrap gap-1">
+            <span className="text-[10px] text-white/40 self-center ml-1">آخر</span>
+            {quickFilters.map((f) => (
+              <Link
+                key={f.value}
+                href={`/stats?period=${f.value}`}
+                className={`text-xs px-3 py-1 rounded-lg transition-colors ${
+                  activePeriod === f.value
+                    ? "bg-gold text-navy-deep font-bold"
+                    : "bg-navy hover:bg-white/10"
+                }`}
+              >
+                {f.label}
+              </Link>
+            ))}
+          </div>
+
+          {/* أشهر */}
+          <div className="flex flex-wrap gap-1">
+            <span className="text-[10px] text-white/40 self-center ml-1">شهر</span>
             {monthOptions.slice(0, 6).map((opt) => (
               <Link
                 key={opt.value}
-                href={`/stats?month=${opt.value}`}
-                className={`text-xs px-3 py-1 rounded-lg ${
-                  `${year}-${month + 1}` === opt.value
+                href={`/stats?period=${opt.value}`}
+                className={`text-xs px-3 py-1 rounded-lg transition-colors ${
+                  (monthKey ?? activePeriod) === opt.value
                     ? "bg-gold text-navy-deep font-bold"
                     : "bg-navy hover:bg-white/10"
                 }`}
@@ -165,7 +226,7 @@ export default async function StatsPage({
             size="xl"
           />
           <div>
-            <div className="text-sm text-gold">بطل الشهر</div>
+            <div className="text-sm text-gold">{championLabel}</div>
             <div className="text-2xl font-black">{champion.name}</div>
             <div className="text-sm text-white/70">
               {champion.wins} فوز من {champion.games} صكة
@@ -294,7 +355,7 @@ export default async function StatsPage({
 function Empty() {
   return (
     <div className="bg-navy rounded-2xl p-8 text-center text-white/40 border border-white/10">
-      لا توجد بيانات لهذا الشهر
+      لا توجد بيانات لهذه الفترة
     </div>
   );
 }
