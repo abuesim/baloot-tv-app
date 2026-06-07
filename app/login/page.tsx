@@ -16,6 +16,7 @@ export default async function LoginPage() {
         <div className="flex flex-col items-center mb-10">
           <Logo size="lg" text={settings.appName} />
           <p className="text-white/50 mt-3 text-sm">{settings.appTagline}</p>
+          <span className="mt-1.5 text-xs text-white/25 tracking-widest">الإصدار 3.2</span>
         </div>
         <LoginForm />
       </div>
