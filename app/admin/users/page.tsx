@@ -13,6 +13,7 @@ export default async function AdminUsersPage() {
       displayName: true,
       role: true,
       active: true,
+      phone: true,
       createdAt: true,
       lastLoginAt: true,
       _count: { select: { games: true, players: true } },

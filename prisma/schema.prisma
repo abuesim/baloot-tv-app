@@ -42,6 +42,7 @@ model User {
   calculatorStyle CalculatorStyle @default(ADVANCED)
   tvCode          String?         @unique
   active        Boolean       @default(true)
+  phone         String?       // رقم الجوال (اختياري — يُدخله المستخدم عند التسجيل)
   createdAt     DateTime      @default(now())
   lastLoginAt   DateTime?
 

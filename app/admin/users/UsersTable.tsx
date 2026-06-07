@@ -28,6 +28,7 @@ type UserRow = {
   displayName: string;
   role: Role;
   active: boolean;
+  phone: string | null;
   createdAt: Date;
   lastLoginAt: Date | null;
   _count: { games: number; players: number };
@@ -243,6 +244,11 @@ function UserRowDesktop({
         <div className="text-xs text-white/50" dir="ltr">
           @{u.username}
         </div>
+        {u.phone && (
+          <div className="text-xs text-white/40 font-mono" dir="ltr">
+            {u.phone}
+          </div>
+        )}
       </td>
       <td className="p-3">
         <RoleBadge role={u.role} />

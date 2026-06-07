@@ -11,15 +11,22 @@ export default async function LoginPage() {
   const settings = await getSettings();
 
   return (
-    <div className="flex-1 flex items-center justify-center p-6">
+    <div className="flex-1 flex flex-col items-center justify-center p-6 gap-8">
       <div className="w-full max-w-sm">
-        <div className="flex flex-col items-center mb-10">
+        <div className="flex flex-col items-center mb-8">
           <Logo size="lg" text={settings.appName} />
           <p className="text-white/50 mt-3 text-sm">{settings.appTagline}</p>
           <span className="mt-1.5 text-xs text-white/25 tracking-widest">الإصدار 3.2</span>
         </div>
         <LoginForm />
       </div>
+
+      {/* فوتر المبرمج */}
+      <p className="text-center text-xs text-white/20 leading-relaxed">
+        تصميم وبرمجة · محمد المسند
+        <br />
+        <span className="font-mono tracking-wide">0565406221</span>
+      </p>
     </div>
   );
 }
