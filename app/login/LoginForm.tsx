@@ -14,6 +14,7 @@ export default function LoginForm() {
   const [password, setPassword] = useState("");
 
   // حقول إضافية للتسجيل
+  const [displayName, setDisplayName] = useState("");
   const [phone, setPhone] = useState("");
 
   const [error, setError]     = useState<string | null>(null);
@@ -24,6 +25,7 @@ export default function LoginForm() {
     setError(null);
     setSuccess(false);
     setUsername("");
+    setDisplayName("");
     setPassword("");
     setPhone("");
   }
@@ -64,7 +66,7 @@ export default function LoginForm() {
         const res = await fetch("/api/auth/register", {
           method: "POST",
           headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ username, password, phone }),
+          body: JSON.stringify({ username, displayName, password, phone }),
         });
         const d = await res.json().catch(() => ({}));
         if (!res.ok) {
@@ -146,6 +148,14 @@ export default function LoginForm() {
             disabled={isPending}
             autoFocus
             hint="حروف إنجليزية صغيرة وأرقام و _ فقط"
+          />
+          <Field
+            label="اسم العرض"
+            type="text"
+            value={displayName}
+            onChange={setDisplayName}
+            disabled={isPending}
+            hint="الاسم الذي يظهر للآخرين"
           />
           <Field
             label="رقم الجوال"

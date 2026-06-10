@@ -10,6 +10,10 @@ const schema = z.object({
     .min(3, "اسم المستخدم ٣ أحرف على الأقل")
     .max(30, "اسم المستخدم طويل جداً")
     .regex(/^[a-z0-9_]+$/, "حروف إنجليزية صغيرة وأرقام و _ فقط"),
+  displayName: z
+    .string()
+    .min(2, "اسم العرض حرفان على الأقل")
+    .max(60, "اسم العرض طويل جداً"),
   password: z
     .string()
     .min(4, "كلمة السر ٤ أحرف على الأقل")
@@ -24,9 +28,10 @@ const schema = z.object({
 export async function POST(req: Request) {
   const body = await req.json().catch(() => null);
   const parsed = schema.safeParse({
-    username: String(body?.username ?? "").toLowerCase().trim(),
-    password: String(body?.password ?? ""),
-    phone:    String(body?.phone    ?? "").trim(),
+    username:    String(body?.username    ?? "").toLowerCase().trim(),
+    displayName: String(body?.displayName ?? "").trim(),
+    password:    String(body?.password    ?? ""),
+    phone:       String(body?.phone       ?? "").trim(),
   });
 
   if (!parsed.success) {
@@ -36,7 +41,7 @@ export async function POST(req: Request) {
     );
   }
 
-  const { username, password, phone } = parsed.data;
+  const { username, displayName, password, phone } = parsed.data;
 
   // تحقق من عدم تكرار اسم المستخدم
   const exists = await db.user.findUnique({ where: { username } });
@@ -56,7 +61,7 @@ export async function POST(req: Request) {
   await db.user.create({
     data: {
       username,
-      displayName: username,
+      displayName,
       passwordHash: await hashPassword(password),
       phone,
       active: false,
