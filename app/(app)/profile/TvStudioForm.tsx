@@ -29,6 +29,7 @@ export default function TvStudioForm({
     tvAlertUrl: string | null;
     tvStreamlabsToken: string | null;
     tvAlertSound: string | null;
+    tvRefreshSeconds: number;
   };
 }) {
   const router = useRouter();
@@ -37,6 +38,11 @@ export default function TvStudioForm({
   const [showDonations, setShowDonations] = useState(initial.tvShowDonations);
   const [showAlert, setShowAlert] = useState(initial.tvShowAlert);
   const [showRounds, setShowRounds] = useState(initial.tvShowRounds);
+  // التحديث الإجباري بعدّاد — 0 يعني مُطفأ
+  const [autoRefresh, setAutoRefresh] = useState(initial.tvRefreshSeconds > 0);
+  const [refreshSeconds, setRefreshSeconds] = useState(
+    initial.tvRefreshSeconds > 0 ? initial.tvRefreshSeconds : 10,
+  );
   const [isPending, startTransition] = useTransition();
   const [msg, setMsg] = useState<{ ok: boolean; text: string } | null>(null);
 
@@ -99,6 +105,7 @@ export default function TvStudioForm({
     if (showDonations) formData.set("tvShowDonations", "on");
     if (showAlert) formData.set("tvShowAlert", "on");
     if (showRounds) formData.set("tvShowRounds", "on");
+    formData.set("tvRefreshSeconds", String(autoRefresh ? refreshSeconds : 0));
     startTransition(async () => {
       const res = await updateTvStudioAction(formData);
       if (!res.ok) {
@@ -216,6 +223,50 @@ export default function TvStudioForm({
             <p className="text-xs text-white/40">
               💡 يظهر فوق الشاشة بخلفية شفافة — مثل OBS Browser Source
             </p>
+          </div>
+        )}
+      </div>
+
+      {/* التحديث الإجباري بعدّاد تنازلي */}
+      <div className="bg-navy-light/40 rounded-xl p-3 border border-white/5">
+        <ToggleRow
+          checked={autoRefresh}
+          onChange={setAutoRefresh}
+          label="⏱️ تحديث الشاشة بعدّاد تنازلي"
+          desc="افتراضياً مُطفأ (تحديث لحظي). فعّله لتحديث الشاشة إجبارياً كل عدد ثوانٍ مع ظهور عدّاد بجانب الشعار."
+        />
+        {autoRefresh && (
+          <div className="mr-8 mt-2 flex items-center gap-3">
+            <span className="text-sm text-white/70">كل</span>
+            <input
+              type="number"
+              min={3}
+              max={120}
+              value={refreshSeconds}
+              onChange={(e) =>
+                setRefreshSeconds(
+                  Math.max(3, Math.min(120, Number(e.target.value) || 3)),
+                )
+              }
+              className="w-20 bg-navy-light border border-white/10 rounded-lg px-3 py-2 text-sm text-center tabular-nums"
+            />
+            <span className="text-sm text-white/70">ثانية</span>
+            <div className="flex gap-1">
+              {[5, 8, 10, 15].map((s) => (
+                <button
+                  type="button"
+                  key={s}
+                  onClick={() => setRefreshSeconds(s)}
+                  className={`text-xs px-2.5 py-1 rounded-lg transition-colors ${
+                    refreshSeconds === s
+                      ? "bg-gold text-navy-deep font-bold"
+                      : "bg-white/5 text-white/60 hover:bg-white/10"
+                  }`}
+                >
+                  {s}
+                </button>
+              ))}
+            </div>
           </div>
         )}
       </div>

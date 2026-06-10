@@ -24,6 +24,7 @@ export default async function StudioPage() {
       tvAlertUrl: true,
       tvStreamlabsToken: true,
       tvAlertSound: true,
+      tvRefreshSeconds: true,
     },
   });
   if (!userRow) return null;
@@ -58,6 +59,7 @@ export default async function StudioPage() {
             tvAlertUrl: userRow.tvAlertUrl,
             tvStreamlabsToken: userRow.tvStreamlabsToken,
             tvAlertSound: userRow.tvAlertSound,
+            tvRefreshSeconds: userRow.tvRefreshSeconds,
           }}
         />
       </section>

@@ -33,6 +33,7 @@ type TvUser = {
   tvAlertUrl: string | null;
   tvStreamlabsToken: string | null;
   tvAlertSound: string | null;
+  tvRefreshSeconds: number;
 };
 
 type BannerItem = {
@@ -383,6 +384,7 @@ export default function TvBoard({
             <span className="text-xl md:text-3xl font-black" style={{ color: accent }}>
               أكك لايف
             </span>
+            <RefreshCountdown key={user.tvRefreshSeconds} seconds={user.tvRefreshSeconds} accent={accent} />
           </div>
           <div className="flex items-center gap-2 text-xs md:text-sm text-white/50">
             <span>{user.displayName}</span>
@@ -610,6 +612,7 @@ function Header({
         <span className="text-xl md:text-3xl font-black" style={{ color: user.tvAccentColor }}>
           أكك لايف
         </span>
+        <RefreshCountdown key={user.tvRefreshSeconds} seconds={user.tvRefreshSeconds} accent={user.tvAccentColor} />
       </div>
       <div className="flex items-center gap-2 md:gap-3 text-xs md:text-sm text-white/60">
         <span className="hidden sm:inline">{user.displayName}</span>
@@ -632,6 +635,44 @@ function Header({
         />
       </div>
     </div>
+  );
+}
+
+// ─── عدّاد تنازلي للتحديث الإجباري — يظهر بجانب الشعار ───
+// يُركّب بـ key={seconds} حتى تبدأ الحالة من جديد عند تغيّر القيمة
+function RefreshCountdown({ seconds, accent }: { seconds: number; accent: string }) {
+  const [remaining, setRemaining] = useState(seconds);
+
+  // عدّ تنازلي كل ثانية (setState داخل callback — مسموح)
+  useEffect(() => {
+    if (seconds <= 0) return;
+    const t = setInterval(() => {
+      setRemaining((r) => (r > 0 ? r - 1 : 0));
+    }, 1000);
+    return () => clearInterval(t);
+  }, [seconds]);
+
+  // عند بلوغ الصفر: حدّث الصفحة إجبارياً (يعيد جلب الصكة من الخادم)
+  useEffect(() => {
+    if (seconds > 0 && remaining === 0) {
+      window.location.reload();
+    }
+  }, [remaining, seconds]);
+
+  if (seconds <= 0) return null;
+  return (
+    <span
+      className="flex items-center gap-1 px-2 md:px-2.5 py-0.5 md:py-1 rounded-full text-xs md:text-sm font-black tabular-nums shrink-0"
+      style={{
+        background: `${accent}1f`,
+        color: accent,
+        border: `1px solid ${accent}55`,
+      }}
+      title="تحديث تلقائي"
+    >
+      <span className="text-[10px] md:text-xs">⟳</span>
+      {remaining}
+    </span>
   );
 }
 

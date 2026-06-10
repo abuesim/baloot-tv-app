@@ -172,6 +172,7 @@ const studioSchema = z.object({
     .optional()
     .or(z.literal("")),
   tvStreamlabsToken: z.string().max(512).optional().or(z.literal("")),
+  tvRefreshSeconds: z.number().int().min(0).max(120),
 });
 
 export async function updateTvStudioAction(
@@ -188,6 +189,7 @@ export async function updateTvStudioAction(
     tvShowAlert: formData.get("tvShowAlert") === "on",
     tvAlertUrl: String(formData.get("tvAlertUrl") ?? "").trim(),
     tvStreamlabsToken: String(formData.get("tvStreamlabsToken") ?? "").trim(),
+    tvRefreshSeconds: Number(formData.get("tvRefreshSeconds") ?? 0) || 0,
   });
   if (!parsed.success) {
     return { ok: false, error: parsed.error.issues[0]?.message ?? "بيانات غير صالحة" };
@@ -205,6 +207,7 @@ export async function updateTvStudioAction(
       tvShowAlert: parsed.data.tvShowAlert,
       tvAlertUrl: parsed.data.tvAlertUrl || null,
       tvStreamlabsToken: parsed.data.tvStreamlabsToken || null,
+      tvRefreshSeconds: parsed.data.tvRefreshSeconds,
     },
   });
   revalidatePath("/profile");
