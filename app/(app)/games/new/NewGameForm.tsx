@@ -1,12 +1,101 @@
 "use client";
 
-import { useState, useTransition } from "react";
+import { useState, useTransition, useRef, useEffect } from "react";
 import { GAME_MODES, type GameMode } from "@/lib/baloot";
 import { PlayerAvatar } from "@/components/PlayerAvatar";
 import { createGameAction } from "./actions";
 
 type Player = { id: string; name: string; imageUrl: string | null };
 
+/* ─── Dropdown مخصص يعرض الصورة + الاسم ─── */
+function PlayerPicker({
+  value,
+  onChange,
+  label,
+  options,
+  byId,
+}: {
+  value: string;
+  onChange: (v: string) => void;
+  label: string;
+  options: Player[];        // اللاعبون المتاحون (بعد الفلتر)
+  byId: Map<string, Player>;
+}) {
+  const [open, setOpen] = useState(false);
+  const ref = useRef<HTMLDivElement>(null);
+
+  // إغلاق عند الضغط خارج الـ dropdown
+  useEffect(() => {
+    function onDown(e: MouseEvent) {
+      if (ref.current && !ref.current.contains(e.target as Node)) {
+        setOpen(false);
+      }
+    }
+    document.addEventListener("mousedown", onDown);
+    return () => document.removeEventListener("mousedown", onDown);
+  }, []);
+
+  const current = value ? byId.get(value) : null;
+
+  return (
+    <div ref={ref} className="relative">
+      <label className="block text-sm mb-2 text-white/80">{label}</label>
+
+      {/* الزر الرئيسي */}
+      <button
+        type="button"
+        onClick={() => setOpen((o) => !o)}
+        className={`w-full bg-navy-light border rounded-xl flex items-center gap-2 px-3 py-2 text-right transition-colors ${
+          open ? "border-accent" : "border-white/10 hover:border-white/30"
+        }`}
+      >
+        {current ? (
+          <PlayerAvatar name={current.name} imageUrl={current.imageUrl} size="sm" />
+        ) : (
+          <div className="w-8 h-8 rounded-full bg-white/5 border border-white/10" />
+        )}
+        <span className={`flex-1 text-sm truncate ${current ? "" : "text-white/40"}`}>
+          {current ? current.name : "— اختر —"}
+        </span>
+        <span className="text-white/30 text-[10px]">{open ? "▲" : "▼"}</span>
+      </button>
+
+      {/* قائمة الخيارات */}
+      {open && (
+        <div className="absolute top-full mt-1 right-0 left-0 z-50 bg-navy-light border border-white/10 rounded-xl overflow-hidden shadow-2xl max-h-56 overflow-y-auto">
+          {/* خيار إلغاء الاختيار */}
+          <button
+            type="button"
+            onClick={() => { onChange(""); setOpen(false); }}
+            className="w-full flex items-center gap-2 px-3 py-2.5 hover:bg-white/5 text-white/40 text-sm border-b border-white/5"
+          >
+            <div className="w-8 h-8 rounded-full bg-white/5 border border-white/10 shrink-0" />
+            <span>— اختر —</span>
+          </button>
+
+          {options.map((p) => (
+            <button
+              key={p.id}
+              type="button"
+              onClick={() => { onChange(p.id); setOpen(false); }}
+              className={`w-full flex items-center gap-2 px-3 py-2.5 text-sm transition-colors ${
+                value === p.id
+                  ? "bg-gold/10 text-gold"
+                  : "hover:bg-white/5"
+              }`}
+            >
+              <PlayerAvatar name={p.name} imageUrl={p.imageUrl} size="sm" />
+              <span className="flex-1 text-right truncate">{p.name}</span>
+              {value === p.id && <span className="text-gold text-xs shrink-0">✓</span>}
+            </button>
+          ))}
+        </div>
+      )}
+    </div>
+  );
+}
+
+/* ─── الفورم الرئيسي ─── */
 export default function NewGameForm({ players }: { players: Player[] }) {
   const [mode, setMode] = useState<GameMode>("NORMAL");
   const [t1p1, setT1p1] = useState("");
@@ -18,61 +107,20 @@ export default function NewGameForm({ players }: { players: Player[] }) {
 
   const selected = [t1p1, t1p2, t2p1, t2p2].filter(Boolean);
   const byId = new Map(players.map((p) => [p.id, p]));
-  const allChosen = selected.length === 4;
+  const allChosen  = selected.length === 4;
   const noneChosen = selected.length === 0;
-  const partial = !allChosen && !noneChosen;
+  const partial    = !allChosen && !noneChosen;
 
-  function PlayerPicker({
-    value,
-    onChange,
-    label,
-  }: {
-    value: string;
-    onChange: (v: string) => void;
-    label: string;
-  }) {
-    const current = value ? byId.get(value) : null;
-    return (
-      <div>
-        <label className="block text-sm mb-2 text-white/80">{label}</label>
-        <div className="bg-navy-light border border-white/10 rounded-xl flex items-center gap-2 px-2">
-          {current ? (
-            <PlayerAvatar
-              name={current.name}
-              imageUrl={current.imageUrl}
-              size="sm"
-            />
-          ) : (
-            <div className="w-8 h-8" />
-          )}
-          <select
-            value={value}
-            onChange={(e) => onChange(e.target.value)}
-            className="flex-1 bg-transparent py-3 outline-none"
-          >
-            <option value="" className="bg-navy-light">
-              — اختر —
-            </option>
-            {players
-              .filter((p) => !selected.includes(p.id) || p.id === value)
-              .map((p) => (
-                <option key={p.id} value={p.id} className="bg-navy-light">
-                  {p.name}
-                </option>
-              ))}
-          </select>
-        </div>
-      </div>
-    );
+  // اللاعبون المتاحون لكل picker (يخفي المختارين في الـ pickers الأخرى)
+  function opts(self: string) {
+    return players.filter((p) => !selected.includes(p.id) || p.id === self);
   }
 
   function submit(e: React.FormEvent) {
     e.preventDefault();
     setError(null);
     if (partial) {
-      setError(
-        "إما اختر الأربعة كاملين أو اتركهم فاضي وأضفهم بعدين من الحاسبة",
-      );
+      setError("إما اختر الأربعة كاملين أو اتركهم فاضي وأضفهم بعدين من الحاسبة");
       return;
     }
     startTransition(async () => {
@@ -94,7 +142,7 @@ export default function NewGameForm({ players }: { players: Player[] }) {
         <label className="block text-sm mb-3 text-white/80">نوع اللعب</label>
         <div className="grid grid-cols-2 gap-3">
           {(Object.keys(GAME_MODES) as GameMode[]).map((m) => {
-            const cfg = GAME_MODES[m];
+            const cfg    = GAME_MODES[m];
             const active = mode === m;
             return (
               <button
@@ -115,7 +163,7 @@ export default function NewGameForm({ players }: { players: Player[] }) {
         </div>
       </div>
 
-      {/* اللاعبون - اختياري */}
+      {/* اللاعبون */}
       {players.length >= 4 ? (
         <>
           <div className="flex items-center gap-2 text-xs text-white/60 -mb-2">
@@ -127,16 +175,16 @@ export default function NewGameForm({ players }: { players: Player[] }) {
           <div className="bg-navy rounded-2xl p-5 border border-white/10">
             <h3 className="text-lg font-bold mb-3 text-gold">لنا (الفريق ١)</h3>
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-              <PlayerPicker value={t1p1} onChange={setT1p1} label="اللاعب الأول" />
-              <PlayerPicker value={t1p2} onChange={setT1p2} label="اللاعب الثاني" />
+              <PlayerPicker value={t1p1} onChange={setT1p1} label="اللاعب الأول" options={opts(t1p1)} byId={byId} />
+              <PlayerPicker value={t1p2} onChange={setT1p2} label="اللاعب الثاني" options={opts(t1p2)} byId={byId} />
             </div>
           </div>
 
           <div className="bg-navy rounded-2xl p-5 border border-white/10">
             <h3 className="text-lg font-bold mb-3">لهم (الفريق ٢)</h3>
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-              <PlayerPicker value={t2p1} onChange={setT2p1} label="اللاعب الأول" />
-              <PlayerPicker value={t2p2} onChange={setT2p2} label="اللاعب الثاني" />
+              <PlayerPicker value={t2p1} onChange={setT2p1} label="اللاعب الأول" options={opts(t2p1)} byId={byId} />
+              <PlayerPicker value={t2p2} onChange={setT2p2} label="اللاعب الثاني" options={opts(t2p2)} byId={byId} />
             </div>
           </div>
         </>
