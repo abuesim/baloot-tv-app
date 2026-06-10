@@ -155,13 +155,30 @@ export default function LoginForm() {
             disabled={isPending}
             hint="مثال: 0501234567"
           />
-          <Field
-            label="كلمة السر"
-            type="password"
-            value={password}
-            onChange={setPassword}
-            disabled={isPending}
-          />
+          <div>
+            <label className="block text-sm mb-1.5 text-white/70">كلمة السر</label>
+            <div className="relative">
+              <input
+                type="password"
+                value={password}
+                onChange={(e) => setPassword(e.target.value)}
+                className="w-full bg-navy-light border border-white/10 rounded-xl px-4 py-3 text-lg focus:outline-none focus:border-accent transition-colors pr-10"
+                required
+                disabled={isPending}
+                minLength={4}
+              />
+              {password.length >= 4 && (
+                <span className="absolute left-3 top-1/2 -translate-y-1/2 text-green-400 text-lg select-none">
+                  ✓
+                </span>
+              )}
+            </div>
+            <p className="text-xs mt-1 transition-colors" style={{ color: password.length > 0 && password.length < 4 ? "#f87171" : "rgba(255,255,255,0.3)" }}>
+              {password.length > 0 && password.length < 4
+                ? `تبقّى ${4 - password.length} ${4 - password.length === 1 ? "حرف" : "أحرف"}`
+                : "٤ أحرف على الأقل"}
+            </p>
+          </div>
 
           {error && <ErrorBox msg={error} />}
 

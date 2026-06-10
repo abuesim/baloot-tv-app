@@ -12,7 +12,7 @@ const schema = z.object({
     .regex(/^[a-z0-9_]+$/, "حروف إنجليزية صغيرة وأرقام و _ فقط"),
   password: z
     .string()
-    .min(6, "كلمة السر ٦ أحرف على الأقل")
+    .min(4, "كلمة السر ٤ أحرف على الأقل")
     .max(100),
   phone: z
     .string()
