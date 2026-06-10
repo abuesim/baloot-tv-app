@@ -1238,8 +1238,7 @@ function TvImageBannerCenter({ banners }: { banners: BannerItem[] }) {
       <img
         src={b.imageUrl}
         alt={b.text ?? ""}
-        className="rounded-xl object-contain"
-        style={{ maxHeight: "clamp(60px, 10vh, 120px)", maxWidth: "min(500px, 75vw)" }}
+        className="rounded-xl object-contain max-h-[120px] max-w-[75vw] sm:max-w-[500px] md:max-h-[204px] md:max-w-[850px]"
       />
     </div>
   );
