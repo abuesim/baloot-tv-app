@@ -1206,8 +1206,8 @@ function TvBannerBar({ banners }: { banners: BannerItem[] }) {
   const textBanners = banners.filter((b) => b.text); // صورة+نص أو نص فقط
   if (textBanners.length === 0) return null;
   return (
-    <div className="bg-gold/95 text-navy-deep py-2 overflow-hidden whitespace-nowrap">
-      <div className="inline-flex animate-marquee gap-12 font-bold text-sm">
+    <div className="bg-gold/95 text-navy-deep py-3 overflow-hidden whitespace-nowrap">
+      <div className="inline-flex animate-marquee gap-12 font-bold text-[1.65rem]">
         {[...textBanners, ...textBanners].map((b, i) => (
           <span key={`${b.id}-${i}`} className="px-6 inline-flex items-center gap-2">
             <span className="opacity-50">📢</span>
