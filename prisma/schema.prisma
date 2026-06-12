@@ -74,6 +74,8 @@ model User {
   players Player[]
   games   Game[]
   banners AdBanner[]
+  teams       Team[]
+  tournaments Tournament[]
 
   @@index([role])
   @@index([parentUserId])
@@ -92,6 +94,8 @@ model Player {
 
   user         User              @relation(fields: [userId], references: [id], onDelete: Cascade)
   participants GameParticipant[]
+  teamsAsP1    Team[]            @relation("TeamPlayer1")
+  teamsAsP2    Team[]            @relation("TeamPlayer2")
 
   @@unique([userId, name])
   @@index([userId])
@@ -131,12 +135,17 @@ model Game {
   startedAt DateTime  @default(now())
   endedAt   DateTime?
 
+  // ربط الصكة بمواجهة بطولة (اختياري)
+  matchId String?
+  match   Match?  @relation(fields: [matchId], references: [id], onDelete: SetNull)
+
   participants GameParticipant[]
   rounds       Round[]
 
   @@index([userId, startedAt])
   @@index([userId, status])
   @@index([startedAt]) // للإحصائيات الشهرية
+  @@index([matchId])
 }
 
 model GameParticipant {
@@ -208,4 +217,114 @@ model AdBanner {
 
   @@index([active, order])
   @@index([userId, active, order])
+}
+
+// ============================================================
+// البطولات
+// ============================================================
+
+enum TournamentFormat {
+  KNOCKOUT // خروج المغلوب
+  POINTS   // تجميع النقاط (دوري كامل — الكل ضد الكل)
+}
+
+enum TournamentStatus {
+  DRAFT       // إعداد — إضافة الفرق
+  DRAWN       // تمت القرعة، الشجرة/الجدول جاهز
+  IN_PROGRESS // قيد اللعب
+  COMPLETED   // انتهت
+}
+
+enum MatchStatus {
+  PENDING     // بانتظار تحديد الفريقين أو بدء الصكة
+  IN_PROGRESS // صكة جارية
+  COMPLETED   // حُسمت المواجهة
+}
+
+// فريق ثابت = زوج لاعبين من روستر المستخدم — قابل لإعادة الاستخدام
+model Team {
+  id        String   @id @default(cuid())
+  userId    String
+  name      String
+  player1Id String
+  player2Id String
+  createdAt DateTime @default(now())
+
+  user    User   @relation(fields: [userId], references: [id], onDelete: Cascade)
+  player1 Player @relation("TeamPlayer1", fields: [player1Id], references: [id], onDelete: Restrict)
+  player2 Player @relation("TeamPlayer2", fields: [player2Id], references: [id], onDelete: Restrict)
+
+  tournamentTeams TournamentTeam[]
+  matchesAsA      Match[]          @relation("MatchTeamA")
+  matchesAsB      Match[]          @relation("MatchTeamB")
+  matchesWon      Match[]          @relation("MatchWinner")
+
+  @@index([userId])
+}
+
+model Tournament {
+  id          String           @id @default(cuid())
+  userId      String
+  name        String
+  format      TournamentFormat
+  matchBestOf Int              @default(1) // 1 = صكة واحدة / 3 = أفضل من ٣
+  gameMode    GameMode         @default(NORMAL)
+  status      TournamentStatus @default(DRAFT)
+  championTeamId String?       // الفريق البطل عند الانتهاء
+  createdAt   DateTime         @default(now())
+
+  user    User             @relation(fields: [userId], references: [id], onDelete: Cascade)
+  teams   TournamentTeam[]
+  matches Match[]
+
+  @@index([userId])
+}
+
+// مشاركة فريق في بطولة + ترتيبه/إحصاءاته داخلها
+model TournamentTeam {
+  id           String    @id @default(cuid())
+  tournamentId String
+  teamId       String
+  seed         Int       @default(0) // ترتيب القرعة
+  points       Int       @default(0) // نظام تجميع النقاط
+  wins         Int       @default(0) // مواجهات مكسوبة
+  losses       Int       @default(0) // مواجهات مخسورة
+  eliminated   Boolean   @default(false) // خروج المغلوب
+  lastWinAt    DateTime? // آخر فوز — لكسر التعادل في الترتيب
+
+  tournament Tournament @relation(fields: [tournamentId], references: [id], onDelete: Cascade)
+  team       Team       @relation(fields: [teamId], references: [id], onDelete: Cascade)
+
+  @@unique([tournamentId, teamId])
+  @@index([tournamentId])
+}
+
+model Match {
+  id           String      @id @default(cuid())
+  tournamentId String
+  round        Int         @default(1) // الدور (إقصاء) أو الجولة (دوري)
+  position     Int         @default(0) // الموقع داخل الدور
+  teamAId      String? // قد يكون null في الإقصاء حتى يتأهل فريق
+  teamBId      String?
+  teamAWins    Int         @default(0) // عدد الصكات الفائزة للفريق أ
+  teamBWins    Int         @default(0) // عدد الصكات الفائزة للفريق ب
+  bestOf       Int         @default(1)
+  winnerTeamId String?
+  status       MatchStatus @default(PENDING)
+
+  // تقدّم شجرة الإقصاء: المواجهة التالية التي يصعد لها الفائز
+  nextMatchId String?
+  nextSlot    Int? // 1 = يدخل خانة الفريق أ / 2 = خانة الفريق ب
+  nextMatch   Match?   @relation("BracketProgression", fields: [nextMatchId], references: [id], onDelete: SetNull)
+  prevMatches Match[]  @relation("BracketProgression")
+
+  createdAt DateTime @default(now())
+
+  tournament Tournament @relation(fields: [tournamentId], references: [id], onDelete: Cascade)
+  teamA      Team?      @relation("MatchTeamA", fields: [teamAId], references: [id], onDelete: SetNull)
+  teamB      Team?      @relation("MatchTeamB", fields: [teamBId], references: [id], onDelete: SetNull)
+  winnerTeam Team?      @relation("MatchWinner", fields: [winnerTeamId], references: [id], onDelete: SetNull)
+  games      Game[]
+
+  @@index([tournamentId, round])
 }

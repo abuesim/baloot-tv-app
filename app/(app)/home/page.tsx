@@ -7,7 +7,7 @@ export default async function HomePage() {
   const user = await requireUser();
   const ownerUserId = user.parentUserId ?? user.id;
 
-  const [recentGames, playersCount, monthGames] = await Promise.all([
+  const [recentGames, playersCount, monthGames, teamsCount] = await Promise.all([
     db.game.findMany({
       where: { userId: ownerUserId },
       orderBy: { startedAt: "desc" },
@@ -24,6 +24,7 @@ export default async function HomePage() {
         status: "COMPLETED",
       },
     }),
+    db.team.count({ where: { userId: ownerUserId } }),
   ]);
 
   return (
@@ -54,6 +55,23 @@ export default async function HomePage() {
         >
           <div className="text-5xl mb-2">📊</div>
           <div className="text-xl font-bold">إحصائيات الشهر ({monthGames})</div>
+        </Link>
+      </div>
+
+      <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+        <Link
+          href="/teams"
+          className="bg-navy rounded-2xl p-6 text-center border border-white/10 hover:border-gold/40 flex items-center justify-center gap-3"
+        >
+          <div className="text-4xl">🤝</div>
+          <div className="text-lg font-bold">الفرق ({teamsCount})</div>
+        </Link>
+        <Link
+          href="/tournaments"
+          className="bg-navy rounded-2xl p-6 text-center border border-white/10 hover:border-gold/40 flex items-center justify-center gap-3"
+        >
+          <div className="text-4xl">🏆</div>
+          <div className="text-lg font-bold">البطولات</div>
         </Link>
       </div>
 
