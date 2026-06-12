@@ -1,6 +1,7 @@
 import Link from "next/link";
 import { requireUser } from "@/lib/auth";
 import { db } from "@/lib/db";
+import { PlayerAvatar } from "@/components/PlayerAvatar";
 import { HistoryList } from "./HistoryList";
 
 type SearchParams = Promise<{ filter?: string }>;
@@ -52,6 +53,24 @@ export default async function HistoryPage({
     },
   });
 
+  // البطولات المنتهية ضمن نفس النطاق الزمني
+  const teamSel = {
+    id: true,
+    name: true,
+    player1: { select: { name: true, imageUrl: true } },
+    player2: { select: { name: true, imageUrl: true } },
+  } as const;
+  const tournaments = await db.tournament.findMany({
+    where: {
+      userId: ownerUserId,
+      status: "COMPLETED",
+      ...(dateRange.gte ? { createdAt: dateRange } : {}),
+    },
+    orderBy: { createdAt: "desc" },
+    take: filter === "all" ? 100 : undefined,
+    include: { teams: { include: { team: { select: teamSel } } } },
+  });
+
   return (
     <div className="space-y-6">
       {/* Header */}
@@ -80,6 +99,61 @@ export default async function HistoryPage({
       </div>
 
       <HistoryList initialGames={games} canDelete={!user.parentUserId} />
+
+      {/* سجل البطولات — البطل (جماعي) ولاعباه (فردي) */}
+      {tournaments.length > 0 && (
+        <div className="space-y-3">
+          <h2 className="text-xl font-bold flex items-center gap-2">
+            🏆 سجل البطولات
+            <span className="text-sm font-normal text-white/40">({tournaments.length})</span>
+          </h2>
+          {tournaments.map((t) => {
+            const champ = t.teams.find((tt) => tt.teamId === t.championTeamId)?.team ?? null;
+            const date = new Date(t.createdAt).toLocaleDateString("ar", {
+              day: "numeric",
+              month: "long",
+              year: "numeric",
+            });
+            return (
+              <Link
+                key={t.id}
+                href={`/tournaments/${t.id}`}
+                className="block bg-gradient-to-l from-gold/15 to-transparent rounded-2xl p-4 border border-gold/25 hover:border-gold/50 transition-colors"
+              >
+                <div className="flex items-center gap-3 flex-wrap">
+                  <div className="text-3xl">🏆</div>
+                  <div className="min-w-0 flex-1">
+                    <div className="font-bold truncate">{t.name || "بطولة"}</div>
+                    <div className="text-xs text-white/50">
+                      {t.format === "KNOCKOUT" ? "خروج المغلوب" : "تجميع النقاط"} · {t.teams.length} فريق · {date}
+                    </div>
+                  </div>
+
+                  {champ ? (
+                    <div className="flex items-center gap-2 bg-gold/10 rounded-xl px-3 py-2 border border-gold/20">
+                      <span className="text-xs text-gold font-bold">البطل</span>
+                      <div className="flex -space-x-2 -space-x-reverse">
+                        <PlayerAvatar name={champ.player1.name} imageUrl={champ.player1.imageUrl} size="sm" className="ring-2 ring-navy" />
+                        <PlayerAvatar name={champ.player2.name} imageUrl={champ.player2.imageUrl} size="sm" className="ring-2 ring-navy" />
+                      </div>
+                      <span className="text-sm font-bold">{champ.name}</span>
+                    </div>
+                  ) : (
+                    <span className="text-xs text-white/40">بدون بطل</span>
+                  )}
+                </div>
+
+                {/* الإنجاز الفردي — لاعبا الفريق البطل */}
+                {champ && (
+                  <div className="text-xs text-white/50 mt-2 pr-12">
+                    🥇 {champ.player1.name} · {champ.player2.name}
+                  </div>
+                )}
+              </Link>
+            );
+          })}
+        </div>
+      )}
     </div>
   );
 }
