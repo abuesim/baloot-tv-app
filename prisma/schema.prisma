@@ -311,6 +311,7 @@ model Match {
   bestOf       Int         @default(1)
   winnerTeamId String?
   status       MatchStatus @default(PENDING)
+  decidedAt    DateTime? // وقت حسم المواجهة — لكسر التعادل في الترتيب
 
   // تقدّم شجرة الإقصاء: المواجهة التالية التي يصعد لها الفائز
   nextMatchId String?

@@ -6,6 +6,7 @@ import { db } from "@/lib/db";
 import { requireUser } from "@/lib/auth";
 import { getWinner } from "@/lib/baloot";
 import { publish } from "@/lib/events";
+import { syncMatchForGame } from "@/lib/tournament-sync";
 
 const roundSchema = z.object({
   team1Score: z.number().int().min(0).max(300),
@@ -80,6 +81,7 @@ export async function recordRoundAction(
   ]);
 
   await broadcastGame(game.id, ownerUserId);
+  await syncMatchForGame(game.id);
   revalidatePath(`/games/${game.id}`);
   return { ok: true };
 }
@@ -137,6 +139,7 @@ export async function deleteRoundAction(
   ]);
 
   await broadcastGame(game.id, ownerUserId);
+  await syncMatchForGame(game.id);
   revalidatePath(`/games/${game.id}`);
   return { ok: true };
 }
@@ -154,6 +157,7 @@ export async function abandonGameAction(gameId: string): Promise<ActionResult> {
     data: { status: "ABANDONED", endedAt: new Date() },
   });
   await broadcastGame(gameId, ownerUserId);
+  await syncMatchForGame(gameId);
   revalidatePath(`/games/${gameId}`);
   return { ok: true };
 }
@@ -220,6 +224,7 @@ export async function changeGameModeAction(
   }
 
   await broadcastGame(gameId, ownerUserId);
+  await syncMatchForGame(gameId);
   revalidatePath(`/games/${gameId}`);
   return { ok: true };
 }
@@ -322,6 +327,7 @@ export async function setGamePlayersAction(
   ]);
 
   await broadcastGame(gameId, ownerUserId);
+  await syncMatchForGame(gameId);
   revalidatePath(`/games/${gameId}`);
   return { ok: true };
 }
