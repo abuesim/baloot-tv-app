@@ -15,14 +15,16 @@ type TeamRow = {
 };
 
 export default function TeamsManager({
-  players,
+  availablePlayers,
+  totalPlayers,
   teams,
 }: {
-  players: SelectablePlayer[];
+  availablePlayers: SelectablePlayer[];
+  totalPlayers: number;
   teams: TeamRow[];
 }) {
   const router = useRouter();
-  const byId = new Map(players.map((p) => [p.id, p]));
+  const byId = new Map(availablePlayers.map((p) => [p.id, p]));
 
   const [name, setName] = useState("");
   const [p1, setP1] = useState("");
@@ -30,9 +32,9 @@ export default function TeamsManager({
   const [error, setError] = useState<string | null>(null);
   const [isPending, start] = useTransition();
 
-  // لا نعرض اللاعب المختار في المنتقي الآخر
-  const opts1 = players.filter((p) => p.id !== p2);
-  const opts2 = players.filter((p) => p.id !== p1);
+  // لا نعرض اللاعب المختار في المنتقي الآخر (والمتاحون أصلاً غير مستخدَمين)
+  const opts1 = availablePlayers.filter((p) => p.id !== p2);
+  const opts2 = availablePlayers.filter((p) => p.id !== p1);
 
   function create(e: React.FormEvent) {
     e.preventDefault();
@@ -71,7 +73,7 @@ export default function TeamsManager({
   return (
     <div className="space-y-6">
       {/* إنشاء فريق */}
-      {players.length >= 2 ? (
+      {availablePlayers.length >= 2 ? (
         <form
           onSubmit={create}
           className="bg-navy rounded-2xl p-5 border border-white/10 space-y-4"
@@ -128,9 +130,13 @@ export default function TeamsManager({
             {isPending ? "..." : "إنشاء الفريق"}
           </button>
         </form>
-      ) : (
+      ) : totalPlayers < 2 ? (
         <div className="bg-navy/60 rounded-2xl p-4 border border-white/10 text-sm text-white/70">
           تحتاج لاعبَين على الأقل لتكوين فريق. أضِف لاعبين من صفحة «اللاعبون».
+        </div>
+      ) : (
+        <div className="bg-navy/60 rounded-2xl p-4 border border-white/10 text-sm text-white/70">
+          كل لاعبينك موجودون في فرق بالفعل. كل لاعب يكون في فريق واحد فقط — احذف فريقاً لتحرير لاعبيه.
         </div>
       )}
 

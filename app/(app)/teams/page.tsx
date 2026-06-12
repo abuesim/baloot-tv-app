@@ -23,6 +23,14 @@ export default async function TeamsPage() {
     }),
   ]);
 
+  // اللاعب في فريق واحد فقط — نستبعد المستخدَمين من منتقي الإنشاء
+  const usedIds = new Set<string>();
+  for (const t of teams) {
+    usedIds.add(t.player1Id);
+    usedIds.add(t.player2Id);
+  }
+  const availablePlayers = players.filter((p) => !usedIds.has(p.id));
+
   return (
     <div className="space-y-6">
       <div>
@@ -31,7 +39,8 @@ export default async function TeamsPage() {
       </div>
 
       <TeamsManager
-        players={players}
+        availablePlayers={availablePlayers}
+        totalPlayers={players.length}
         teams={teams.map((t) => ({
           id: t.id,
           name: t.name,

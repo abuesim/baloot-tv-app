@@ -40,6 +40,24 @@ export async function createTeamAction(input: {
     return { ok: false, error: "أحد اللاعبين غير موجود في قائمتك" };
   }
 
+  // قاعدة: اللاعب في فريق واحد فقط — لا يتكرر بين الفرق
+  const alreadyInTeam = await db.team.findFirst({
+    where: {
+      userId: ownerUserId,
+      OR: [
+        { player1Id: { in: [player1Id, player2Id] } },
+        { player2Id: { in: [player1Id, player2Id] } },
+      ],
+    },
+    select: { name: true },
+  });
+  if (alreadyInTeam) {
+    return {
+      ok: false,
+      error: `أحد اللاعبين موجود في فريق «${alreadyInTeam.name}» — اللاعب يكون في فريق واحد فقط`,
+    };
+  }
+
   await db.team.create({
     data: {
       userId: ownerUserId,
