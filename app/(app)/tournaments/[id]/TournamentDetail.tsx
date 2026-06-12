@@ -16,6 +16,7 @@ import {
   deleteTournamentAction,
 } from "../actions";
 import DrawCeremony from "./DrawCeremony";
+import TournamentChampion from "./TournamentChampion";
 import PlayerSelect from "@/components/PlayerSelect";
 
 type PlayerLite = { id: string; name: string; imageUrl: string | null };
@@ -70,6 +71,19 @@ export default function TournamentDetail({
   const [ceremony, setCeremony] = useState<TeamLite[] | null>(null);
 
   const teamById = new Map(teams.map((t) => [t.team.id, t.team]));
+
+  // حساب الوصيف لعرضه في احتفال البطل
+  let runnerUp: TeamLite | null = null;
+  const championId = tournament.championTeamId;
+  if (champion && championId) {
+    if (tournament.format === "KNOCKOUT") {
+      const maxRound = Math.max(0, ...matches.map((m) => m.round));
+      const final = matches.find((m) => m.round === maxRound && m.status === "COMPLETED");
+      if (final) runnerUp = final.teamA?.id === championId ? final.teamB : final.teamA;
+    } else {
+      runnerUp = standings[1]?.team ?? null;
+    }
+  }
 
   function createTeam(input: { name: string; player1Id: string; player2Id: string }) {
     setError(null);
@@ -199,20 +213,8 @@ export default function TournamentDetail({
 
       {error && <div className="bg-danger/20 text-red-300 text-sm rounded-xl p-3">{error}</div>}
 
-      {/* بطل البطولة */}
-      {champion && (
-        <div className="bg-gradient-to-l from-gold/30 to-gold/10 rounded-2xl p-5 border border-gold/40 flex items-center gap-4">
-          <div className="text-5xl">🏆</div>
-          <div className="flex -space-x-3 -space-x-reverse">
-            <PlayerAvatar name={champion.player1.name} imageUrl={champion.player1.imageUrl} size="lg" className="ring-2 ring-navy" />
-            <PlayerAvatar name={champion.player2.name} imageUrl={champion.player2.imageUrl} size="lg" className="ring-2 ring-navy" />
-          </div>
-          <div>
-            <div className="text-sm text-gold">بطل البطولة</div>
-            <div className="text-2xl font-black">{champion.name}</div>
-          </div>
-        </div>
-      )}
+      {/* احتفال بطل البطولة */}
+      {champion && <TournamentChampion champion={champion} runnerUp={runnerUp} />}
 
       {/* ════════ وضع الإعداد ════════ */}
       {tournament.status === "DRAFT" ? (
