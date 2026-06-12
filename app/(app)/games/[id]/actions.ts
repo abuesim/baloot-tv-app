@@ -6,7 +6,7 @@ import { db } from "@/lib/db";
 import { requireUser } from "@/lib/auth";
 import { getWinner } from "@/lib/baloot";
 import { publish } from "@/lib/events";
-import { syncMatchForGame } from "@/lib/tournament-sync";
+import { syncMatchForGame, syncMatch } from "@/lib/tournament-sync";
 
 const roundSchema = z.object({
   team1Score: z.number().int().min(0).max(300),
@@ -272,6 +272,9 @@ export async function deleteGameAction(
     db.gameParticipant.deleteMany({ where: { gameId } }),
     db.game.delete({ where: { id: gameId } }),
   ]);
+
+  // إن كانت الصكة ضمن مواجهة بطولة، أعِد مزامنتها (تتحرر للبدء من جديد)
+  if (game.matchId) await syncMatch(game.matchId);
 
   revalidatePath("/home");
   revalidatePath("/stats");
