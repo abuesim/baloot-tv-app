@@ -1476,6 +1476,9 @@ function TvStandingsRow({ tournament, accent }: { tournament: TvTournament; acce
           <span className="text-white/50 tabular-nums">
             {s.wins}-{s.losses}
           </span>
+          <span className="text-white/30 tabular-nums text-[9px] md:text-xs" title="أبناط">
+            ⚡{Math.round(s.abnat / 2)}
+          </span>
         </span>
       ))}
     </div>

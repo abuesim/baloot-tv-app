@@ -43,7 +43,7 @@ export type TvTournament = {
   drawAt: number | null; // توقيت آخر بث للقرعة (ms)
   teams: TvTeam[]; // مرتبة حسب seed
   matches: TvMatch[];
-  standings: { teamId: string; name: string; wins: number; losses: number }[];
+  standings: { teamId: string; name: string; wins: number; losses: number; abnat: number }[];
 };
 
 const teamSelect = {
@@ -96,6 +96,7 @@ export async function getActiveTvTournament(
           name: nameById.get(s.teamId) ?? "—",
           wins: s.wins,
           losses: s.losses,
+          abnat: s.abnat,
         }))
       : [];
 

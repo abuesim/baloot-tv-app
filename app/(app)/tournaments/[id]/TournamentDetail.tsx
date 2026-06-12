@@ -45,9 +45,17 @@ type Tournament = {
   name: string;
   format: "KNOCKOUT" | "POINTS";
   matchBestOf: number;
+  doubleRoundRobin: boolean;
   gameMode: "NORMAL" | "MASHDOOD";
   status: "DRAFT" | "DRAWN" | "IN_PROGRESS" | "COMPLETED";
   championTeamId: string | null;
+};
+type StandingRow = {
+  teamId: string;
+  wins: number;
+  losses: number;
+  abnat: number;
+  team: TeamLite | null;
 };
 
 export default function TournamentDetail({
@@ -62,7 +70,7 @@ export default function TournamentDetail({
   teams: { seed: number; team: TeamLite }[];
   availablePlayers: PlayerLite[];
   matches: MatchView[];
-  standings: { teamId: string; wins: number; losses: number; team: TeamLite | null }[];
+  standings: StandingRow[];
   champion: TeamLite | null;
 }) {
   const router = useRouter();
@@ -114,6 +122,7 @@ export default function TournamentDetail({
     format: "KNOCKOUT" | "POINTS";
     matchBestOf: 1 | 3;
     gameMode: "NORMAL" | "MASHDOOD";
+    doubleRoundRobin: boolean;
   }) {
     setError(null);
     start(async () => {
@@ -199,7 +208,9 @@ export default function TournamentDetail({
           <p className="text-xs text-white/50 mt-1">
             {tournament.format === "KNOCKOUT" ? "خروج المغلوب" : "تجميع النقاط"} ·{" "}
             {tournament.matchBestOf === 3 ? "أفضل من ٣" : "صكة واحدة"} ·{" "}
-            {tournament.gameMode === "MASHDOOD" ? "مشدود" : "عادي"} · {teams.length} فريق
+            {tournament.gameMode === "MASHDOOD" ? "مشدود" : "عادي"}
+            {tournament.format === "POINTS" && tournament.doubleRoundRobin ? " · ذهاب وإياب" : ""} ·{" "}
+            {teams.length} فريق
           </p>
         </div>
         <button
@@ -296,6 +307,7 @@ function DraftView({
     format: "KNOCKOUT" | "POINTS";
     matchBestOf: 1 | 3;
     gameMode: "NORMAL" | "MASHDOOD";
+    doubleRoundRobin: boolean;
   }) => void;
   onDraw: () => void;
   isPending: boolean;
@@ -415,7 +427,7 @@ function PointsView({
   isPending,
 }: {
   matches: MatchView[];
-  standings: { teamId: string; wins: number; losses: number; team: TeamLite | null }[];
+  standings: StandingRow[];
   onStart: (id: string) => void;
   isPending: boolean;
 }) {
@@ -434,6 +446,7 @@ function PointsView({
                 <th className="p-3 text-center">فوز</th>
                 <th className="p-3 text-center">خسارة</th>
                 <th className="p-3 text-center">نقاط</th>
+                <th className="p-3 text-center">أبناط</th>
               </tr>
             </thead>
             <tbody>
@@ -449,6 +462,9 @@ function PointsView({
                   <td className="p-3 text-center text-green-400 font-bold">{s.wins}</td>
                   <td className="p-3 text-center text-red-400">{s.losses}</td>
                   <td className="p-3 text-center font-black text-gold">{s.wins}</td>
+                  <td className="p-3 text-center text-white/70 tabular-nums" title="مجموع الأبناط ÷ ٢">
+                    {Math.round(s.abnat / 2)}
+                  </td>
                 </tr>
               ))}
             </tbody>
@@ -570,6 +586,7 @@ function EditSettingsPanel({
     format: "KNOCKOUT" | "POINTS";
     matchBestOf: 1 | 3;
     gameMode: "NORMAL" | "MASHDOOD";
+    doubleRoundRobin: boolean;
   }) => void;
   isPending: boolean;
 }) {
@@ -578,6 +595,7 @@ function EditSettingsPanel({
   const [format, setFormat] = useState(tournament.format);
   const [bestOf, setBestOf] = useState<1 | 3>(tournament.matchBestOf === 3 ? 3 : 1);
   const [gameMode, setGameMode] = useState(tournament.gameMode);
+  const [doubleRR, setDoubleRR] = useState(tournament.doubleRoundRobin);
 
   if (!open) {
     return (
@@ -639,9 +657,34 @@ function EditSettingsPanel({
         ]}
       />
 
+      {/* ذهاب وإياب — لنظام النقاط فقط */}
+      {format === "POINTS" && (
+        <label className="flex items-center gap-3 cursor-pointer bg-navy-light rounded-xl p-3 border border-white/10">
+          <input
+            type="checkbox"
+            checked={doubleRR}
+            onChange={(e) => setDoubleRR(e.target.checked)}
+            className="w-5 h-5 accent-accent shrink-0"
+          />
+          <div>
+            <div className="font-bold text-sm">🔁 ذهاب وإياب</div>
+            <div className="text-[11px] text-white/55">كل فريقين يلعبان مرتين</div>
+          </div>
+        </label>
+      )}
+
       <button
         type="button"
-        onClick={() => { onSave({ name: name.trim() || tournament.name, format, matchBestOf: bestOf, gameMode }); setOpen(false); }}
+        onClick={() => {
+          onSave({
+            name: name.trim() || tournament.name,
+            format,
+            matchBestOf: bestOf,
+            gameMode,
+            doubleRoundRobin: format === "POINTS" ? doubleRR : false,
+          });
+          setOpen(false);
+        }}
         disabled={isPending}
         className="btn-grad px-6 py-2.5 rounded-xl text-sm"
       >

@@ -70,23 +70,35 @@ export function buildBracketSeeds(teamIds: string[]): BracketSeed[] {
 
 /**
  * جدول الدوري الكامل (الكل ضد الكل) بطريقة الدائرة — توزيع متوازن على جولات.
+ * double = true → ذهاب وإياب (كل زوج يلعب مرتين، الثانية بتبديل الأرض).
  * يُرجع مصفوفة مواجهات بأرقام جولات.
  */
 export function buildRoundRobin(
   teamIds: string[],
+  double = false,
 ): { round: number; position: number; teamAId: string; teamBId: string }[] {
   const arr: (string | null)[] = [...teamIds];
   if (arr.length % 2 === 1) arr.push(null); // باي وهمي للجولة
   const n = arr.length;
   const out: { round: number; position: number; teamAId: string; teamBId: string }[] = [];
 
-  for (let r = 0; r < n - 1; r++) {
+  const legRounds = n - 1; // عدد جولات الذهاب
+  for (let r = 0; r < legRounds; r++) {
     let pos = 0;
     for (let i = 0; i < n / 2; i++) {
       const a = arr[i];
       const b = arr[n - 1 - i];
       if (a && b) {
         out.push({ round: r + 1, position: pos++, teamAId: a, teamBId: b });
+        if (double) {
+          // الإياب: نفس المواجهة بأرض معكوسة في جولة لاحقة
+          out.push({
+            round: legRounds + r + 1,
+            position: pos - 1,
+            teamAId: b,
+            teamBId: a,
+          });
+        }
       }
     }
     // تدوير: نثبّت العنصر الأول وندوّر الباقي

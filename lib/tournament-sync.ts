@@ -3,7 +3,6 @@
 
 import { db } from "@/lib/db";
 import { publish } from "@/lib/events";
-import { rankStandings } from "@/lib/tournament";
 
 /** يُستدعى بعد أي تغيّر في صكة — يزامن مواجهتها إن كانت ضمن بطولة */
 export async function syncMatchForGame(gameId: string): Promise<void> {
@@ -115,11 +114,19 @@ async function maybeFinishPoints(tournamentId: string): Promise<void> {
   });
 }
 
-/** ترتيب نظام النقاط — محسوب من نتائج المواجهات */
+export type PointsStanding = {
+  teamId: string;
+  wins: number;
+  losses: number;
+  abnat: number; // مجموع نقاط الفريق في كل صكاته (للعرض يُقسم ÷٢)
+  lastWinAt: Date | null;
+};
+
+/** ترتيب نظام النقاط — محسوب من نتائج المواجهات + الأبناط */
 export async function computePointsStandings(
   tournamentId: string,
-): Promise<{ teamId: string; wins: number; losses: number; lastWinAt: Date | null }[]> {
-  const [teams, matches] = await Promise.all([
+): Promise<PointsStanding[]> {
+  const [teams, matches, games] = await Promise.all([
     db.tournamentTeam.findMany({
       where: { tournamentId },
       select: { teamId: true },
@@ -128,7 +135,25 @@ export async function computePointsStandings(
       where: { tournamentId, status: "COMPLETED" },
       select: { teamAId: true, teamBId: true, winnerTeamId: true, decidedAt: true },
     }),
+    // كل الصكات المنتهية في البطولة — لحساب الأبناط
+    db.game.findMany({
+      where: { match: { tournamentId }, status: "COMPLETED" },
+      select: {
+        team1Score: true,
+        team2Score: true,
+        match: { select: { teamAId: true, teamBId: true } },
+      },
+    }),
   ]);
+
+  // مجموع أبناط كل فريق (الفريق أ يأخذ team1Score، الفريق ب يأخذ team2Score)
+  const abnatById = new Map<string, number>();
+  for (const g of games) {
+    const a = g.match?.teamAId;
+    const b = g.match?.teamBId;
+    if (a) abnatById.set(a, (abnatById.get(a) ?? 0) + g.team1Score);
+    if (b) abnatById.set(b, (abnatById.get(b) ?? 0) + g.team2Score);
+  }
 
   const rows = teams.map((t) => {
     let wins = 0;
@@ -144,8 +169,16 @@ export async function computePointsStandings(
         losses++;
       }
     }
-    return { teamId: t.teamId, wins, losses, lastWinAt };
+    return { teamId: t.teamId, wins, losses, abnat: abnatById.get(t.teamId) ?? 0, lastWinAt };
   });
 
-  return rankStandings(rows);
+  // الترتيب: الأكثر فوزاً ← عند التعادل الأعلى أبناطاً ← الأقل خسارة ← آخر فوز
+  return rows.sort((a, b) => {
+    if (b.wins !== a.wins) return b.wins - a.wins;
+    if (b.abnat !== a.abnat) return b.abnat - a.abnat;
+    if (a.losses !== b.losses) return a.losses - b.losses;
+    const ta = a.lastWinAt ? a.lastWinAt.getTime() : 0;
+    const tb = b.lastWinAt ? b.lastWinAt.getTime() : 0;
+    return tb - ta;
+  });
 }

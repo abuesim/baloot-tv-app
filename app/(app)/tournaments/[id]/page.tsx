@@ -90,6 +90,7 @@ export default async function TournamentDetailPage({
         name: t.name,
         format: t.format,
         matchBestOf: t.matchBestOf,
+        doubleRoundRobin: t.doubleRoundRobin,
         gameMode: t.gameMode,
         status: t.status,
         championTeamId: t.championTeamId,

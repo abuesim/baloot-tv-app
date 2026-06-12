@@ -273,6 +273,7 @@ model Tournament {
   name        String
   format      TournamentFormat
   matchBestOf Int              @default(1) // 1 = صكة واحدة / 3 = أفضل من ٣
+  doubleRoundRobin Boolean     @default(false) // نظام النقاط: ذهاب وإياب
   gameMode    GameMode         @default(NORMAL)
   status      TournamentStatus @default(DRAFT)
   championTeamId String?       // الفريق البطل عند الانتهاء

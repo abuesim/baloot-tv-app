@@ -11,6 +11,7 @@ export default function CreateTournamentForm() {
   const [format, setFormat] = useState<"KNOCKOUT" | "POINTS">("KNOCKOUT");
   const [bestOf, setBestOf] = useState<1 | 3>(1);
   const [gameMode, setGameMode] = useState<"NORMAL" | "MASHDOOD">("NORMAL");
+  const [doubleRR, setDoubleRR] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [isPending, start] = useTransition();
 
@@ -19,7 +20,13 @@ export default function CreateTournamentForm() {
     setError(null);
     if (!name.trim()) return setError("اكتب اسم البطولة");
     start(async () => {
-      const res = await createTournamentAction({ name, format, matchBestOf: bestOf, gameMode });
+      const res = await createTournamentAction({
+        name,
+        format,
+        matchBestOf: bestOf,
+        gameMode,
+        doubleRoundRobin: format === "POINTS" ? doubleRR : false,
+      });
       if (!res.ok) {
         setError(res.error);
         return;
@@ -62,6 +69,22 @@ export default function CreateTournamentForm() {
           { v: "POINTS", t: "تجميع النقاط", d: "دوري — الكل ضد الكل" },
         ]}
       />
+
+      {/* ذهاب وإياب — لنظام النقاط فقط */}
+      {format === "POINTS" && (
+        <label className="flex items-center gap-3 cursor-pointer bg-navy-light rounded-xl p-3 border border-white/10">
+          <input
+            type="checkbox"
+            checked={doubleRR}
+            onChange={(e) => setDoubleRR(e.target.checked)}
+            className="w-5 h-5 accent-accent shrink-0"
+          />
+          <div>
+            <div className="font-bold text-sm">🔁 ذهاب وإياب</div>
+            <div className="text-[11px] text-white/55">كل فريقين يلعبان مرتين</div>
+          </div>
+        </label>
+      )}
 
       {/* نظام المواجهة */}
       <Choice

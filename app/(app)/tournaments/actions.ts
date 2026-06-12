@@ -23,6 +23,7 @@ const createSchema = z.object({
   format: z.enum(["KNOCKOUT", "POINTS"]),
   matchBestOf: z.union([z.literal(1), z.literal(3)]),
   gameMode: z.enum(["NORMAL", "MASHDOOD"]),
+  doubleRoundRobin: z.boolean().optional(),
 });
 
 export async function createTournamentAction(input: {
@@ -30,6 +31,7 @@ export async function createTournamentAction(input: {
   format: "KNOCKOUT" | "POINTS";
   matchBestOf: 1 | 3;
   gameMode: "NORMAL" | "MASHDOOD";
+  doubleRoundRobin?: boolean;
 }): Promise<{ ok: true; id: string } | { ok: false; error: string }> {
   const ownerUserId = await owner();
   const parsed = createSchema.safeParse(input);
@@ -43,6 +45,7 @@ export async function createTournamentAction(input: {
       format: parsed.data.format,
       matchBestOf: parsed.data.matchBestOf,
       gameMode: parsed.data.gameMode,
+      doubleRoundRobin: parsed.data.format === "POINTS" ? !!parsed.data.doubleRoundRobin : false,
       status: "DRAFT",
     },
   });
@@ -56,6 +59,7 @@ const editSchema = z.object({
   format: z.enum(["KNOCKOUT", "POINTS"]),
   matchBestOf: z.union([z.literal(1), z.literal(3)]),
   gameMode: z.enum(["NORMAL", "MASHDOOD"]),
+  doubleRoundRobin: z.boolean().optional(),
 });
 
 export async function updateTournamentAction(
@@ -65,6 +69,7 @@ export async function updateTournamentAction(
     format: "KNOCKOUT" | "POINTS";
     matchBestOf: 1 | 3;
     gameMode: "NORMAL" | "MASHDOOD";
+    doubleRoundRobin?: boolean;
   },
 ): Promise<ActionResult> {
   const ownerUserId = await owner();
@@ -84,6 +89,7 @@ export async function updateTournamentAction(
       format: parsed.data.format,
       matchBestOf: parsed.data.matchBestOf,
       gameMode: parsed.data.gameMode,
+      doubleRoundRobin: parsed.data.format === "POINTS" ? !!parsed.data.doubleRoundRobin : false,
     },
   });
   revalidatePath(`/tournaments/${tournamentId}`);
@@ -308,8 +314,8 @@ export async function runDrawAction(
       }
     }
   } else {
-    // POINTS — دوري كامل
-    const pairs = buildRoundRobin(shuffled);
+    // POINTS — دوري كامل (أو ذهاب وإياب)
+    const pairs = buildRoundRobin(shuffled, t.doubleRoundRobin);
     for (const p of pairs) {
       await db.match.create({
         data: {
