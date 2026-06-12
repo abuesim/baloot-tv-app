@@ -39,18 +39,21 @@ export default async function TournamentDetailPage({
   });
   if (!t || t.userId !== ownerUserId) notFound();
 
-  // الفرق المتاحة للإضافة (وضع الإعداد فقط)
-  const participatingIds = new Set(t.teams.map((tt) => tt.teamId));
-  const availableTeams =
-    t.status === "DRAFT"
-      ? (
-          await db.team.findMany({
-            where: { userId: ownerUserId },
-            select: teamSelect,
-            orderBy: { createdAt: "desc" },
-          })
-        ).filter((tm) => !participatingIds.has(tm.id))
-      : [];
+  // لاعبون متاحون (غير مرتبطين بفريق داخل هذه البطولة) — وضع الإعداد فقط
+  let availablePlayers: { id: string; name: string; imageUrl: string | null }[] = [];
+  if (t.status === "DRAFT") {
+    const allPlayers = await db.player.findMany({
+      where: { userId: ownerUserId },
+      orderBy: { name: "asc" },
+      select: { id: true, name: true, imageUrl: true },
+    });
+    const used = new Set<string>();
+    for (const tt of t.teams) {
+      used.add(tt.team.player1.id);
+      used.add(tt.team.player2.id);
+    }
+    availablePlayers = allPlayers.filter((p) => !used.has(p.id));
+  }
 
   const teamById = new Map(t.teams.map((tt) => [tt.teamId, tt.team]));
 
@@ -92,7 +95,7 @@ export default async function TournamentDetailPage({
         championTeamId: t.championTeamId,
       }}
       teams={t.teams.map((tt) => ({ seed: tt.seed, team: tt.team }))}
-      availableTeams={availableTeams}
+      availablePlayers={availablePlayers}
       matches={matches}
       standings={standings}
       champion={champion}

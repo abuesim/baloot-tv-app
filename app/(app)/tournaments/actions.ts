@@ -50,6 +50,46 @@ export async function createTournamentAction(input: {
   return { ok: true, id: t.id };
 }
 
+// ─── تعديل إعدادات البطولة (قبل القرعة فقط) ───
+const editSchema = z.object({
+  name: z.string().min(1, "اسم البطولة مطلوب").max(60),
+  format: z.enum(["KNOCKOUT", "POINTS"]),
+  matchBestOf: z.union([z.literal(1), z.literal(3)]),
+  gameMode: z.enum(["NORMAL", "MASHDOOD"]),
+});
+
+export async function updateTournamentAction(
+  tournamentId: string,
+  input: {
+    name: string;
+    format: "KNOCKOUT" | "POINTS";
+    matchBestOf: 1 | 3;
+    gameMode: "NORMAL" | "MASHDOOD";
+  },
+): Promise<ActionResult> {
+  const ownerUserId = await owner();
+  const t = await db.tournament.findUnique({ where: { id: tournamentId } });
+  if (!t || t.userId !== ownerUserId) return { ok: false, error: "البطولة غير موجودة" };
+  if (t.status !== "DRAFT") return { ok: false, error: "لا يمكن التعديل بعد القرعة" };
+
+  const parsed = editSchema.safeParse(input);
+  if (!parsed.success) {
+    return { ok: false, error: parsed.error.issues[0]?.message ?? "بيانات غير صالحة" };
+  }
+
+  await db.tournament.update({
+    where: { id: tournamentId },
+    data: {
+      name: parsed.data.name.trim(),
+      format: parsed.data.format,
+      matchBestOf: parsed.data.matchBestOf,
+      gameMode: parsed.data.gameMode,
+    },
+  });
+  revalidatePath(`/tournaments/${tournamentId}`);
+  return { ok: true };
+}
+
 export async function deleteTournamentAction(tournamentId: string): Promise<ActionResult> {
   const ownerUserId = await owner();
   const t = await db.tournament.findUnique({ where: { id: tournamentId } });
@@ -65,26 +105,125 @@ export async function deleteTournamentAction(tournamentId: string): Promise<Acti
   return { ok: true };
 }
 
-// ─── إضافة/إزالة فريق مشارك ───
-export async function addTournamentTeamAction(
+// ─── اللاعبون المستخدَمون في فرق هذه البطولة ───
+async function usedPlayerIds(tournamentId: string): Promise<Set<string>> {
+  const teams = await db.team.findMany({
+    where: { tournamentId },
+    select: { player1Id: true, player2Id: true },
+  });
+  const used = new Set<string>();
+  for (const t of teams) {
+    used.add(t.player1Id);
+    used.add(t.player2Id);
+  }
+  return used;
+}
+
+// ─── إنشاء فريق داخل البطولة ───
+const teamSchema = z.object({
+  name: z.string().min(1, "اسم الفريق مطلوب").max(40, "اسم الفريق طويل"),
+  player1Id: z.string().min(1, "اختر اللاعب الأول"),
+  player2Id: z.string().min(1, "اختر اللاعب الثاني"),
+});
+
+export async function createTournamentTeamAction(
   tournamentId: string,
-  teamId: string,
+  input: { name: string; player1Id: string; player2Id: string },
 ): Promise<ActionResult> {
   const ownerUserId = await owner();
   const t = await db.tournament.findUnique({ where: { id: tournamentId } });
   if (!t || t.userId !== ownerUserId) return { ok: false, error: "البطولة غير موجودة" };
   if (t.status !== "DRAFT") return { ok: false, error: "لا يمكن تعديل الفرق بعد القرعة" };
 
-  const team = await db.team.findUnique({ where: { id: teamId } });
-  if (!team || team.userId !== ownerUserId) return { ok: false, error: "الفريق غير موجود" };
+  const parsed = teamSchema.safeParse(input);
+  if (!parsed.success) {
+    return { ok: false, error: parsed.error.issues[0]?.message ?? "بيانات غير صالحة" };
+  }
+  const { name, player1Id, player2Id } = parsed.data;
+  if (player1Id === player2Id) return { ok: false, error: "لازم تختار لاعبين مختلفين" };
 
-  await db.tournamentTeam.upsert({
-    where: { tournamentId_teamId: { tournamentId, teamId } },
-    create: { tournamentId, teamId },
-    update: {},
+  // اللاعبان من روستر المستخدم
+  const players = await db.player.findMany({
+    where: { id: { in: [player1Id, player2Id] }, userId: ownerUserId },
+    select: { id: true },
   });
+  if (players.length !== 2) return { ok: false, error: "أحد اللاعبين غير موجود في قائمتك" };
+
+  // قاعدة: اللاعب لا يتكرر داخل نفس البطولة
+  const used = await usedPlayerIds(tournamentId);
+  if (used.has(player1Id) || used.has(player2Id)) {
+    return { ok: false, error: "أحد اللاعبين موجود في فريق آخر بهذه البطولة" };
+  }
+
+  const team = await db.team.create({
+    data: {
+      userId: ownerUserId,
+      tournamentId,
+      name: name.trim(),
+      player1Id,
+      player2Id,
+    },
+  });
+  await db.tournamentTeam.create({ data: { tournamentId, teamId: team.id } });
+
   revalidatePath(`/tournaments/${tournamentId}`);
   return { ok: true };
+}
+
+// ─── فرق عشوائية: اختر اللاعبين والقرعة تكوّن الفرق ───
+export async function randomTeamsAction(
+  tournamentId: string,
+  playerIds: string[],
+): Promise<{ ok: true; teams: string[] } | { ok: false; error: string }> {
+  const ownerUserId = await owner();
+  const t = await db.tournament.findUnique({ where: { id: tournamentId } });
+  if (!t || t.userId !== ownerUserId) return { ok: false, error: "البطولة غير موجودة" };
+  if (t.status !== "DRAFT") return { ok: false, error: "لا يمكن تعديل الفرق بعد القرعة" };
+
+  const ids = [...new Set(playerIds)];
+  if (ids.length < 4) return { ok: false, error: "اختر ٤ لاعبين على الأقل" };
+  if (ids.length % 2 !== 0)
+    return { ok: false, error: "عدد اللاعبين لازم يكون زوجياً — أزِل لاعباً أو أضِف آخر" };
+
+  // اللاعبون من روستر المستخدم
+  const players = await db.player.findMany({
+    where: { id: { in: ids }, userId: ownerUserId },
+    select: { id: true, name: true },
+  });
+  if (players.length !== ids.length) {
+    return { ok: false, error: "أحد اللاعبين غير موجود في قائمتك" };
+  }
+
+  // قاعدة: اللاعب لا يتكرر داخل نفس البطولة
+  const used = await usedPlayerIds(tournamentId);
+  const conflict = ids.find((id) => used.has(id));
+  if (conflict) {
+    return { ok: false, error: "أحد اللاعبين موجود في فريق آخر بهذه البطولة" };
+  }
+
+  // خلط عشوائي ثم أزواج متتالية
+  const shuffled = [...players].sort(() => Math.random() - 0.5);
+  const created: string[] = [];
+  for (let i = 0; i < shuffled.length; i += 2) {
+    const a = shuffled[i];
+    const b = shuffled[i + 1];
+    const team = await db.team.create({
+      data: {
+        userId: ownerUserId,
+        tournamentId,
+        name: `${a.name} و ${b.name}`,
+        player1Id: a.id,
+        player2Id: b.id,
+      },
+    });
+    await db.tournamentTeam.create({
+      data: { tournamentId, teamId: team.id },
+    });
+    created.push(team.id);
+  }
+
+  revalidatePath(`/tournaments/${tournamentId}`);
+  return { ok: true, teams: created };
 }
 
 export async function removeTournamentTeamAction(
@@ -97,6 +236,8 @@ export async function removeTournamentTeamAction(
   if (t.status !== "DRAFT") return { ok: false, error: "لا يمكن تعديل الفرق بعد القرعة" };
 
   await db.tournamentTeam.deleteMany({ where: { tournamentId, teamId } });
+  // الفريق ملك هذه البطولة → نحذفه نهائياً ليتحرر لاعباه
+  await db.team.deleteMany({ where: { id: teamId, tournamentId, userId: ownerUserId } });
   revalidatePath(`/tournaments/${tournamentId}`);
   return { ok: true };
 }

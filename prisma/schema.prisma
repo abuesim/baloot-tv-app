@@ -241,7 +241,7 @@ enum MatchStatus {
   COMPLETED   // حُسمت المواجهة
 }
 
-// فريق ثابت = زوج لاعبين من روستر المستخدم — قابل لإعادة الاستخدام
+// فريق = زوج لاعبين من روستر المستخدم — خاص بالبطولة التي أُنشئ فيها
 model Team {
   id        String   @id @default(cuid())
   userId    String
@@ -249,6 +249,10 @@ model Team {
   player1Id String
   player2Id String
   createdAt DateTime @default(now())
+
+  // الفريق ملك بطولته — حذف البطولة يحذف فرقها
+  tournamentId String?
+  tournament   Tournament? @relation("TournamentOwnedTeams", fields: [tournamentId], references: [id], onDelete: Cascade)
 
   user    User   @relation(fields: [userId], references: [id], onDelete: Cascade)
   player1 Player @relation("TeamPlayer1", fields: [player1Id], references: [id], onDelete: Restrict)
@@ -260,6 +264,7 @@ model Team {
   matchesWon      Match[]          @relation("MatchWinner")
 
   @@index([userId])
+  @@index([tournamentId])
 }
 
 model Tournament {
@@ -273,9 +278,10 @@ model Tournament {
   championTeamId String?       // الفريق البطل عند الانتهاء
   createdAt   DateTime         @default(now())
 
-  user    User             @relation(fields: [userId], references: [id], onDelete: Cascade)
-  teams   TournamentTeam[]
-  matches Match[]
+  user       User             @relation(fields: [userId], references: [id], onDelete: Cascade)
+  teams      TournamentTeam[]
+  ownedTeams Team[]           @relation("TournamentOwnedTeams")
+  matches    Match[]
 
   @@index([userId])
 }
