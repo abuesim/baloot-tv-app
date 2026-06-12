@@ -2,7 +2,7 @@
 
 import { useEffect, useRef, useState } from "react";
 import { PlayerAvatar } from "@/components/PlayerAvatar";
-import type { TvTournament, TvTeam } from "@/lib/tv-tournament";
+import type { TvTournament, TvTeam, TvChampionTeam } from "@/lib/tv-tournament";
 
 type Player = { id: string; name: string; imageUrl: string | null };
 type Participant = { team: number; player: Player };
@@ -99,6 +99,11 @@ export default function TvBoard({
   const [user, setUser] = useState<TvUser>(initialUser);
   const [tournament, setTournament] = useState<TvTournament | null>(initialTournament);
   const [drawCeremony, setDrawCeremony] = useState<{ teams: TvTeam[]; format: string } | null>(null);
+  const [championShow, setChampionShow] = useState<{
+    champion: TvChampionTeam;
+    runnerUp: TvChampionTeam | null;
+    name: string;
+  } | null>(null);
   const [connected, setConnected] = useState(false);
   const [flash, setFlash] = useState<{ team1: boolean; team2: boolean }>({
     team1: false,
@@ -179,6 +184,14 @@ export default function TvBoard({
         }
         if (msg.type === "draw") {
           setDrawCeremony({ teams: msg.teams ?? [], format: msg.format ?? "KNOCKOUT" });
+          return;
+        }
+        if (msg.type === "champion" && msg.champion) {
+          setChampionShow({
+            champion: msg.champion,
+            runnerUp: msg.runnerUp ?? null,
+            name: msg.name ?? "",
+          });
           return;
         }
         if (msg.type === "alert") {
@@ -390,6 +403,15 @@ export default function TvBoard({
       onDone={() => setDrawCeremony(null)}
     />
   ) : null;
+  const championOverlay = championShow ? (
+    <TvChampionCelebration
+      champion={championShow.champion}
+      runnerUp={championShow.runnerUp}
+      tournamentName={championShow.name}
+      accent={accent}
+      onDone={() => setChampionShow(null)}
+    />
+  ) : null;
 
   // حالة بدون صكة
   if (!game) {
@@ -456,6 +478,8 @@ export default function TvBoard({
 
         {/* احتفالية القرعة */}
         {ceremonyOverlay}
+        {/* احتفال البطل */}
+        {championOverlay}
       </div>
     );
   }
@@ -584,6 +608,8 @@ export default function TvBoard({
 
       {/* احتفالية القرعة */}
       {ceremonyOverlay}
+      {/* احتفال البطل */}
+      {championOverlay}
     </>
   );
 
@@ -1550,6 +1576,127 @@ function TvDrawCeremonyOverlay({
             </div>
           ))}
         </div>
+      </div>
+    </div>
+  );
+}
+
+// ============================================================
+// احتفال بطل البطولة على شاشة البث — فقاعات + كونفيتي + الفريقين
+// ============================================================
+function TvChampionCelebration({
+  champion,
+  runnerUp,
+  tournamentName,
+  accent,
+  onDone,
+}: {
+  champion: TvChampionTeam;
+  runnerUp: TvChampionTeam | null;
+  tournamentName: string;
+  accent: string;
+  onDone: () => void;
+}) {
+  useEffect(() => {
+    const t = setTimeout(onDone, 14000);
+    return () => clearTimeout(t);
+  }, [onDone]);
+
+  return (
+    <div
+      className="absolute inset-0 z-[60] flex flex-col items-center justify-center p-6 overflow-hidden"
+      style={{ background: "rgba(0,0,0,0.92)", backdropFilter: "blur(6px)" }}
+    >
+      <style>{`
+        @keyframes tvChampBubble { 0%{transform:translateY(0) scale(0.6);opacity:0} 15%{opacity:0.5} 100%{transform:translateY(-70vh) scale(1.1);opacity:0} }
+        @keyframes tvChampConf { 0%{transform:translateY(-10%) rotate(0);opacity:1} 100%{transform:translateY(105vh) rotate(620deg);opacity:0} }
+        @keyframes tvChampGlow { 0%,100%{text-shadow:0 0 24px ${accent}99} 50%{text-shadow:0 0 60px ${accent}} }
+        @keyframes tvChampPop { 0%{transform:scale(0.6);opacity:0} 60%{transform:scale(1.08)} 100%{transform:scale(1);opacity:1} }
+      `}</style>
+
+      {/* فقاعات + كونفيتي */}
+      <div className="absolute inset-0 pointer-events-none overflow-hidden">
+        {Array.from({ length: 30 }).map((_, i) => (
+          <div
+            key={`b${i}`}
+            className="absolute bottom-0 rounded-full"
+            style={{
+              left: `${(i * 3.4) % 100}%`,
+              width: 14 + (i % 6) * 10,
+              height: 14 + (i % 6) * 10,
+              background: `radial-gradient(circle at 30% 30%, ${accent}88, ${accent}11)`,
+              border: `1px solid ${accent}44`,
+              animation: `tvChampBubble ${4 + (i % 6) * 1.1}s ease-in ${(i * 0.3) % 6}s infinite`,
+            }}
+          />
+        ))}
+        {Array.from({ length: 90 }).map((_, i) => (
+          <div
+            key={`c${i}`}
+            className="absolute top-0"
+            style={{
+              left: `${(i * 1.13) % 100}%`,
+              width: 7 + (i % 5) * 3,
+              height: i % 3 === 0 ? 7 + (i % 5) * 3 : (7 + (i % 5) * 3) * 0.5,
+              background: C_COLORS[i % 9],
+              borderRadius: i % 3 === 0 ? "50%" : "2px",
+              animation: `tvChampConf ${2.6 + (i % 6) * 0.5}s linear ${(i * 0.09) % 4}s infinite`,
+            }}
+          />
+        ))}
+      </div>
+
+      {/* المحتوى */}
+      <div className="relative z-10 text-center">
+        <div className="text-6xl md:text-8xl mb-2" style={{ animation: "tvChampPop 0.6s ease-out" }}>🏆</div>
+        {tournamentName && (
+          <div className="text-sm md:text-2xl text-white/60 mb-1">{tournamentName}</div>
+        )}
+        <div
+          className="text-3xl md:text-6xl font-black mb-5 md:mb-8"
+          style={{ color: accent, animation: "tvChampGlow 2s ease-in-out infinite" }}
+        >
+          بطل البطولة
+        </div>
+
+        {/* الفريق البطل */}
+        <div style={{ animation: "tvChampPop 0.7s ease-out" }}>
+          <div className="flex items-end justify-center gap-8 md:gap-16">
+            {[
+              { name: champion.p1, img: champion.p1img },
+              { name: champion.p2, img: champion.p2img },
+            ].map((p, i) => (
+              <div key={i} className="flex flex-col items-center gap-2 md:gap-3">
+                <div className="md:scale-125 md:my-3">
+                  <PlayerAvatar name={p.name ?? "—"} imageUrl={p.img} size="2xl" />
+                </div>
+                <span className="text-sm md:text-2xl font-bold" style={{ color: accent }}>
+                  {p.name}
+                </span>
+              </div>
+            ))}
+          </div>
+          <div
+            className="mt-4 md:mt-6 inline-block text-2xl md:text-4xl font-black rounded-full px-6 py-2"
+            style={{ background: `${accent}22`, border: `2px solid ${accent}66`, color: "#fff" }}
+          >
+            {champion.name}
+          </div>
+        </div>
+
+        {/* الوصيف */}
+        {runnerUp && (
+          <div className="mt-6 md:mt-8 pt-4 border-t border-white/10">
+            <div className="text-xs md:text-base text-white/40 mb-2">🥈 الوصيف</div>
+            <div className="flex items-center justify-center gap-2 opacity-70">
+              <div className="flex -space-x-2 -space-x-reverse">
+                <PlayerAvatar name={runnerUp.p1 ?? "—"} imageUrl={runnerUp.p1img} size="md" className="ring-2 ring-navy" />
+                <PlayerAvatar name={runnerUp.p2 ?? "—"} imageUrl={runnerUp.p2img} size="md" className="ring-2 ring-navy" />
+              </div>
+              <span className="text-sm md:text-xl font-bold">{runnerUp.name}</span>
+            </div>
+          </div>
+        )}
       </div>
     </div>
   );

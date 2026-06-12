@@ -86,6 +86,7 @@ export async function GET(
       let lastSig = gameSignature(initialGame);
       let lastTourSig = tvTournamentSignature(initialTournament);
       let lastDrawAt = initialTournament?.drawAt ?? null;
+      let lastChampionAt = initialTournament?.championAt ?? null;
 
       // ① اشتراك الذاكرة — تحديث فوري إذا صادف نفس نسخة السيرفر
       const unsubscribe = subscribe(`tv:user:${user.id}`, (data) => {
@@ -119,6 +120,18 @@ export async function GET(
             lastDrawAt = tour.drawAt;
             if (Date.now() - tour.drawAt < 45_000) {
               send({ type: "draw", teams: tour.teams, format: tour.format });
+            }
+          }
+          // التتويج — ابثّ احتفال البطل مرة واحدة عند انتهاء البطولة (خلال آخر ٤٥ ثانية)
+          if (tour?.championAt && tour.championAt !== lastChampionAt) {
+            lastChampionAt = tour.championAt;
+            if (tour.champion && Date.now() - tour.championAt < 45_000) {
+              send({
+                type: "champion",
+                champion: tour.champion,
+                runnerUp: tour.runnerUp,
+                name: tour.name,
+              });
             }
           }
         } catch {
