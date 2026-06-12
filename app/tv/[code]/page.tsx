@@ -1,5 +1,6 @@
 import { notFound } from "next/navigation";
 import { db } from "@/lib/db";
+import { getActiveTvTournament } from "@/lib/tv-tournament";
 import TvBoard from "./TvBoard";
 
 export default async function TvPage({
@@ -50,12 +51,15 @@ export default async function TvPage({
     select: { id: true, imageUrl: true, text: true, linkUrl: true },
   });
 
+  const tournament = await getActiveTvTournament(user.id);
+
   return (
     <TvBoard
       initialGame={game}
       initialUser={user}
       code={code}
       banners={banners}
+      initialTournament={tournament}
     />
   );
 }

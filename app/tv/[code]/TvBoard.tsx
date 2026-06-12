@@ -2,6 +2,7 @@
 
 import { useEffect, useRef, useState } from "react";
 import { PlayerAvatar } from "@/components/PlayerAvatar";
+import type { TvTournament, TvTeam } from "@/lib/tv-tournament";
 
 type Player = { id: string; name: string; imageUrl: string | null };
 type Participant = { team: number; player: Player };
@@ -86,14 +87,18 @@ export default function TvBoard({
   initialUser,
   code,
   banners = [],
+  initialTournament = null,
 }: {
   initialGame: Game | null;
   initialUser: TvUser;
   code: string;
   banners?: BannerItem[];
+  initialTournament?: TvTournament | null;
 }) {
   const [game, setGame] = useState<Game | null>(initialGame);
   const [user, setUser] = useState<TvUser>(initialUser);
+  const [tournament, setTournament] = useState<TvTournament | null>(initialTournament);
+  const [drawCeremony, setDrawCeremony] = useState<{ teams: TvTeam[]; format: string } | null>(null);
   const [connected, setConnected] = useState(false);
   const [flash, setFlash] = useState<{ team1: boolean; team2: boolean }>({
     team1: false,
@@ -158,6 +163,7 @@ export default function TvBoard({
         if (msg.type === "init") {
           if (msg.user) setUser(msg.user);
           setGame(msg.game ?? null);
+          if ("tournament" in msg) setTournament(msg.tournament ?? null);
           if (msg.game) {
             prevRef.current = {
               gameId: msg.game.id,
@@ -165,6 +171,14 @@ export default function TvBoard({
               t2: msg.game.team2Score,
             };
           }
+          return;
+        }
+        if (msg.type === "tournament") {
+          setTournament(msg.tournament ?? null);
+          return;
+        }
+        if (msg.type === "draw") {
+          setDrawCeremony({ teams: msg.teams ?? [], format: msg.format ?? "KNOCKOUT" });
           return;
         }
         if (msg.type === "alert") {
@@ -365,6 +379,18 @@ export default function TvBoard({
   // overlay.creators.sa و streamelements تشتغل عبر الـ proxy — نفعّل الـ iframe
   const showAlert = user.tvShowAlert && !!user.tvAlertUrl;
 
+  // عناصر البطولة المشتركة بين الحالات
+  const tournamentStrip = tournament ? (
+    <TvTournamentStrip tournament={tournament} accent={accent} />
+  ) : null;
+  const ceremonyOverlay = drawCeremony ? (
+    <TvDrawCeremonyOverlay
+      teams={drawCeremony.teams}
+      accent={accent}
+      onDone={() => setDrawCeremony(null)}
+    />
+  ) : null;
+
   // حالة بدون صكة
   if (!game) {
     return (
@@ -414,6 +440,9 @@ export default function TvBoard({
           <TvImageBannerCenter banners={banners.filter((b) => b.imageUrl)} />
         )}
 
+        {/* شريط البطولة الشجري */}
+        {tournamentStrip}
+
         {/* الإعلانات النصية في الأسفل */}
         {banners.length > 0 && <TvBannerBar banners={banners} />}
 
@@ -424,6 +453,9 @@ export default function TvBoard({
         {activeAlert && (
           <TvAlertBadge key={activeAlert.id} alert={activeAlert} accent={accent} customSound={user.tvAlertSound} />
         )}
+
+        {/* احتفالية القرعة */}
+        {ceremonyOverlay}
       </div>
     );
   }
@@ -531,6 +563,9 @@ export default function TvBoard({
 
       </div>{/* end smart wrapper */}
 
+      {/* شريط البطولة الشجري — أسفل الصكة */}
+      {tournamentStrip}
+
       {banners.length > 0 && <TvBannerBar banners={banners} />}
 
       {showCelebration && game.winner !== null && (
@@ -546,6 +581,9 @@ export default function TvBoard({
       {activeAlert && (
         <TvAlertBadge key={activeAlert.id} alert={activeAlert} accent={accent} customSound={user.tvAlertSound} />
       )}
+
+      {/* احتفالية القرعة */}
+      {ceremonyOverlay}
     </>
   );
 
@@ -1281,6 +1319,238 @@ function TvImageBannerCenter({ banners }: { banners: BannerItem[] }) {
         alt={b.text ?? ""}
         className="rounded-xl object-contain max-h-[120px] max-w-[75vw] sm:max-w-[500px] md:max-h-[204px] md:max-w-[850px]"
       />
+    </div>
+  );
+}
+
+// ============================================================
+// شريط البطولة على شاشة البث — شجرة (إقصاء) أو ترتيب (نقاط)
+// ============================================================
+function TvTournamentStrip({
+  tournament,
+  accent,
+}: {
+  tournament: TvTournament;
+  accent: string;
+}) {
+  return (
+    <div className="px-2 md:px-6 pb-2 md:pb-3 shrink-0">
+      <div
+        className="rounded-xl md:rounded-2xl border px-3 py-2"
+        style={{ background: "rgba(6,10,20,0.85)", borderColor: `${accent}30` }}
+      >
+        <div className="flex items-center gap-2 mb-1.5">
+          <span className="text-xs md:text-base font-black" style={{ color: accent }}>
+            🏆 {tournament.name}
+          </span>
+          <span className="text-[10px] md:text-sm text-white/40">
+            {tournament.format === "KNOCKOUT" ? "خروج المغلوب" : "دوري"} ·{" "}
+            {tournament.matchBestOf === 3 ? "أفضل من ٣" : "صكة"}
+          </span>
+          {tournament.championName && (
+            <span className="text-[10px] md:text-sm text-gold mr-auto font-bold">
+              👑 {tournament.championName}
+            </span>
+          )}
+        </div>
+        {tournament.format === "KNOCKOUT" ? (
+          <TvBracketRow tournament={tournament} accent={accent} />
+        ) : (
+          <TvStandingsRow tournament={tournament} accent={accent} />
+        )}
+      </div>
+    </div>
+  );
+}
+
+function TvBracketRow({ tournament, accent }: { tournament: TvTournament; accent: string }) {
+  const maxRound = Math.max(...tournament.matches.map((m) => m.round), 1);
+  const rounds = Array.from({ length: maxRound }, (_, i) => i + 1);
+  return (
+    <div className="flex gap-2 md:gap-3 overflow-hidden">
+      {rounds.map((r) => (
+        <div key={r} className="flex flex-col gap-1 justify-around flex-1 min-w-0">
+          {tournament.matches
+            .filter((m) => m.round === r)
+            .map((m) => (
+              <TvMatchChip key={m.id} m={m} accent={accent} />
+            ))}
+        </div>
+      ))}
+    </div>
+  );
+}
+
+function TvMatchChip({
+  m,
+  accent,
+}: {
+  m: TvTournament["matches"][number];
+  accent: string;
+}) {
+  const live = m.status === "IN_PROGRESS";
+  return (
+    <div
+      className="rounded-lg border px-1.5 py-1"
+      style={{
+        borderColor: live ? accent : "rgba(255,255,255,0.1)",
+        background: live ? `${accent}18` : "rgba(255,255,255,0.03)",
+        boxShadow: live ? `0 0 10px -2px ${accent}` : undefined,
+      }}
+    >
+      <ChipTeam name={m.teamAName} wins={m.teamAWins} win={m.winnerTeamId === m.teamAId} accent={accent} />
+      <ChipTeam name={m.teamBName} wins={m.teamBWins} win={m.winnerTeamId === m.teamBId} accent={accent} />
+    </div>
+  );
+}
+
+function ChipTeam({
+  name,
+  wins,
+  win,
+  accent,
+}: {
+  name: string | null;
+  wins: number;
+  win: boolean;
+  accent: string;
+}) {
+  return (
+    <div className="flex items-center gap-1">
+      <span
+        className="flex-1 truncate text-[9px] md:text-sm"
+        style={{ color: win ? accent : "rgba(255,255,255,0.85)", fontWeight: win ? 800 : 400 }}
+      >
+        {name ?? "—"}
+      </span>
+      <span
+        className="text-[9px] md:text-sm font-black tabular-nums"
+        style={{ color: win ? accent : "rgba(255,255,255,0.4)" }}
+      >
+        {wins}
+      </span>
+    </div>
+  );
+}
+
+function TvStandingsRow({ tournament, accent }: { tournament: TvTournament; accent: string }) {
+  return (
+    <div className="flex flex-wrap gap-1.5">
+      {tournament.standings.map((s, i) => (
+        <span
+          key={s.teamId}
+          className="inline-flex items-center gap-1.5 rounded-full px-2 md:px-3 py-0.5 md:py-1 text-[10px] md:text-sm"
+          style={{
+            background: i === 0 ? `${accent}22` : "rgba(255,255,255,0.05)",
+            color: i === 0 ? accent : "white",
+          }}
+        >
+          <span className="font-black">{i + 1}</span>
+          <span className="truncate max-w-24 md:max-w-40">{s.name}</span>
+          <span className="text-white/50 tabular-nums">
+            {s.wins}-{s.losses}
+          </span>
+        </span>
+      ))}
+    </div>
+  );
+}
+
+// ============================================================
+// احتفالية القرعة على شاشة البث — كشف متدرج ثم إخفاء تلقائي
+// ============================================================
+function TvDrawCeremonyOverlay({
+  teams,
+  accent,
+  onDone,
+}: {
+  teams: TvTeam[];
+  accent: string;
+  onDone: () => void;
+}) {
+  const [revealed, setRevealed] = useState(0);
+  const done = revealed >= teams.length;
+
+  useEffect(() => {
+    if (revealed >= teams.length) return;
+    const t = setTimeout(() => setRevealed((r) => r + 1), revealed === 0 ? 800 : 1100);
+    return () => clearTimeout(t);
+  }, [revealed, teams.length]);
+
+  // إخفاء تلقائي بعد اكتمال الكشف
+  useEffect(() => {
+    if (!done) return;
+    const t = setTimeout(onDone, 7000);
+    return () => clearTimeout(t);
+  }, [done, onDone]);
+
+  return (
+    <div
+      className="absolute inset-0 z-[60] flex flex-col items-center justify-center p-6"
+      style={{ background: "rgba(0,0,0,0.9)", backdropFilter: "blur(6px)" }}
+    >
+      <style>{`
+        @keyframes tvDrawPop { 0%{transform:scale(0.4) translateY(24px);opacity:0} 60%{transform:scale(1.08);opacity:1} 100%{transform:scale(1);opacity:1} }
+        @keyframes tvDrawConf { to { transform: translateY(110vh) rotate(560deg); opacity:0 } }
+      `}</style>
+
+      {done && (
+        <div className="absolute inset-0 overflow-hidden pointer-events-none">
+          {Array.from({ length: 80 }).map((_, i) => (
+            <div
+              key={i}
+              style={{
+                position: "absolute",
+                top: "-5%",
+                left: `${(i * 1.27) % 100}%`,
+                width: 10,
+                height: 14,
+                background: C_COLORS[i % 9],
+                borderRadius: 2,
+                animation: `tvDrawConf ${2 + (i % 5) * 0.5}s linear ${(i % 10) * 0.12}s forwards`,
+              }}
+            />
+          ))}
+        </div>
+      )}
+
+      <div className="relative z-10 w-full max-w-2xl text-center">
+        <div className="text-sm md:text-2xl font-bold mb-1" style={{ color: accent }}>
+          🎲 القرعة
+        </div>
+        <h2 className="text-2xl md:text-5xl font-black mb-5 md:mb-8 text-white">
+          {done ? "اكتملت القرعة!" : "جارٍ سحب الفرق..."}
+        </h2>
+
+        <div className="grid grid-cols-1 sm:grid-cols-2 gap-2 md:gap-3 max-h-[60vh] overflow-hidden">
+          {teams.slice(0, revealed).map((t, i) => (
+            <div
+              key={t.id}
+              className="rounded-xl border-2 p-2.5 md:p-4 flex items-center gap-3"
+              style={{
+                background: "rgba(8,12,24,0.9)",
+                borderColor: `${accent}66`,
+                animation: "tvDrawPop 0.5s ease-out",
+              }}
+            >
+              <span
+                className="w-7 h-7 md:w-10 md:h-10 rounded-full font-black text-sm md:text-xl flex items-center justify-center shrink-0"
+                style={{ background: `${accent}22`, color: accent }}
+              >
+                {i + 1}
+              </span>
+              <div className="flex-1 text-right min-w-0">
+                <div className="font-black text-sm md:text-2xl truncate text-white">{t.name}</div>
+                {(t.p1 || t.p2) && (
+                  <div className="text-[10px] md:text-base text-white/50 truncate">
+                    {[t.p1, t.p2].filter(Boolean).join(" · ")}
+                  </div>
+                )}
+              </div>
+            </div>
+          ))}
+        </div>
+      </div>
     </div>
   );
 }

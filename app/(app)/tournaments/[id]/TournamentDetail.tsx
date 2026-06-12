@@ -10,6 +10,7 @@ import {
   randomTeamsAction,
   updateTournamentAction,
   runDrawAction,
+  broadcastDrawAction,
   resetDrawAction,
   startMatchGameAction,
   deleteTournamentAction,
@@ -126,6 +127,13 @@ export default function TournamentDetail({
     const ordered = [...teams].sort((a, b) => a.seed - b.seed).map((t) => t.team);
     setCeremony(ordered);
   }
+  function broadcastDraw() {
+    setError(null);
+    start(async () => {
+      const res = await broadcastDrawAction(tournament.id);
+      if (!res.ok) setError(res.error);
+    });
+  }
   function resetDraw() {
     if (!confirm("إعادة القرعة؟ ستُحذف الشجرة الحالية.")) return;
     setError(null);
@@ -183,10 +191,9 @@ export default function TournamentDetail({
         <button
           onClick={removeTournament}
           disabled={isPending}
-          className="text-red-400/60 hover:text-red-400 text-sm shrink-0"
-          title="حذف البطولة"
+          className="shrink-0 text-xs px-3 py-1.5 rounded-lg bg-danger/15 text-red-300 border border-danger/30 hover:bg-danger/25 inline-flex items-center gap-1"
         >
-          🗑
+          🗑 حذف البطولة
         </button>
       </div>
 
@@ -225,10 +232,17 @@ export default function TournamentDetail({
           {/* أدوات */}
           <div className="flex flex-wrap gap-2">
             <button
+              onClick={broadcastDraw}
+              disabled={isPending}
+              className="text-xs px-3 py-1.5 rounded-lg bg-gold/15 text-gold border border-gold/30 hover:bg-gold/25"
+            >
+              📺 اعرض القرعة على الشاشة
+            </button>
+            <button
               onClick={replayCeremony}
               className="text-xs px-3 py-1.5 rounded-lg bg-white/5 text-white/70 border border-white/10 hover:bg-white/10"
             >
-              ▶ إعادة عرض القرعة
+              ▶ إعادة عرض القرعة (هنا)
             </button>
             {tournament.status === "DRAWN" && !anyStarted && (
               <button

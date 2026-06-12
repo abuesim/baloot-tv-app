@@ -332,11 +332,29 @@ export async function runDrawAction(
       data: { seed: i + 1 },
     });
   }
-  await db.tournament.update({ where: { id: tournamentId }, data: { status: "DRAWN" } });
+  await db.tournament.update({
+    where: { id: tournamentId },
+    data: { status: "DRAWN", drawCeremonyAt: new Date() },
+  });
 
   publish(`tv:user:${ownerUserId}`, { type: "tournament" });
   revalidatePath(`/tournaments/${tournamentId}`);
   return { ok: true, order: shuffled };
+}
+
+// ─── بثّ القرعة على شاشة البث (إعادة العرض) ───
+export async function broadcastDrawAction(tournamentId: string): Promise<ActionResult> {
+  const ownerUserId = await owner();
+  const t = await db.tournament.findUnique({ where: { id: tournamentId } });
+  if (!t || t.userId !== ownerUserId) return { ok: false, error: "البطولة غير موجودة" };
+  if (t.status === "DRAFT") return { ok: false, error: "أجرِ القرعة أولاً" };
+
+  await db.tournament.update({
+    where: { id: tournamentId },
+    data: { drawCeremonyAt: new Date() },
+  });
+  publish(`tv:user:${ownerUserId}`, { type: "tournament" });
+  return { ok: true };
 }
 
 // ─── إعادة القرعة (قبل بدء أي صكة) ───

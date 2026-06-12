@@ -276,6 +276,7 @@ model Tournament {
   gameMode    GameMode         @default(NORMAL)
   status      TournamentStatus @default(DRAFT)
   championTeamId String?       // الفريق البطل عند الانتهاء
+  drawCeremonyAt DateTime?     // آخر توقيت لبث القرعة على الشاشة (لإعادة العرض)
   createdAt   DateTime         @default(now())
 
   user       User             @relation(fields: [userId], references: [id], onDelete: Cascade)
