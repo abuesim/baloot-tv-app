@@ -143,6 +143,18 @@ export default function AdvancedGameView({
     window.speechSynthesis.speak(u1);
   }
 
+  /** إعادة سماع النشرة — ينطق المجموع الحالي (لنا/لهم) عند الطلب */
+  function replayTotals() {
+    if (typeof window === "undefined" || !("speechSynthesis" in window)) return;
+    window.speechSynthesis.cancel();
+    const u = new SpeechSynthesisUtterance(
+      `لنا ${game.team1Score}.. لهم ${game.team2Score}`,
+    );
+    u.lang = "ar-SA";
+    u.rate = 0.9;
+    window.speechSynthesis.speak(u);
+  }
+
   // كشف لحظة الفوز
   const prevWinnerRef = useRef<number | null>(initial.winner);
   const [showCelebration, setShowCelebration] = useState(false);
@@ -363,6 +375,7 @@ export default function AdvancedGameView({
           isWinner={game.winner === 1}
           isOurs
           flashing={!!usInput && activeSide === "us"}
+          onReplay={replayTotals}
         />
         <ScoreSide
           label="لهم"
@@ -370,6 +383,7 @@ export default function AdvancedGameView({
           score={themScore}
           isWinner={game.winner === 2}
           flashing={!!themInput && activeSide === "them"}
+          onReplay={replayTotals}
         />
       </div>
 
@@ -575,6 +589,7 @@ function ScoreSide({
   isWinner,
   isOurs = false,
   flashing,
+  onReplay,
 }: {
   label: string;
   players: Player[];
@@ -582,6 +597,7 @@ function ScoreSide({
   isWinner: boolean;
   isOurs?: boolean;
   flashing: boolean;
+  onReplay?: () => void;
 }) {
   return (
     <div className={`text-center transition ${flashing ? "scale-105" : ""}`}>
@@ -593,14 +609,17 @@ function ScoreSide({
       <div className={`text-xl font-medium mb-1 ${isOurs ? "text-gold" : "text-white/95"}`}>
         {label}
       </div>
-      <div
+      <button
+        type="button"
+        onClick={onReplay}
+        title="اضغط لإعادة سماع النشرة"
         key={score}
-        className={`text-[6.5rem] sm:text-[7.5rem] leading-none font-black ${
+        className={`block w-full text-[6.5rem] sm:text-[7.5rem] leading-none font-black select-none cursor-pointer transition active:scale-95 ${
           isWinner || isOurs ? "text-gold" : "text-white"
         }`}
       >
         {score}
-      </div>
+      </button>
     </div>
   );
 }
