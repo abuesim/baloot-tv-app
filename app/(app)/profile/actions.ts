@@ -148,6 +148,51 @@ export async function removeAlertSoundAction(): Promise<ActionResult> {
   return { ok: true };
 }
 
+// ─── النشرة الصوتية — رفع/حذف لبنات ─────────────────────────
+const VOICE_AUDIO_PREFIXES = [
+  "data:audio/mpeg;base64,",
+  "data:audio/mp3;base64,",
+  "data:audio/wav;base64,",
+  "data:audio/ogg;base64,",
+  "data:audio/mp4;base64,",
+  "data:audio/webm;base64,",
+  "data:audio/x-m4a;base64,",
+];
+
+export async function uploadVoiceClipAction(
+  key: string,
+  dataUri: string,
+): Promise<ActionResult> {
+  const user = await requireUser();
+  const ownerUserId = user.parentUserId ?? user.id;
+
+  const { ALL_CLIP_KEYS } = await import("@/lib/voice-narration");
+  if (!ALL_CLIP_KEYS.includes(key)) return { ok: false, error: "مفتاح غير صالح" };
+
+  const uri = String(dataUri ?? "").trim();
+  if (!VOICE_AUDIO_PREFIXES.some((p) => uri.startsWith(p))) {
+    return { ok: false, error: "نوع الملف غير مدعوم (MP3 / WAV / OGG)" };
+  }
+  // مقطع قصير — سقف ~٢ ميجا
+  if (uri.length > 2_800_000) return { ok: false, error: "حجم المقطع أكبر من ٢ ميجا" };
+
+  await db.voiceClip.upsert({
+    where: { userId_key: { userId: ownerUserId, key } },
+    create: { userId: ownerUserId, key, dataUri: uri },
+    update: { dataUri: uri },
+  });
+  revalidatePath("/profile/studio");
+  return { ok: true };
+}
+
+export async function removeVoiceClipAction(key: string): Promise<ActionResult> {
+  const user = await requireUser();
+  const ownerUserId = user.parentUserId ?? user.id;
+  await db.voiceClip.deleteMany({ where: { userId: ownerUserId, key } });
+  revalidatePath("/profile/studio");
+  return { ok: true };
+}
+
 const studioSchema = z.object({
   tvAccentColor: z
     .string()

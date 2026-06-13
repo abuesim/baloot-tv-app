@@ -4,6 +4,7 @@ import { db } from "@/lib/db";
 import { canManageAds, requireUser } from "@/lib/auth";
 import TvStudioForm from "../TvStudioForm";
 import MyAdsSection from "../MyAdsSection";
+import VoiceNarrationSetup from "../VoiceNarrationSetup";
 import StreamlabsSetup from "./StreamlabsSetup";
 
 export default async function StudioPage() {
@@ -40,6 +41,14 @@ export default async function StudioPage() {
     orderBy: [{ active: "desc" }, { order: "asc" }],
   });
 
+  // النشرة الصوتية — لبنات الصوت المرفوعة
+  const voiceRows = await db.voiceClip.findMany({
+    where: { userId: me.id },
+    select: { key: true, dataUri: true },
+  });
+  const voiceClips: Record<string, string> = {};
+  for (const v of voiceRows) voiceClips[v.key] = v.dataUri;
+
   return (
     <div className="space-y-6">
       <section className="bg-navy rounded-2xl p-6 border border-white/10">
@@ -68,6 +77,14 @@ export default async function StudioPage() {
       {userRow.tvCode && (
         <StreamlabsSetup origin={origin} tvCode={userRow.tvCode} />
       )}
+
+      <section className="bg-navy rounded-2xl p-6 border border-white/10">
+        <h2 className="font-bold text-lg mb-1">🎙️ النشرة الصوتية بصوتك</h2>
+        <p className="text-xs text-white/50 mb-4">
+          ارفع صوتك لنطق النتيجة في الحاسبة بدل الصوت الآلي
+        </p>
+        <VoiceNarrationSetup initialClips={voiceClips} />
+      </section>
 
       <section className="bg-navy rounded-2xl p-6 border border-white/10">
         <h2 className="font-bold text-lg mb-1">📢 إعلاناتي الخاصة</h2>

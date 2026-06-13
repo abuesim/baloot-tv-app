@@ -16,6 +16,7 @@ import {
   VolumeX,
 } from "lucide-react";
 import { PlayerAvatar } from "@/components/PlayerAvatar";
+import { scoreSequence, totalSequence, CLIP_TEXT } from "@/lib/voice-narration";
 import {
   recordRoundAction,
   deleteRoundAction,
@@ -112,47 +113,88 @@ export default function AdvancedGameView({
   });
   const ttsRef = useRef(ttsOn);
 
+  // الباقة الصوتية بصوت صانع المحتوى (تُجلب مرة عند التحميل)
+  const voicePackRef = useRef<Record<string, string>>({});
+  const currentAudioRef = useRef<HTMLAudioElement | null>(null);
+  const playTokenRef = useRef(0);
+  useEffect(() => {
+    fetch("/api/voice-pack")
+      .then((r) => r.json())
+      .then((d) => { voicePackRef.current = d?.clips ?? {}; })
+      .catch(() => {});
+  }, []);
+
+  function stopNarration() {
+    playTokenRef.current++;
+    window.speechSynthesis?.cancel();
+    if (currentAudioRef.current) {
+      currentAudioRef.current.pause();
+      currentAudioRef.current = null;
+    }
+  }
+
   function toggleTts() {
     const next = !ttsRef.current;
     ttsRef.current = next;
     setTtsOn(next);
     localStorage.setItem("baloot_tts", next ? "on" : "off");
-    if (!next) window.speechSynthesis?.cancel();
+    if (!next) stopNarration();
   }
 
-  /** ينطق نتيجة الجولة فوراً، ثم بعد 2 ث ينطق المجموع */
-  function speakRound(t1: number, t2: number, total1: number, total2: number) {
+  // يشغّل لبنة واحدة: صوت مُسجّل إن وُجد، وإلا الصوت الآلي
+  function playClip(key: string, token: number): Promise<void> {
+    return new Promise((resolve) => {
+      if (token !== playTokenRef.current) return resolve();
+      const uri = voicePackRef.current[key];
+      if (uri) {
+        const audio = new Audio(uri);
+        currentAudioRef.current = audio;
+        audio.onended = () => resolve();
+        audio.onerror = () => resolve();
+        audio.play().catch(() => resolve());
+      } else if (typeof window !== "undefined" && "speechSynthesis" in window) {
+        const u = new SpeechSynthesisUtterance(CLIP_TEXT[key] ?? "");
+        u.lang = "ar-SA";
+        u.rate = 0.95;
+        u.onend = () => resolve();
+        u.onerror = () => resolve();
+        window.speechSynthesis.speak(u);
+      } else resolve();
+    });
+  }
+
+  // يشغّل سلسلة لبنات بالتسلسل (يُلغي أي نطق جارٍ)
+  async function playSequence(keys: string[]): Promise<void> {
+    stopNarration();
+    const token = playTokenRef.current;
+    for (const key of keys) {
+      if (token !== playTokenRef.current) return;
+      await playClip(key, token);
+    }
+  }
+
+  /** ينطق نتيجة الجولة، ثم بعد فاصل ينطق المجموع */
+  async function speakRound(t1: number, t2: number, total1: number, total2: number) {
     if (!ttsRef.current) return;
-    if (typeof window === "undefined" || !("speechSynthesis" in window)) return;
-    window.speechSynthesis.cancel();
-
-    const u1 = new SpeechSynthesisUtterance(`لنا ${t1}.. لهم ${t2}`);
-    u1.lang  = "ar-SA";
-    u1.rate  = 0.9;
-    u1.onend = () => {
-      setTimeout(() => {
-        if (!ttsRef.current) return;
-        const u2 = new SpeechSynthesisUtterance(
-          `المجموع.. لنا ${total1}.. لهم ${total2}`
-        );
-        u2.lang = "ar-SA";
-        u2.rate = 0.9;
-        window.speechSynthesis.speak(u2);
-      }, 2000);
-    };
-    window.speechSynthesis.speak(u1);
+    const token = ++playTokenRef.current;
+    window.speechSynthesis?.cancel();
+    currentAudioRef.current?.pause();
+    // النشرة: لنا/لهم لهذه الجولة
+    for (const key of scoreSequence(t1, t2)) {
+      if (token !== playTokenRef.current) return;
+      await playClip(key, token);
+    }
+    await new Promise((r) => setTimeout(r, 900));
+    if (!ttsRef.current || token !== playTokenRef.current) return;
+    for (const key of totalSequence(total1, total2)) {
+      if (token !== playTokenRef.current) return;
+      await playClip(key, token);
+    }
   }
 
-  /** إعادة سماع النشرة — ينطق المجموع الحالي (لنا/لهم) عند الطلب */
+  /** إعادة سماع النشرة — ينطق المجموع الحالي عند الطلب */
   function replayTotals() {
-    if (typeof window === "undefined" || !("speechSynthesis" in window)) return;
-    window.speechSynthesis.cancel();
-    const u = new SpeechSynthesisUtterance(
-      `لنا ${game.team1Score}.. لهم ${game.team2Score}`,
-    );
-    u.lang = "ar-SA";
-    u.rate = 0.9;
-    window.speechSynthesis.speak(u);
+    playSequence(scoreSequence(game.team1Score, game.team2Score));
   }
 
   // كشف لحظة الفوز
