@@ -113,6 +113,20 @@ export default function AdvancedGameView({
   });
   const ttsRef = useRef(ttsOn);
 
+  // محتوى النشرة: both = الجولة + المجموع / round = الجولة فقط / total = المجموع فقط
+  type NarrationMode = "both" | "round" | "total";
+  const [narrationMode, setNarrationMode] = useState<NarrationMode>(() => {
+    if (typeof window === "undefined") return "both";
+    const v = localStorage.getItem("baloot_narration");
+    return v === "round" || v === "total" ? v : "both";
+  });
+  const narrationModeRef = useRef(narrationMode);
+  function changeNarrationMode(m: NarrationMode) {
+    narrationModeRef.current = m;
+    setNarrationMode(m);
+    localStorage.setItem("baloot_narration", m);
+  }
+
   // الباقة الصوتية بصوت صانع المحتوى (تُجلب مرة عند التحميل)
   const voicePackRef = useRef<Record<string, string>>({});
   const currentAudioRef = useRef<HTMLAudioElement | null>(null);
@@ -173,22 +187,30 @@ export default function AdvancedGameView({
     }
   }
 
-  /** ينطق نتيجة الجولة، ثم بعد فاصل ينطق المجموع */
+  /** ينطق النشرة حسب الإعداد: الجولة و/أو المجموع */
   async function speakRound(t1: number, t2: number, total1: number, total2: number) {
     if (!ttsRef.current) return;
+    const mode = narrationModeRef.current;
     const token = ++playTokenRef.current;
     window.speechSynthesis?.cancel();
     currentAudioRef.current?.pause();
-    // النشرة: لنا/لهم لهذه الجولة
-    for (const key of scoreSequence(t1, t2)) {
-      if (token !== playTokenRef.current) return;
-      await playClip(key, token);
+
+    // المرحلة ١: نتيجة الجولة (لنا/لهم) — تُتخطّى في وضع «المجموع فقط»
+    if (mode !== "total") {
+      for (const key of scoreSequence(t1, t2)) {
+        if (token !== playTokenRef.current) return;
+        await playClip(key, token);
+      }
     }
-    await new Promise((r) => setTimeout(r, 900));
-    if (!ttsRef.current || token !== playTokenRef.current) return;
-    for (const key of totalSequence(total1, total2)) {
-      if (token !== playTokenRef.current) return;
-      await playClip(key, token);
+
+    // المرحلة ٢: المجموع الكلي — تُتخطّى في وضع «الجولة فقط»
+    if (mode !== "round") {
+      if (mode === "both") await new Promise((r) => setTimeout(r, 900));
+      if (!ttsRef.current || token !== playTokenRef.current) return;
+      for (const key of totalSequence(total1, total2)) {
+        if (token !== playTokenRef.current) return;
+        await playClip(key, token);
+      }
     }
   }
 
@@ -603,6 +625,10 @@ export default function AdvancedGameView({
           allPlayers={allPlayers}
           tvCode={tvCode}
           tvUrl={tvUrl}
+          ttsOn={ttsOn}
+          onToggleTts={toggleTts}
+          narrationMode={narrationMode}
+          onNarrationMode={changeNarrationMode}
           onClose={() => setShowSettings(false)}
           onAbandon={() => {
             if (confirm("إلغاء الصكة الحالية؟")) {
@@ -1088,6 +1114,10 @@ function SettingsModal({
   allPlayers,
   tvCode,
   tvUrl,
+  ttsOn,
+  onToggleTts,
+  narrationMode,
+  onNarrationMode,
   onClose,
   onAbandon,
   onModeChange,
@@ -1100,6 +1130,10 @@ function SettingsModal({
   allPlayers: Player[];
   tvCode: string | null;
   tvUrl: string | null;
+  ttsOn: boolean;
+  onToggleTts: () => void;
+  narrationMode: "both" | "round" | "total";
+  onNarrationMode: (m: "both" | "round" | "total") => void;
   onClose: () => void;
   onAbandon: () => void;
   onModeChange: (mode: "NORMAL" | "MASHDOOD") => void;
@@ -1240,6 +1274,43 @@ function SettingsModal({
                     مشدود
                   </button>
                 </div>
+              </div>
+
+              {/* النشرة الصوتية */}
+              <div>
+                <div className="flex items-center justify-between mb-2">
+                  <div className="text-xs text-white/60">النشرة الصوتية</div>
+                  <button
+                    onClick={onToggleTts}
+                    className={`text-xs px-3 py-1 rounded-lg font-bold transition ${
+                      ttsOn ? "bg-orange-500 text-white" : "bg-white/10 text-white/50"
+                    }`}
+                  >
+                    {ttsOn ? "🔊 مفعّلة" : "🔇 متوقفة"}
+                  </button>
+                </div>
+                {ttsOn && (
+                  <div className="grid grid-cols-3 bg-white/[0.04] rounded-xl p-1 border border-white/5">
+                    {([
+                      { v: "both", t: "الجولة + المجموع" },
+                      { v: "round", t: "الجولة فقط" },
+                      { v: "total", t: "المجموع فقط" },
+                    ] as const).map((o) => (
+                      <button
+                        key={o.v}
+                        onClick={() => onNarrationMode(o.v)}
+                        className={`h-9 rounded-lg text-[11px] font-bold transition px-1 ${
+                          narrationMode === o.v
+                            ? "bg-orange-500 text-white shadow"
+                            : "text-white/50 hover:text-white"
+                        }`}
+                      >
+                        {o.t}
+                      </button>
+                    ))}
+                  </div>
+                )}
+                <p className="text-xs text-white/30 mt-1">يُحفظ ويُطبّق على كل النشرات القادمة</p>
               </div>
 
               {/* كود التلفزيون */}
