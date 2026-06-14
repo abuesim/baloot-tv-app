@@ -17,6 +17,7 @@ import {
 } from "lucide-react";
 import { PlayerAvatar } from "@/components/PlayerAvatar";
 import { scoreSequence, totalSequence, CLIP_TEXT } from "@/lib/voice-narration";
+import { evaluateScoreCues, TIME_CUE_MS } from "@/lib/voice-cues";
 import {
   recordRoundAction,
   deleteRoundAction,
@@ -219,6 +220,36 @@ export default function AdvancedGameView({
     playSequence(scoreSequence(game.team1Score, game.team2Score));
   }
 
+  // ── التوجيهات الصوتية ───────────────────────────────────────
+  // كل توجيه يشتغل مرة واحدة لكل صكة
+  const firedCuesRef = useRef<Set<string>>(new Set());
+  useEffect(() => {
+    firedCuesRef.current = new Set();
+  }, [game.id]);
+
+  /** يشغّل مؤثر التوجيه (صوت مُسجّل فقط — بلا صوت آلي) مستقلاً عن النشرة */
+  function playCue(key: string) {
+    if (firedCuesRef.current.has(key)) return;
+    const uri = voicePackRef.current[key];
+    if (!uri) return; // لا مؤثر مرفوع لهذا الشرط
+    firedCuesRef.current.add(key);
+    const audio = new Audio(uri);
+    audio.play().catch(() => {});
+  }
+
+  // التوجيه الزمني — بعد ١٠ دقائق
+  useEffect(() => {
+    if (game.status !== "IN_PROGRESS") return;
+    const started = new Date(game.startedAt).getTime();
+    const check = () => {
+      if (Date.now() - started >= TIME_CUE_MS) playCue("cue_time10");
+    };
+    check();
+    const t = setInterval(check, 20_000);
+    return () => clearInterval(t);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [game.startedAt, game.status]);
+
   // كشف لحظة الفوز
   const prevWinnerRef = useRef<number | null>(initial.winner);
   const [showCelebration, setShowCelebration] = useState(false);
@@ -324,7 +355,15 @@ export default function AdvancedGameView({
       // أنيميشن تأكيد التسجيل — يختفي بعد 3 ثواني
       setFlashScore({ us: t1, them: t2, round: nextRound });
       setTimeout(() => setFlashScore(null), 6000);
-      speakRound(t1, t2, game.team1Score + t1, game.team2Score + t2);
+      // التوجيهات الصوتية عند تغيّر النتيجة (تشتغل قبل النشرة)
+      const newTotal1 = game.team1Score + t1;
+      const newTotal2 = game.team2Score + t2;
+      const cues = evaluateScoreCues(
+        { t1: game.team1Score, t2: game.team2Score },
+        { t1: newTotal1, t2: newTotal2 },
+      );
+      cues.forEach(playCue);
+      speakRound(t1, t2, newTotal1, newTotal2);
       router.refresh();
     });
   }

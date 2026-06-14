@@ -167,7 +167,10 @@ export async function uploadVoiceClipAction(
   const ownerUserId = user.parentUserId ?? user.id;
 
   const { ALL_CLIP_KEYS } = await import("@/lib/voice-narration");
-  if (!ALL_CLIP_KEYS.includes(key)) return { ok: false, error: "مفتاح غير صالح" };
+  const { CUE_KEYS } = await import("@/lib/voice-cues");
+  if (![...ALL_CLIP_KEYS, ...CUE_KEYS].includes(key)) {
+    return { ok: false, error: "مفتاح غير صالح" };
+  }
 
   const uri = String(dataUri ?? "").trim();
   if (!VOICE_AUDIO_PREFIXES.some((p) => uri.startsWith(p))) {
