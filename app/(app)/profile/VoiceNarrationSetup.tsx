@@ -90,9 +90,19 @@ export default function VoiceNarrationSetup({
               return (
                 <div
                   key={clip.key}
-                  className="bg-navy-light border border-white/10 rounded-xl px-3 py-2 flex items-center gap-2"
+                  className={`border rounded-xl px-3 py-2 flex items-center gap-2 ${
+                    uri ? "bg-green-500/10 border-green-500/30" : "bg-navy-light border-white/10"
+                  }`}
                 >
-                  <span className="text-sm font-medium shrink-0 w-24 truncate">{clip.label}</span>
+                  <span
+                    className={`w-5 h-5 rounded-full shrink-0 flex items-center justify-center text-xs font-black ${
+                      uri ? "bg-green-500 text-navy-deep" : "bg-white/10 text-white/30"
+                    }`}
+                    title={uri ? "تم التسجيل" : "لم يُسجّل"}
+                  >
+                    {uri ? "✓" : ""}
+                  </span>
+                  <span className="text-sm font-medium shrink-0 w-20 truncate">{clip.label}</span>
                   {uri ? (
                     <>
                       {/* eslint-disable-next-line jsx-a11y/media-has-caption */}
