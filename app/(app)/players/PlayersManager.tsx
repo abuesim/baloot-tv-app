@@ -1,6 +1,7 @@
 "use client";
 
 import { useRef, useState, useTransition } from "react";
+import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { PlayerAvatar } from "@/components/PlayerAvatar";
 import {
@@ -226,12 +227,15 @@ export default function PlayersManager({ players }: { players: PlayerRow[] }) {
                   </div>
                 ) : (
                   <>
-                    <div className="flex-1 min-w-0">
-                      <div className="font-bold text-lg truncate">{p.name}</div>
-                      <div className="text-xs text-white/50">
-                        {p.gamesPlayed} صكة
+                    <Link href={`/players/${p.id}`} className="flex-1 min-w-0 group/name">
+                      <div className="font-bold text-lg truncate group-hover/name:text-gold transition-colors">
+                        {p.name}
+                        <span className="text-xs text-white/30 mr-1">📊</span>
                       </div>
-                    </div>
+                      <div className="text-xs text-white/50">
+                        {p.gamesPlayed} صكة · اضغط للإحصائيات
+                      </div>
+                    </Link>
                     <div className="flex gap-1 flex-wrap shrink-0">
                       {p.imageUrl && (
                         <button
