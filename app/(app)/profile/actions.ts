@@ -168,7 +168,8 @@ export async function uploadVoiceClipAction(
 
   const { ALL_CLIP_KEYS } = await import("@/lib/voice-narration");
   const { CUE_KEYS } = await import("@/lib/voice-cues");
-  if (![...ALL_CLIP_KEYS, ...CUE_KEYS].includes(key)) {
+  const { WIN_KEYS } = await import("@/lib/voice-win");
+  if (![...ALL_CLIP_KEYS, ...CUE_KEYS, ...WIN_KEYS].includes(key)) {
     return { ok: false, error: "مفتاح غير صالح" };
   }
 

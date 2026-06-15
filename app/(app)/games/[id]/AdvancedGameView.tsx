@@ -18,6 +18,8 @@ import {
 import { PlayerAvatar } from "@/components/PlayerAvatar";
 import { scoreSequence, totalSequence, CLIP_TEXT } from "@/lib/voice-narration";
 import { evaluateScoreCues, TIME_CUE_MS } from "@/lib/voice-cues";
+import { WIN_KEYS } from "@/lib/voice-win";
+import { getWinner } from "@/lib/baloot";
 import {
   recordRoundAction,
   deleteRoundAction,
@@ -250,27 +252,30 @@ export default function AdvancedGameView({
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [game.startedAt, game.status]);
 
-  // كشف لحظة الفوز
+  // أغنية الفوز — تُختار عشوائياً من المرفوعة، وإلا النغمة المركّبة
+  function playWinCelebration() {
+    const keys = WIN_KEYS.filter((k) => voicePackRef.current[k]);
+    if (keys.length > 0) {
+      const key = keys[Math.floor(Math.random() * keys.length)];
+      const audio = new Audio(voicePackRef.current[key]);
+      currentAudioRef.current = audio;
+      audio.play().catch(() => {});
+    } else {
+      playCelebration(); // النغمة الافتراضية المركّبة
+    }
+  }
+
+  // كشف لحظة الفوز — أوقف النشرة وشغّل أغنية الفوز
   const prevWinnerRef = useRef<number | null>(initial.winner);
   const [showCelebration, setShowCelebration] = useState(false);
   useEffect(() => {
     if (game.winner !== null && prevWinnerRef.current === null) {
       setShowCelebration(true);
-
-      // انتظر انتهاء أي نطق جارٍ ثم شغّل صوت الاحتفال
-      function tryPlayCelebration() {
-        if (
-          typeof window !== "undefined" &&
-          window.speechSynthesis?.speaking
-        ) {
-          setTimeout(tryPlayCelebration, 150);
-        } else {
-          playCelebration();
-        }
-      }
-      setTimeout(tryPlayCelebration, 100);
+      stopNarration(); // يوقف النطق الجاري (النشرة)
+      setTimeout(() => playWinCelebration(), 150);
     }
     prevWinnerRef.current = game.winner;
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [game.winner]);
 
   const [activeSide, setActiveSide] = useState<"us" | "them" | null>(null);
@@ -355,18 +360,25 @@ export default function AdvancedGameView({
       // أنيميشن تأكيد التسجيل — يختفي بعد 3 ثواني
       setFlashScore({ us: t1, them: t2, round: nextRound });
       setTimeout(() => setFlashScore(null), 6000);
-      // النشرة أولاً، ثم التوجيهات الصوتية بعد اكتمال نطق المجموع بـ ١٠ ثوانٍ
       const newTotal1 = game.team1Score + t1;
       const newTotal2 = game.team2Score + t2;
-      const cues = evaluateScoreCues(
-        { t1: game.team1Score, t2: game.team2Score },
-        { t1: newTotal1, t2: newTotal2 },
-      );
-      speakRound(t1, t2, newTotal1, newTotal2).then(() => {
-        if (cues.length > 0) {
-          setTimeout(() => cues.forEach((c) => playCue(c)), 10000);
-        }
-      });
+      const isWin = getWinner(newTotal1, newTotal2, game.targetScore) !== null;
+
+      if (isWin) {
+        // فوز — لا نشرة ولا توجيهات؛ تتكفّل أغنية الفوز (عبر كشف لحظة الفوز)
+        stopNarration();
+      } else {
+        // النشرة أولاً، ثم التوجيهات الصوتية بعد اكتمال نطق المجموع بـ ١٠ ثوانٍ
+        const cues = evaluateScoreCues(
+          { t1: game.team1Score, t2: game.team2Score },
+          { t1: newTotal1, t2: newTotal2 },
+        );
+        speakRound(t1, t2, newTotal1, newTotal2).then(() => {
+          if (cues.length > 0) {
+            setTimeout(() => cues.forEach((c) => playCue(c)), 10000);
+          }
+        });
+      }
       router.refresh();
     });
   }
