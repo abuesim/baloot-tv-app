@@ -17,6 +17,19 @@ async function owner() {
   return user.parentUserId ?? user.id;
 }
 
+/** سياق الفاعل + صلاحيات المستخدم الفرعي */
+async function actorCtx() {
+  const user = await requireUser();
+  const isSub = !!user.parentUserId;
+  return {
+    ownerUserId: user.parentUserId ?? user.id,
+    canManage: !isSub || user.subCanManageTournaments,
+    canDelete: !isSub || user.subCanDelete,
+  };
+}
+const NO_MANAGE = "ليس لديك صلاحية إدارة البطولات";
+const NO_DELETE = "ليس لديك صلاحية الحذف";
+
 // ─── إنشاء بطولة ───
 const createSchema = z.object({
   name: z.string().min(1, "اسم البطولة مطلوب").max(60),
@@ -33,7 +46,8 @@ export async function createTournamentAction(input: {
   gameMode: "NORMAL" | "MASHDOOD";
   doubleRoundRobin?: boolean;
 }): Promise<{ ok: true; id: string } | { ok: false; error: string }> {
-  const ownerUserId = await owner();
+  const { ownerUserId, canManage } = await actorCtx();
+  if (!canManage) return { ok: false, error: NO_MANAGE };
   const parsed = createSchema.safeParse(input);
   if (!parsed.success) {
     return { ok: false, error: parsed.error.issues[0]?.message ?? "بيانات غير صالحة" };
@@ -72,7 +86,8 @@ export async function updateTournamentAction(
     doubleRoundRobin?: boolean;
   },
 ): Promise<ActionResult> {
-  const ownerUserId = await owner();
+  const { ownerUserId, canManage } = await actorCtx();
+  if (!canManage) return { ok: false, error: NO_MANAGE };
   const t = await db.tournament.findUnique({ where: { id: tournamentId } });
   if (!t || t.userId !== ownerUserId) return { ok: false, error: "البطولة غير موجودة" };
   if (t.status !== "DRAFT") return { ok: false, error: "لا يمكن التعديل بعد القرعة" };
@@ -97,7 +112,8 @@ export async function updateTournamentAction(
 }
 
 export async function deleteTournamentAction(tournamentId: string): Promise<ActionResult> {
-  const ownerUserId = await owner();
+  const { ownerUserId, canDelete } = await actorCtx();
+  if (!canDelete) return { ok: false, error: NO_DELETE };
   const t = await db.tournament.findUnique({ where: { id: tournamentId } });
   if (!t || t.userId !== ownerUserId) return { ok: false, error: "البطولة غير موجودة" };
 
@@ -136,7 +152,8 @@ export async function createTournamentTeamAction(
   tournamentId: string,
   input: { name: string; player1Id: string; player2Id: string },
 ): Promise<ActionResult> {
-  const ownerUserId = await owner();
+  const { ownerUserId, canManage } = await actorCtx();
+  if (!canManage) return { ok: false, error: NO_MANAGE };
   const t = await db.tournament.findUnique({ where: { id: tournamentId } });
   if (!t || t.userId !== ownerUserId) return { ok: false, error: "البطولة غير موجودة" };
   if (t.status !== "DRAFT") return { ok: false, error: "لا يمكن تعديل الفرق بعد القرعة" };
@@ -181,7 +198,8 @@ export async function randomTeamsAction(
   tournamentId: string,
   playerIds: string[],
 ): Promise<{ ok: true; teams: string[] } | { ok: false; error: string }> {
-  const ownerUserId = await owner();
+  const { ownerUserId, canManage } = await actorCtx();
+  if (!canManage) return { ok: false, error: NO_MANAGE };
   const t = await db.tournament.findUnique({ where: { id: tournamentId } });
   if (!t || t.userId !== ownerUserId) return { ok: false, error: "البطولة غير موجودة" };
   if (t.status !== "DRAFT") return { ok: false, error: "لا يمكن تعديل الفرق بعد القرعة" };
@@ -236,7 +254,8 @@ export async function removeTournamentTeamAction(
   tournamentId: string,
   teamId: string,
 ): Promise<ActionResult> {
-  const ownerUserId = await owner();
+  const { ownerUserId, canManage } = await actorCtx();
+  if (!canManage) return { ok: false, error: NO_MANAGE };
   const t = await db.tournament.findUnique({ where: { id: tournamentId } });
   if (!t || t.userId !== ownerUserId) return { ok: false, error: "البطولة غير موجودة" };
   if (t.status !== "DRAFT") return { ok: false, error: "لا يمكن تعديل الفرق بعد القرعة" };
@@ -252,7 +271,8 @@ export async function removeTournamentTeamAction(
 export async function runDrawAction(
   tournamentId: string,
 ): Promise<{ ok: true; order: string[] } | { ok: false; error: string }> {
-  const ownerUserId = await owner();
+  const { ownerUserId, canManage } = await actorCtx();
+  if (!canManage) return { ok: false, error: NO_MANAGE };
   const t = await db.tournament.findUnique({
     where: { id: tournamentId },
     include: { teams: true },
@@ -350,7 +370,8 @@ export async function runDrawAction(
 
 // ─── بثّ القرعة على شاشة البث (إعادة العرض) ───
 export async function broadcastDrawAction(tournamentId: string): Promise<ActionResult> {
-  const ownerUserId = await owner();
+  const { ownerUserId, canManage } = await actorCtx();
+  if (!canManage) return { ok: false, error: NO_MANAGE };
   const t = await db.tournament.findUnique({ where: { id: tournamentId } });
   if (!t || t.userId !== ownerUserId) return { ok: false, error: "البطولة غير موجودة" };
   if (t.status === "DRAFT") return { ok: false, error: "أجرِ القرعة أولاً" };
@@ -365,7 +386,8 @@ export async function broadcastDrawAction(tournamentId: string): Promise<ActionR
 
 // ─── إعادة القرعة (قبل بدء أي صكة) ───
 export async function resetDrawAction(tournamentId: string): Promise<ActionResult> {
-  const ownerUserId = await owner();
+  const { ownerUserId, canManage } = await actorCtx();
+  if (!canManage) return { ok: false, error: NO_MANAGE };
   const t = await db.tournament.findUnique({
     where: { id: tournamentId },
     include: { matches: { include: { games: { select: { id: true } } } } },

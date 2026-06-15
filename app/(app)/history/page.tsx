@@ -98,7 +98,7 @@ export default async function HistoryPage({
         </div>
       </div>
 
-      <HistoryList initialGames={games} canDelete={!user.parentUserId} />
+      <HistoryList initialGames={games} canDelete={!user.parentUserId || user.subCanDelete} />
 
       {/* سجل البطولات — البطل (جماعي) ولاعباه (فردي) */}
       {tournaments.length > 0 && (

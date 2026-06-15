@@ -262,6 +262,9 @@ export async function deleteGameAction(
 ): Promise<ActionResult> {
   const user = await requireUser();
   const ownerUserId = user.parentUserId ?? user.id;
+  if (user.parentUserId && !user.subCanDelete) {
+    return { ok: false, error: "ليس لديك صلاحية حذف الصكات" };
+  }
   const game = await db.game.findFirst({
     where: { id: gameId, userId: ownerUserId },
   });

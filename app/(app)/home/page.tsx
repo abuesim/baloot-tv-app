@@ -77,7 +77,7 @@ export default async function HomePage() {
 
       <div>
         <h2 className="text-xl font-bold mb-4">آخر الصكات</h2>
-        <RecentGamesList initialGames={recentGames} canDelete={!user.parentUserId} />
+        <RecentGamesList initialGames={recentGames} canDelete={!user.parentUserId || user.subCanDelete} />
       </div>
     </div>
   );

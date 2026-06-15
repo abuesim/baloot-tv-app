@@ -34,7 +34,13 @@ const STATUS_LABEL: Record<string, { t: string; cls: string }> = {
   COMPLETED: { t: "انتهت", cls: "bg-gold/20 text-gold" },
 };
 
-export default function TournamentsList({ tournaments }: { tournaments: Row[] }) {
+export default function TournamentsList({
+  tournaments,
+  canDelete = true,
+}: {
+  tournaments: Row[];
+  canDelete?: boolean;
+}) {
   const router = useRouter();
   const [isPending, start] = useTransition();
   const [busyId, setBusyId] = useState<string | null>(null);
@@ -85,7 +91,7 @@ export default function TournamentsList({ tournaments }: { tournaments: Row[] })
                     </span>
                   </div>
                 </Link>
-                <DeleteBtn onClick={() => remove(t)} busy={isPending && busyId === t.id} />
+                {canDelete && <DeleteBtn onClick={() => remove(t)} busy={isPending && busyId === t.id} />}
               </div>
             );
           })

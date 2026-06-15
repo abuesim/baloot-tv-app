@@ -99,6 +99,8 @@ export async function updateSubUserPermissionsAction(perms: {
   subCanAddPlayers: boolean;
   subCanViewHistory: boolean;
   subCanViewStats: boolean;
+  subCanManageTournaments: boolean;
+  subCanDelete: boolean;
 }): Promise<ActionResult> {
   const me = await requireContentCreatorOwner();
 

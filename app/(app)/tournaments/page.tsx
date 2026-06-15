@@ -52,6 +52,9 @@ export default async function TournamentsPage() {
     };
   });
 
+  const canManage = !user.parentUserId || user.subCanManageTournaments;
+  const canDelete = !user.parentUserId || user.subCanDelete;
+
   return (
     <div className="space-y-6">
       <div>
@@ -59,9 +62,9 @@ export default async function TournamentsPage() {
         <p className="text-white/60">نظّم بطولة بين فرقك</p>
       </div>
 
-      <CreateTournamentForm />
+      {canManage && <CreateTournamentForm />}
 
-      <TournamentsList tournaments={rows} />
+      <TournamentsList tournaments={rows} canDelete={canDelete} />
     </div>
   );
 }

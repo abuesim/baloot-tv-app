@@ -70,6 +70,8 @@ model User {
   subCanAddPlayers  Boolean @default(true)
   subCanViewHistory Boolean @default(true)
   subCanViewStats   Boolean @default(true)
+  subCanManageTournaments Boolean @default(true)  // إنشاء/إدارة/قرعة البطولات
+  subCanDelete            Boolean @default(false) // حذف الصكات والبطولات وسجلاتها
 
   players Player[]
   games   Game[]

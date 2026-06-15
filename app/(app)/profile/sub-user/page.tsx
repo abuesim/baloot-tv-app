@@ -22,6 +22,8 @@ export default async function SubUserPage() {
       subCanAddPlayers: true,
       subCanViewHistory: true,
       subCanViewStats: true,
+      subCanManageTournaments: true,
+      subCanDelete: true,
     },
   });
 

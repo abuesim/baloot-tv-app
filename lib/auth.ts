@@ -55,6 +55,8 @@ export async function getCurrentUser() {
       active: true,
       tvOrientation: true,
       parentUserId: true,
+      subCanManageTournaments: true,
+      subCanDelete: true,
     },
   });
 

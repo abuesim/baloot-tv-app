@@ -19,6 +19,8 @@ type SubUser = {
   subCanAddPlayers: boolean;
   subCanViewHistory: boolean;
   subCanViewStats: boolean;
+  subCanManageTournaments: boolean;
+  subCanDelete: boolean;
 };
 
 // ============================================================
@@ -141,8 +143,16 @@ function CreateSubUser({
 // إدارة مستخدم فرعي موجود
 // ============================================================
 
+type PermKey =
+  | "subCanStartGame"
+  | "subCanAddPlayers"
+  | "subCanViewHistory"
+  | "subCanViewStats"
+  | "subCanManageTournaments"
+  | "subCanDelete";
+
 const PERMISSIONS: {
-  key: keyof Pick<SubUser, "subCanStartGame" | "subCanAddPlayers" | "subCanViewHistory" | "subCanViewStats">;
+  key: PermKey;
   label: string;
   desc: string;
   icon: string;
@@ -151,6 +161,8 @@ const PERMISSIONS: {
   { key: "subCanAddPlayers",  label: "إضافة لاعبين",      desc: "يقدر يضيف لاعبين للروستر",       icon: "👤" },
   { key: "subCanViewHistory", label: "عرض السجل",         desc: "يقدر يشوف سجل الصكات السابقة",   icon: "📋" },
   { key: "subCanViewStats",   label: "عرض الإحصائيات",   desc: "يقدر يشوف إحصائيات اللاعبين",    icon: "📊" },
+  { key: "subCanManageTournaments", label: "إدارة البطولات", desc: "إنشاء البطولات والقرعة وتكوين الفرق", icon: "🏆" },
+  { key: "subCanDelete",      label: "الحذف",             desc: "حذف الصكات والبطولات وسجلاتها", icon: "🗑️" },
 ];
 
 function ManageSubUser({
@@ -165,6 +177,8 @@ function ManageSubUser({
     subCanAddPlayers:  sub.subCanAddPlayers,
     subCanViewHistory: sub.subCanViewHistory,
     subCanViewStats:   sub.subCanViewStats,
+    subCanManageTournaments: sub.subCanManageTournaments,
+    subCanDelete:      sub.subCanDelete,
   });
   const [permsSaved, setPermsSaved] = useState(false);
   const [permsError, setPermsError] = useState<string | null>(null);
