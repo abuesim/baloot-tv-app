@@ -3,7 +3,8 @@
 import { useState } from "react";
 import { useRouter } from "next/navigation";
 import { WIN_SONGS } from "@/lib/voice-win";
-import { uploadVoiceClipAction, removeVoiceClipAction } from "./actions";
+import { removeVoiceClipAction } from "./actions";
+import { uploadVoiceClip } from "./upload-voice";
 
 const MAX_BYTES = 3 * 1024 * 1024; // ~3MB (تحت حد جسم الطلب)
 
@@ -36,7 +37,7 @@ export default function WinSongsSetup({
         r.onerror = () => reject(new Error("فشل القراءة"));
         r.readAsDataURL(file);
       });
-      const res = await uploadVoiceClipAction(key, dataUri);
+      const res = await uploadVoiceClip(key, dataUri);
       if (!res.ok) {
         setMsg({ ok: false, text: res.error });
       } else {
