@@ -15,8 +15,8 @@ export const VOICE_CUES: CueDef[] = [
   },
   {
     key: "cue_cross99",
-    label: "تجاوز ٩٩",
-    desc: "فريق تجاوز ٩٩ والفريق الثاني ما زال تحت ٩٩",
+    label: "تجاوز ١٠٠",
+    desc: "فريق تجاوز ١٠٠ والفريق الثاني ما زال تحت ١٠٠",
   },
   {
     key: "cue_time10",
@@ -39,8 +39,8 @@ export function evaluateScoreCues(
   const nextDiff = Math.abs(next.t1 - next.t2);
   if (prevDiff < 50 && nextDiff >= 50) fired.push("cue_diff50");
 
-  // فريق فوق ٩٩ والآخر تحته
-  const crossed = (a: number, b: number) => a > 99 && b < 99;
+  // فريق بلغ ١٠٠ فأكثر والآخر تحته
+  const crossed = (a: number, b: number) => a >= 100 && b < 100;
   const wasCrossed = crossed(prev.t1, prev.t2) || crossed(prev.t2, prev.t1);
   const isCrossed = crossed(next.t1, next.t2) || crossed(next.t2, next.t1);
   if (!wasCrossed && isCrossed) fired.push("cue_cross99");
