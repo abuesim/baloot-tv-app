@@ -4,18 +4,26 @@ import { canManageAds, requireUser } from "@/lib/auth";
 import VoiceNarrationSetup from "../VoiceNarrationSetup";
 import VoiceCuesSetup from "../VoiceCuesSetup";
 import WinSongsSetup from "../WinSongsSetup";
+import { WIN_KEYS } from "@/lib/voice-win";
 
 export default async function VoicePage() {
   const me = await requireUser();
   if (!canManageAds(me.role)) redirect("/profile");
 
-  // لبنات الصوت المرفوعة (النشرة + التوجيهات)
+  // لبنات النشرة + التوجيهات (صغيرة — نحمّل بياناتها للمعاينة)
   const voiceRows = await db.voiceClip.findMany({
-    where: { userId: me.id },
+    where: { userId: me.id, key: { notIn: WIN_KEYS } },
     select: { key: true, dataUri: true },
   });
   const voiceClips: Record<string, string> = {};
   for (const v of voiceRows) voiceClips[v.key] = v.dataUri;
+
+  // أغاني الفوز — نجلب المفاتيح فقط (كبيرة، تُبَثّ عند المعاينة)
+  const winRows = await db.voiceClip.findMany({
+    where: { userId: me.id, key: { in: WIN_KEYS } },
+    select: { key: true },
+  });
+  const winKeys = winRows.map((w) => w.key);
 
   return (
     <div className="space-y-6">
@@ -40,7 +48,7 @@ export default async function VoicePage() {
         <p className="text-xs text-white/50 mb-4">
           ارفع حتى ٥ أغانٍ — تتوقف النشرة عند الفوز وتشتغل واحدة عشوائياً
         </p>
-        <WinSongsSetup initialClips={voiceClips} />
+        <WinSongsSetup initialKeys={winKeys} />
       </section>
     </div>
   );

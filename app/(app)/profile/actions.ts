@@ -177,8 +177,12 @@ export async function uploadVoiceClipAction(
   if (!VOICE_AUDIO_PREFIXES.some((p) => uri.startsWith(p))) {
     return { ok: false, error: "نوع الملف غير مدعوم (MP3 / WAV / OGG)" };
   }
-  // مقطع قصير — سقف ~٢ ميجا
-  if (uri.length > 2_800_000) return { ok: false, error: "حجم المقطع أكبر من ٢ ميجا" };
+  // أغاني الفوز أكبر — سقف ~٣ ميجا للملف (تحت حد جسم الطلب) / اللبنات ~٢ ميجا
+  const isWin = WIN_KEYS.includes(key);
+  const maxLen = isWin ? 4_300_000 : 2_800_000;
+  if (uri.length > maxLen) {
+    return { ok: false, error: isWin ? "الأغنية أكبر من ٣ ميجا — اختر مقطعاً أقصر" : "حجم المقطع أكبر من ٢ ميجا" };
+  }
 
   await db.voiceClip.upsert({
     where: { userId_key: { userId: ownerUserId, key } },

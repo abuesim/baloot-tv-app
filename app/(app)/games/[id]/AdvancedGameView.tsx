@@ -18,7 +18,6 @@ import {
 import { PlayerAvatar } from "@/components/PlayerAvatar";
 import { scoreSequence, totalSequence, CLIP_TEXT } from "@/lib/voice-narration";
 import { evaluateScoreCues, TIME_CUE_MS } from "@/lib/voice-cues";
-import { WIN_KEYS } from "@/lib/voice-win";
 import { getWinner } from "@/lib/baloot";
 import {
   recordRoundAction,
@@ -132,12 +131,16 @@ export default function AdvancedGameView({
 
   // الباقة الصوتية بصوت صانع المحتوى (تُجلب مرة عند التحميل)
   const voicePackRef = useRef<Record<string, string>>({});
+  const winKeysRef = useRef<string[]>([]); // مفاتيح أغاني الفوز الموجودة
   const currentAudioRef = useRef<HTMLAudioElement | null>(null);
   const playTokenRef = useRef(0);
   useEffect(() => {
     fetch("/api/voice-pack")
       .then((r) => r.json())
-      .then((d) => { voicePackRef.current = d?.clips ?? {}; })
+      .then((d) => {
+        voicePackRef.current = d?.clips ?? {};
+        winKeysRef.current = Array.isArray(d?.winKeys) ? d.winKeys : [];
+      })
       .catch(() => {});
   }, []);
 
@@ -252,12 +255,12 @@ export default function AdvancedGameView({
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [game.startedAt, game.status]);
 
-  // أغنية الفوز — تُختار عشوائياً من المرفوعة، وإلا النغمة المركّبة
+  // أغنية الفوز — تُختار عشوائياً من المرفوعة (تُبَثّ من الخادم)، وإلا النغمة المركّبة
   function playWinCelebration() {
-    const keys = WIN_KEYS.filter((k) => voicePackRef.current[k]);
+    const keys = winKeysRef.current;
     if (keys.length > 0) {
       const key = keys[Math.floor(Math.random() * keys.length)];
-      const audio = new Audio(voicePackRef.current[key]);
+      const audio = new Audio(`/api/voice-clip?key=${key}`);
       currentAudioRef.current = audio;
       audio.play().catch(() => {});
     } else {
