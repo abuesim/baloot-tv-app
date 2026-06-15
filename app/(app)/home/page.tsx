@@ -58,13 +58,22 @@ export default async function HomePage() {
         </Link>
       </div>
 
-      <Link
-        href="/tournaments"
-        className="bg-navy rounded-2xl p-6 text-center border border-white/10 hover:border-gold/40 flex items-center justify-center gap-3"
-      >
-        <div className="text-4xl">🏆</div>
-        <div className="text-lg font-bold">البطولات ({tournamentsCount})</div>
-      </Link>
+      <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+        <Link
+          href="/tournaments"
+          className="bg-navy rounded-2xl p-6 text-center border border-white/10 hover:border-gold/40 flex items-center justify-center gap-3"
+        >
+          <div className="text-4xl">🏆</div>
+          <div className="text-lg font-bold">البطولات ({tournamentsCount})</div>
+        </Link>
+        <Link
+          href="/draw"
+          className="bg-navy rounded-2xl p-6 text-center border border-white/10 hover:border-gold/40 flex items-center justify-center gap-3"
+        >
+          <div className="text-4xl">🎲</div>
+          <div className="text-lg font-bold">دق الولد</div>
+        </Link>
+      </div>
 
       <div>
         <h2 className="text-xl font-bold mb-4">آخر الصكات</h2>
