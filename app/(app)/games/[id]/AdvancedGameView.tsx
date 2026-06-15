@@ -355,17 +355,18 @@ export default function AdvancedGameView({
       // أنيميشن تأكيد التسجيل — يختفي بعد 3 ثواني
       setFlashScore({ us: t1, them: t2, round: nextRound });
       setTimeout(() => setFlashScore(null), 6000);
-      // النشرة أولاً، ثم التوجيهات الصوتية بعدها بـ ٥ ثوانٍ
+      // النشرة أولاً، ثم التوجيهات الصوتية بعد اكتمال نطق المجموع بـ ١٠ ثوانٍ
       const newTotal1 = game.team1Score + t1;
       const newTotal2 = game.team2Score + t2;
-      speakRound(t1, t2, newTotal1, newTotal2);
       const cues = evaluateScoreCues(
         { t1: game.team1Score, t2: game.team2Score },
         { t1: newTotal1, t2: newTotal2 },
       );
-      if (cues.length > 0) {
-        setTimeout(() => cues.forEach(playCue), 5000);
-      }
+      speakRound(t1, t2, newTotal1, newTotal2).then(() => {
+        if (cues.length > 0) {
+          setTimeout(() => cues.forEach((c) => playCue(c)), 10000);
+        }
+      });
       router.refresh();
     });
   }
