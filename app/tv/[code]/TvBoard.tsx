@@ -393,9 +393,11 @@ export default function TvBoard({
   const showAlert = user.tvShowAlert && !!user.tvAlertUrl;
 
   // عناصر البطولة المشتركة بين الحالات
-  const tournamentStrip = tournament ? (
-    <TvTournamentStrip tournament={tournament} accent={accent} />
-  ) : null;
+  // الشريط يظهر فقط أثناء البطولة (قبل تحديد البطل) — يختفي عند الانتهاء
+  const tournamentStrip =
+    tournament && tournament.status !== "COMPLETED" ? (
+      <TvTournamentStrip tournament={tournament} accent={accent} />
+    ) : null;
   const ceremonyOverlay = drawCeremony ? (
     <TvDrawCeremonyOverlay
       teams={drawCeremony.teams}

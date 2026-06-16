@@ -30,6 +30,23 @@ export default async function PlayerStatsPage({
     include: { participants: { include: { player: true } } },
   });
 
+  // إحصائيات البطولات: شارك فيها + فاز بها (بطل)
+  const playerTeams = await db.team.findMany({
+    where: {
+      OR: [{ player1Id: id }, { player2Id: id }],
+      tournamentId: { not: null },
+    },
+    select: {
+      id: true,
+      tournament: { select: { id: true, name: true, championTeamId: true } },
+    },
+  });
+  const tournamentsPlayed = playerTeams.filter((t) => t.tournament).length;
+  const championedTournaments = playerTeams.filter(
+    (t) => t.tournament && t.tournament.championTeamId === t.id,
+  );
+  const titlesCount = championedTournaments.length;
+
   let wins = 0;
   let losses = 0;
 
@@ -108,6 +125,32 @@ export default async function PlayerStatsPage({
             style={{ width: `${winRate}%` }}
           />
         </div>
+      </div>
+
+      {/* البطولات */}
+      <div>
+        <h2 className="text-xl font-bold mb-3">🏆 البطولات</h2>
+        <div className="grid grid-cols-2 gap-3">
+          <StatCard label="بطولات شارك فيها" value={tournamentsPlayed} cls="text-white" />
+          <StatCard label="بطولات فاز بها" value={titlesCount} cls="text-gold" />
+        </div>
+        {championedTournaments.length > 0 && (
+          <div className="mt-3 bg-gradient-to-l from-gold/15 to-transparent rounded-2xl border border-gold/25 overflow-hidden">
+            {championedTournaments.map((t, i) => (
+              <Link
+                key={t.tournament!.id}
+                href={`/tournaments/${t.tournament!.id}`}
+                className={`flex items-center gap-3 p-3 hover:bg-white/5 transition-colors ${
+                  i > 0 ? "border-t border-white/5" : ""
+                }`}
+              >
+                <span className="text-2xl">🏆</span>
+                <span className="flex-1 font-bold truncate">{t.tournament!.name}</span>
+                <span className="text-xs text-gold shrink-0">بطل</span>
+              </Link>
+            ))}
+          </div>
+        )}
       </div>
 
       {/* الزملاء */}
