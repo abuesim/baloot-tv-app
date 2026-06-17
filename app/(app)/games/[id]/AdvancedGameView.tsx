@@ -98,11 +98,13 @@ export default function AdvancedGameView({
   tvCode,
   tvUrl,
   allPlayers,
+  bannerTexts = [],
 }: {
   game: Game;
   tvCode: string | null;
   tvUrl: string | null;
   allPlayers: Player[];
+  bannerTexts?: string[];
 }) {
   const router = useRouter();
   const [game, setGame] = useState<Game>(initial);
@@ -634,6 +636,20 @@ export default function AdvancedGameView({
         onExpand={() => setShowAllRounds(true)}
       />
 
+      {/* شريط الإعلانات السفلي */}
+      {bannerTexts.length > 0 && (
+        <div className="bg-gold/95 text-navy-deep py-2 overflow-hidden whitespace-nowrap mt-4 -mx-4 md:-mx-6">
+          <div className="inline-flex animate-marquee gap-12 font-bold text-sm">
+            {[...bannerTexts, ...bannerTexts].map((t, i) => (
+              <span key={i} className="px-6 inline-flex items-center gap-2">
+                <span className="opacity-50">📢</span>
+                {t}
+              </span>
+            ))}
+          </div>
+        </div>
+      )}
+
       {showAllRounds && (
         <RoundsOverlay
           gameId={game.id}
@@ -726,14 +742,14 @@ function ScoreSide({
 }) {
   return (
     <div className={`text-center transition ${flashing ? "scale-105" : ""}`}>
-      <div className="flex items-center justify-center gap-3 mb-2 min-h-12">
+      <div className="flex items-center justify-center gap-4 mb-3 min-h-14">
         {players.map((p) => (
           <PlayerAvatar
             key={p.id}
             name={p.name}
             imageUrl={p.imageUrl}
             size="sm"
-            className="scale-[1.2]"
+            className="scale-[1.45]"
           />
         ))}
       </div>
