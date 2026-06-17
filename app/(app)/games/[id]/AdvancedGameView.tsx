@@ -726,14 +726,14 @@ function ScoreSide({
 }) {
   return (
     <div className={`text-center transition ${flashing ? "scale-105" : ""}`}>
-      <div className="flex items-center justify-center gap-4 mb-3 min-h-14">
+      <div className="flex items-center justify-center gap-5 mb-4 min-h-16">
         {players.map((p) => (
           <PlayerAvatar
             key={p.id}
             name={p.name}
             imageUrl={p.imageUrl}
-            size="sm"
-            className="scale-[1.45]"
+            size="md"
+            className="scale-[1.2]"
           />
         ))}
       </div>
