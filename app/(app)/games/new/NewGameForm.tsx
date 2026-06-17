@@ -103,6 +103,13 @@ export default function NewGameForm({
     setTeam2([]);
     setActiveTeam(1);
   }
+  function swapTeams() {
+    setError(null);
+    const a = team1;
+    const b = team2;
+    setTeam1(b);
+    setTeam2(a);
+  }
   function shuffle() {
     setError(null);
     const pool = [...players].sort(() => Math.random() - 0.5).slice(0, 4);
@@ -219,8 +226,8 @@ export default function NewGameForm({
             </div>
           )}
 
-          {/* تبويبات الفريقين */}
-          <div className="grid grid-cols-2 gap-2">
+          {/* تبويبات الفريقين + زر التبديل بينهما */}
+          <div className="relative grid grid-cols-2 gap-2">
             <TeamTab
               label="لنا"
               count={team1.length}
@@ -239,6 +246,15 @@ export default function NewGameForm({
               onClick={() => setActiveTeam(2)}
               onRemove={(id) => setTeam2((s) => s.filter((x) => x !== id))}
             />
+            <button
+              type="button"
+              onClick={swapTeams}
+              disabled={team1.length === 0 && team2.length === 0}
+              title="تبديل لنا ولهم"
+              className="absolute left-1/2 top-1/2 -translate-x-1/2 -translate-y-1/2 z-10 w-9 h-9 rounded-full bg-navy border-2 border-white/20 shadow-lg flex items-center justify-center text-white/70 hover:border-gold hover:text-gold disabled:opacity-30 transition-colors"
+            >
+              ⇄
+            </button>
           </div>
 
           {/* بحث */}
