@@ -375,7 +375,7 @@ function TeamTab({
           {count}/2
         </span>
       </div>
-      <div className="flex items-center gap-1.5 min-h-[28px]">
+      <div className="flex flex-col gap-1 min-h-[28px]">
         {members.length === 0 ? (
           <span className="text-[10px] text-white/30">اضغط لاختيار اللاعبين</span>
         ) : (
@@ -387,12 +387,12 @@ function TeamTab({
                 e.stopPropagation();
                 onRemove(m.id);
               }}
-              className="flex items-center gap-1 bg-white/5 rounded-full pr-1 pl-2 py-0.5 hover:bg-white/10"
+              className="w-full flex items-center gap-1.5 bg-white/5 rounded-lg pr-1 pl-2 py-1 hover:bg-white/10"
               title="إزالة"
             >
               <PlayerAvatar name={m.name} imageUrl={m.imageUrl} size="xs" />
-              <span className="text-[10px] max-w-12 truncate">{m.name}</span>
-              <span className="text-white/40 text-[10px]">✕</span>
+              <span className="flex-1 text-right text-xs truncate">{m.name}</span>
+              <span className="text-white/40 text-[10px] shrink-0">✕</span>
             </button>
           ))
         )}
