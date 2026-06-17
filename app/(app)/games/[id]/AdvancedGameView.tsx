@@ -98,13 +98,11 @@ export default function AdvancedGameView({
   tvCode,
   tvUrl,
   allPlayers,
-  bannerTexts = [],
 }: {
   game: Game;
   tvCode: string | null;
   tvUrl: string | null;
   allPlayers: Player[];
-  bannerTexts?: string[];
 }) {
   const router = useRouter();
   const [game, setGame] = useState<Game>(initial);
@@ -417,7 +415,7 @@ export default function AdvancedGameView({
 
   return (
     <div
-      className="min-h-screen text-white relative overflow-hidden -m-4 md:-m-6"
+      className="min-h-screen text-white relative overflow-hidden -m-4 md:-m-6 pb-24 md:pb-6"
       style={{
         background: `
           radial-gradient(ellipse 60% 40% at 0% 35%, rgba(60, 60, 80, 0.55) 0%, transparent 60%),
@@ -635,20 +633,6 @@ export default function AdvancedGameView({
         rounds={game.rounds}
         onExpand={() => setShowAllRounds(true)}
       />
-
-      {/* شريط الإعلانات السفلي */}
-      {bannerTexts.length > 0 && (
-        <div className="bg-gold/95 text-navy-deep py-2 overflow-hidden whitespace-nowrap mt-4 -mx-4 md:-mx-6">
-          <div className="inline-flex animate-marquee gap-12 font-bold text-sm">
-            {[...bannerTexts, ...bannerTexts].map((t, i) => (
-              <span key={i} className="px-6 inline-flex items-center gap-2">
-                <span className="opacity-50">📢</span>
-                {t}
-              </span>
-            ))}
-          </div>
-        </div>
-      )}
 
       {showAllRounds && (
         <RoundsOverlay

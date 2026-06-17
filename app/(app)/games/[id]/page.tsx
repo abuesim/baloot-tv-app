@@ -34,14 +34,6 @@ export default async function GamePage({
     select: { id: true, name: true, imageUrl: true },
   });
 
-  // إعلانات الشريط السفلي (عامة + الخاصة بصانع المحتوى)
-  const banners = await db.adBanner.findMany({
-    where: { active: true, OR: [{ userId: null }, { userId: ownerUserId }] },
-    orderBy: { order: "asc" },
-    select: { id: true, text: true },
-  });
-  const bannerTexts = banners.map((b) => b.text).filter((t): t is string => !!t);
-
   let tvUrl: string | null = null;
   if (userRow?.tvCode) {
     const h = await headers();
@@ -57,7 +49,6 @@ export default async function GamePage({
         tvCode={userRow?.tvCode ?? null}
         tvUrl={tvUrl}
         allPlayers={allPlayers}
-        bannerTexts={bannerTexts}
       />
     );
   }

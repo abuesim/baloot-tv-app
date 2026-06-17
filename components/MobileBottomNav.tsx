@@ -2,13 +2,10 @@
 
 import Link from "next/link";
 import { usePathname } from "next/navigation";
-import { APP_NAV, isCalculatorPath } from "./app-nav";
+import { APP_NAV } from "./app-nav";
 
 export default function MobileBottomNav() {
   const pathname = usePathname();
-
-  // إخفاء الشريط في شاشة الحاسبة (صكة جارية) لتجربة مركّزة
-  if (isCalculatorPath(pathname)) return null;
 
   return (
     <nav className="md:hidden fixed bottom-0 inset-x-0 bg-navy border-t border-white/10 z-40 flex">
