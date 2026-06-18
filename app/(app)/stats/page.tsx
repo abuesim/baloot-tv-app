@@ -168,6 +168,7 @@ export default async function StatsPage({
   });
 
   const champion = individualsArr[0];
+  const bestTeam = teamsArr[0];
 
   // قائمة الأشهر السابقة (آخر ١٢ شهر)
   const monthOptions: { value: string; label: string }[] = [];
@@ -243,10 +244,36 @@ export default async function StatsPage({
             size="xl"
           />
           <div>
-            <div className="text-sm text-gold">{championLabel}</div>
+            <div className="text-sm text-gold">أفضل لاعب · {championLabel}</div>
             <div className="text-2xl font-black">{champion.name}</div>
             <div className="text-sm text-white/70">
               {champion.wins} فوز من {champion.games} صكة
+            </div>
+          </div>
+        </div>
+      )}
+
+      {bestTeam && (
+        <div className="bg-gradient-to-l from-accent/25 to-accent/5 rounded-2xl p-6 border border-accent/40 flex items-center gap-4">
+          <div className="text-5xl">🤝</div>
+          <div className="flex -space-x-4 -space-x-reverse shrink-0">
+            {bestTeam.players.map((p, i) => (
+              <PlayerAvatar
+                key={i}
+                name={p.name}
+                imageUrl={p.imageUrl}
+                size="lg"
+                className="ring-2 ring-navy"
+              />
+            ))}
+          </div>
+          <div>
+            <div className="text-sm text-accent">أفضل فريق</div>
+            <div className="text-xl font-black">
+              {bestTeam.players[0]!.name} و {bestTeam.players[1]!.name}
+            </div>
+            <div className="text-sm text-white/70">
+              {bestTeam.wins} فوز من {bestTeam.games} صكة
             </div>
           </div>
         </div>
