@@ -25,6 +25,7 @@ export default async function PlayerStatsPage({
       userId: ownerUserId,
       status: "COMPLETED",
       winner: { not: null },
+      deletedAt: null,
       participants: { some: { playerId: id } },
     },
     include: { participants: { include: { player: true } } },

@@ -8,7 +8,7 @@ export default async function TournamentsPage() {
   const ownerUserId = user.parentUserId ?? user.id;
 
   const tournaments = await db.tournament.findMany({
-    where: { userId: ownerUserId },
+    where: { userId: ownerUserId, deletedAt: null },
     orderBy: { createdAt: "desc" },
     include: {
       _count: { select: { teams: true } },

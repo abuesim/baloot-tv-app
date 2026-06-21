@@ -16,7 +16,10 @@ export async function syncMatchForGame(gameId: string): Promise<void> {
 export async function syncMatch(matchId: string): Promise<void> {
   const match = await db.match.findUnique({
     where: { id: matchId },
-    include: { games: { select: { status: true, winner: true } }, tournament: true },
+    include: {
+      games: { where: { deletedAt: null }, select: { status: true, winner: true } },
+      tournament: true,
+    },
   });
   if (!match) return;
 
@@ -137,7 +140,7 @@ export async function computePointsStandings(
     }),
     // كل الصكات المنتهية في البطولة — لحساب الأبناط
     db.game.findMany({
-      where: { match: { tournamentId }, status: "COMPLETED" },
+      where: { match: { tournamentId }, status: "COMPLETED", deletedAt: null },
       select: {
         team1Score: true,
         team2Score: true,

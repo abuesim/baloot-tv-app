@@ -9,7 +9,7 @@ export default async function HomePage() {
 
   const [recentGames, playersCount, monthGames, tournamentsCount] = await Promise.all([
     db.game.findMany({
-      where: { userId: ownerUserId },
+      where: { userId: ownerUserId, deletedAt: null },
       orderBy: { startedAt: "desc" },
       take: 5,
       include: {
@@ -22,9 +22,10 @@ export default async function HomePage() {
         userId: ownerUserId,
         startedAt: { gte: new Date(new Date().setDate(1)) },
         status: "COMPLETED",
+        deletedAt: null,
       },
     }),
-    db.tournament.count({ where: { userId: ownerUserId } }),
+    db.tournament.count({ where: { userId: ownerUserId, deletedAt: null } }),
   ]);
 
   return (

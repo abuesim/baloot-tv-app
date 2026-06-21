@@ -27,7 +27,7 @@ type GameRow = Awaited<ReturnType<typeof getCurrentGameForUser>>;
 
 async function getCurrentGameForUser(userId: string) {
   return db.game.findFirst({
-    where: { userId, status: "IN_PROGRESS" },
+    where: { userId, status: "IN_PROGRESS", deletedAt: null },
     orderBy: { startedAt: "desc" },
     include: {
       participants: { include: { player: true } },

@@ -44,6 +44,7 @@ export default async function HistoryPage({
   const games = await db.game.findMany({
     where: {
       userId: ownerUserId,
+      deletedAt: null,
       ...(dateRange.gte ? { startedAt: dateRange } : {}),
     },
     orderBy: { startedAt: "desc" },
@@ -64,6 +65,7 @@ export default async function HistoryPage({
     where: {
       userId: ownerUserId,
       status: "COMPLETED",
+      deletedAt: null,
       ...(dateRange.gte ? { createdAt: dateRange } : {}),
     },
     orderBy: { createdAt: "desc" },

@@ -117,13 +117,13 @@ export async function deleteTournamentAction(tournamentId: string): Promise<Acti
   const t = await db.tournament.findUnique({ where: { id: tournamentId } });
   if (!t || t.userId !== ownerUserId) return { ok: false, error: "البطولة غير موجودة" };
 
-  // فكّ ربط الصكات ثم احذف
-  await db.game.updateMany({
-    where: { match: { tournamentId } },
-    data: { matchId: null },
+  // حذف ناعم — تبقى مع فرقها ومبارياتها قابلة للاسترجاع
+  await db.tournament.update({
+    where: { id: tournamentId },
+    data: { deletedAt: new Date() },
   });
-  await db.tournament.delete({ where: { id: tournamentId } });
   revalidatePath("/tournaments");
+  revalidatePath("/profile/trash");
   return { ok: true };
 }
 

@@ -58,7 +58,7 @@ export async function getActiveTvTournament(
   userId: string,
 ): Promise<TvTournament | null> {
   const t = await db.tournament.findFirst({
-    where: { userId, status: { in: ["DRAWN", "IN_PROGRESS", "COMPLETED"] } },
+    where: { userId, status: { in: ["DRAWN", "IN_PROGRESS", "COMPLETED"] }, deletedAt: null },
     orderBy: { createdAt: "desc" },
     include: {
       teams: { include: { team: { select: teamSelect } }, orderBy: { seed: "asc" } },

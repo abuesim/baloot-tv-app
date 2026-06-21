@@ -15,6 +15,7 @@ export default function ProfileTabs({
     { href: "/profile", label: "👤 ملفي", visible: true },
     { href: "/profile/studio", label: "🎬 الاستوديو", visible: showStudio },
     { href: "/profile/voice", label: "🎙️ الصوت", visible: showStudio },
+    { href: "/profile/trash", label: "🗑️ المحذوفات", visible: showStudio },
     { href: "/profile/sub-user", label: "👥 المساعد", visible: showSubUser },
   ].filter((t) => t.visible);
 

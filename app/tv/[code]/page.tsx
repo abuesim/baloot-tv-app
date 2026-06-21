@@ -33,7 +33,7 @@ export default async function TvPage({
 
   // نعرض فقط الصكات الجارية — المنتهية لا تظهر على الشاشة
   const game = await db.game.findFirst({
-    where: { userId: user.id, status: "IN_PROGRESS" },
+    where: { userId: user.id, status: "IN_PROGRESS", deletedAt: null },
     orderBy: { startedAt: "desc" },
     include: {
       participants: { include: { player: true } },

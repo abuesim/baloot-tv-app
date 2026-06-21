@@ -153,6 +153,7 @@ model Game {
 
   startedAt DateTime  @default(now())
   endedAt   DateTime?
+  deletedAt DateTime? // حذف ناعم — يبقى في سجل المحذوفات قابلاً للاسترجاع
 
   // ربط الصكة بمواجهة بطولة (اختياري)
   matchId String?
@@ -297,6 +298,7 @@ model Tournament {
   status      TournamentStatus @default(DRAFT)
   championTeamId String?       // الفريق البطل عند الانتهاء
   drawCeremonyAt DateTime?     // آخر توقيت لبث القرعة على الشاشة (لإعادة العرض)
+  deletedAt   DateTime?        // حذف ناعم — قابل للاسترجاع
   createdAt   DateTime         @default(now())
 
   user       User             @relation(fields: [userId], references: [id], onDelete: Cascade)

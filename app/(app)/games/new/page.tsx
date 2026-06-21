@@ -14,7 +14,7 @@ export default async function NewGamePage() {
 
   // ─── آخر صكة فائزة — لاقتراح "آخر فائزين" ───
   const lastGame = await db.game.findFirst({
-    where: { userId: ownerUserId, status: "COMPLETED", winner: { not: null } },
+    where: { userId: ownerUserId, status: "COMPLETED", winner: { not: null }, deletedAt: null },
     orderBy: { startedAt: "desc" },
     include: { participants: true },
   });
@@ -33,7 +33,7 @@ export default async function NewGamePage() {
   // ─── شراكات آخر ٢٤ ساعة — لاقتراح الزميل ───
   const since = new Date(new Date().getTime() - 24 * 60 * 60 * 1000);
   const recentGames = await db.game.findMany({
-    where: { userId: ownerUserId, startedAt: { gte: since } },
+    where: { userId: ownerUserId, startedAt: { gte: since }, deletedAt: null },
     include: { participants: true },
   });
 

@@ -14,7 +14,7 @@ export default async function GamePage({
   const me = await requireUser();
   const ownerUserId = me.parentUserId ?? me.id;
   const game = await db.game.findFirst({
-    where: { id, userId: ownerUserId },
+    where: { id, userId: ownerUserId, deletedAt: null },
     include: {
       participants: { include: { player: true } },
       rounds: { orderBy: { number: "desc" } },

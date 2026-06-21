@@ -73,6 +73,7 @@ export default async function StatsPage({
     where: {
       userId: ownerUserId,
       status: "COMPLETED",
+      deletedAt: null,
       startedAt: { gte: start, lt: end },
     },
     include: {

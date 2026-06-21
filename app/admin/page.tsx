@@ -6,8 +6,8 @@ export default async function AdminDashboard() {
   const [usersCount, gamesCount, activeGamesCount, bannersCount, settings] =
     await Promise.all([
       db.user.count({ where: { role: "USER" } }),
-      db.game.count(),
-      db.game.count({ where: { status: "IN_PROGRESS" } }),
+      db.game.count({ where: { deletedAt: null } }),
+      db.game.count({ where: { status: "IN_PROGRESS", deletedAt: null } }),
       db.adBanner.count({ where: { active: true } }),
       getSettings(),
     ]);

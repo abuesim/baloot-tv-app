@@ -20,8 +20,8 @@ export default async function TournamentDetailPage({
   const user = await requireUser();
   const ownerUserId = user.parentUserId ?? user.id;
 
-  const t = await db.tournament.findUnique({
-    where: { id },
+  const t = await db.tournament.findFirst({
+    where: { id, deletedAt: null },
     include: {
       teams: {
         include: { team: { select: teamSelect } },

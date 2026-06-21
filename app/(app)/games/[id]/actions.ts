@@ -266,21 +266,19 @@ export async function deleteGameAction(
     return { ok: false, error: "ليس لديك صلاحية حذف الصكات" };
   }
   const game = await db.game.findFirst({
-    where: { id: gameId, userId: ownerUserId },
+    where: { id: gameId, userId: ownerUserId, deletedAt: null },
   });
   if (!game) return { ok: false, error: "الصكة غير موجودة" };
 
-  await db.$transaction([
-    db.round.deleteMany({ where: { gameId } }),
-    db.gameParticipant.deleteMany({ where: { gameId } }),
-    db.game.delete({ where: { id: gameId } }),
-  ]);
+  // حذف ناعم — تبقى في سجل المحذوفات قابلة للاسترجاع
+  await db.game.update({ where: { id: gameId }, data: { deletedAt: new Date() } });
 
   // إن كانت الصكة ضمن مواجهة بطولة، أعِد مزامنتها (تتحرر للبدء من جديد)
   if (game.matchId) await syncMatch(game.matchId);
 
   revalidatePath("/home");
   revalidatePath("/stats");
+  revalidatePath("/profile/trash");
   return { ok: true };
 }
 
