@@ -1,0 +1,31 @@
+{
+  "expo": {
+    "name": "أكك لايف",
+    "slug": "akak-live",
+    "version": "1.0.0",
+    "orientation": "default",
+    "icon": "./assets/icon.png",
+    "scheme": "akaklive",
+    "userInterfaceStyle": "dark",
+    "backgroundColor": "#0a0a0e",
+    "splash": {
+      "image": "./assets/splash.png",
+      "resizeMode": "contain",
+      "backgroundColor": "#0a0a0e"
+    },
+    "assetBundlePatterns": ["**/*"],
+    "android": {
+      "package": "com.akaklive.app",
+      "versionCode": 1,
+      "adaptiveIcon": {
+        "foregroundImage": "./assets/icon.png",
+        "backgroundColor": "#0a0a0e"
+      },
+      "permissions": ["INTERNET"]
+    },
+    "ios": {
+      "bundleIdentifier": "com.akaklive.app",
+      "supportsTablet": true
+    }
+  }
+}
