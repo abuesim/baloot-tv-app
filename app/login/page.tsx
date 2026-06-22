@@ -1,4 +1,5 @@
 import { redirect } from "next/navigation";
+import Link from "next/link";
 import { getCurrentUser } from "@/lib/auth";
 import { getSettings } from "@/lib/settings";
 import { Logo } from "@/components/Logo";
@@ -16,9 +17,16 @@ export default async function LoginPage() {
         <div className="flex flex-col items-center mb-8">
           <Logo size="lg" text={settings.appName} />
           <p className="text-white/50 mt-3 text-sm">{settings.appTagline}</p>
-          <span className="mt-1.5 text-xs text-white/25 tracking-widest">الإصدار 4.4</span>
+          <span className="mt-1.5 text-xs text-white/25 tracking-widest">الإصدار 4.5</span>
         </div>
         <LoginForm />
+
+        <Link
+          href="/play"
+          className="mt-4 flex items-center justify-center gap-2 w-full py-3.5 rounded-xl border border-white/15 bg-white/5 hover:bg-white/10 transition text-white/70 hover:text-white text-base font-bold"
+        >
+          🃏 حاسبة البلوت بدون تسجيل
+        </Link>
       </div>
 
       {/* فوتر المبرمج */}
