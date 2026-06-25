@@ -89,11 +89,13 @@ export default async function StatsPage({
     games: number;
     wins: number;
     losses: number;
+    lastWinAt: Date | null; // وقت آخر فوز — للفصل عند التعادل التام
   };
   const individuals = new Map<string, Indi>();
 
   for (const g of games) {
     if (g.winner === null) continue;
+    const gameTime = g.endedAt ?? g.startedAt; // وقت انتهاء الصكة
     for (const p of g.participants) {
       const stat = individuals.get(p.player.id) ?? {
         playerId: p.player.id,
@@ -102,17 +104,40 @@ export default async function StatsPage({
         games: 0,
         wins: 0,
         losses: 0,
+        lastWinAt: null,
       };
       stat.games++;
-      if (p.team === g.winner) stat.wins++;
-      else stat.losses++;
+      if (p.team === g.winner) {
+        stat.wins++;
+        if (!stat.lastWinAt || gameTime > stat.lastWinAt) {
+          stat.lastWinAt = gameTime;
+        }
+      } else {
+        stat.losses++;
+      }
       individuals.set(p.player.id, stat);
     }
   }
 
-  const individualsArr = Array.from(individuals.values()).sort(
-    (a, b) => b.wins - a.wins || b.games - a.games,
-  );
+  // الحد الأدنى من الصكات ليُحتسب اللاعب "بطلاً" (يمنع 100% من صكة واحدة)
+  const MIN_GAMES_FOR_CHAMPION = 3;
+  const individualsArr = Array.from(individuals.values()).sort((a, b) => {
+    // ١. المؤهلون (٣ صكات فأكثر) قبل غير المؤهلين
+    const qA = a.games >= MIN_GAMES_FOR_CHAMPION ? 1 : 0;
+    const qB = b.games >= MIN_GAMES_FOR_CHAMPION ? 1 : 0;
+    if (qA !== qB) return qB - qA;
+    // ٢. الأعلى نسبة فوز
+    const rateA = a.wins / a.games;
+    const rateB = b.wins / b.games;
+    if (rateB !== rateA) return rateB - rateA;
+    // ٣. عند تساوي النسبة: الأكثر فوزاً ثم الأكثر صكات
+    if (b.wins !== a.wins) return b.wins - a.wins;
+    if (b.games !== a.games) return b.games - a.games;
+    // ٤. تعادل تام: آخر من فاز (الأحدث في المقدمة)
+    const tA = a.lastWinAt?.getTime() ?? 0;
+    const tB = b.lastWinAt?.getTime() ?? 0;
+    return tB - tA;
+  });
 
   // إحصائيات جماعية (أزواج)
   type Team = {
@@ -168,7 +193,21 @@ export default async function StatsPage({
     return tB - tA;
   });
 
-  const champion = individualsArr[0];
+  // البطل = أعلى لاعب مؤهّل (٣ صكات فأكثر)؛ وإلا لا يُعرض
+  const champion =
+    individualsArr[0] && individualsArr[0].games >= MIN_GAMES_FOR_CHAMPION
+      ? individualsArr[0]
+      : null;
+  // لاعبون آخرون متعادلون تماماً مع البطل (نفس الفوز ونفس الصكات)
+  const championTies = champion
+    ? individualsArr.filter(
+        (s) =>
+          s.playerId !== champion.playerId &&
+          s.games >= MIN_GAMES_FOR_CHAMPION &&
+          s.wins === champion.wins &&
+          s.games === champion.games,
+      )
+    : [];
   const bestTeam = teamsArr[0];
 
   // قائمة الأشهر السابقة (آخر ١٢ شهر)
@@ -246,7 +285,17 @@ export default async function StatsPage({
           />
           <div>
             <div className="text-sm text-gold">أفضل لاعب · {championLabel}</div>
-            <div className="text-2xl font-black">{champion.name}</div>
+            <div className="flex items-center gap-2 flex-wrap">
+              <span className="text-2xl font-black">{champion.name}</span>
+              {championTies.length > 0 && (
+                <span
+                  className="text-[11px] font-bold text-gold bg-gold/15 border border-gold/40 rounded-full px-2 py-0.5"
+                  title={`تعادل مع: ${championTies.map((t) => t.name).join("، ")} — حُسم بآخر من فاز`}
+                >
+                  🤝 تعادل مع {championTies.map((t) => t.name).join("، ")}
+                </span>
+              )}
+            </div>
             <div className="text-sm text-white/70">
               {champion.wins} فوز من {champion.games} صكة
             </div>
