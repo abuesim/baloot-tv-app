@@ -119,21 +119,20 @@ export default async function StatsPage({
     }
   }
 
-  // الحد الأدنى من الصكات ليُحتسب اللاعب "بطلاً" (يمنع 100% من صكة واحدة)
-  const MIN_GAMES_FOR_CHAMPION = 3;
+  // معيار التأهيل الديناميكي: لازم اللاعب/الفريق لعب ١٠٪ من إجمالي صكات الفترة
+  // (تقريب لأعلى، بحد أدنى صكة واحدة). يتكيّف مع حجم الفترة بدل رقم ثابت.
+  const decidedGames = games.filter((g) => g.winner !== null).length;
+  const QUALIFY_MIN = Math.max(1, Math.ceil(decidedGames * 0.1));
   const individualsArr = Array.from(individuals.values()).sort((a, b) => {
-    // ١. المؤهلون (٣ صكات فأكثر) قبل غير المؤهلين
-    const qA = a.games >= MIN_GAMES_FOR_CHAMPION ? 1 : 0;
-    const qB = b.games >= MIN_GAMES_FOR_CHAMPION ? 1 : 0;
+    // ١. المؤهلون (١٠٪ من الصكات فأكثر) قبل غير المؤهلين
+    const qA = a.games >= QUALIFY_MIN ? 1 : 0;
+    const qB = b.games >= QUALIFY_MIN ? 1 : 0;
     if (qA !== qB) return qB - qA;
-    // ٢. الأعلى نسبة فوز
-    const rateA = a.wins / a.games;
-    const rateB = b.wins / b.games;
-    if (rateB !== rateA) return rateB - rateA;
-    // ٣. عند تساوي النسبة: الأكثر فوزاً ثم الأكثر صكات
+    // ٢. الأكثر فوزاً
     if (b.wins !== a.wins) return b.wins - a.wins;
-    if (b.games !== a.games) return b.games - a.games;
-    // ٤. تعادل تام: آخر من فاز (الأحدث في المقدمة)
+    // ٣. عند التعادل: الأقل خسارة
+    if (a.losses !== b.losses) return a.losses - b.losses;
+    // ٤. عند التعادل: آخر من فاز (الأحدث في المقدمة)
     const tA = a.lastWinAt?.getTime() ?? 0;
     const tB = b.lastWinAt?.getTime() ?? 0;
     return tB - tA;
@@ -183,32 +182,48 @@ export default async function StatsPage({
     }
   }
   const teamsArr = Array.from(teams.values()).sort((a, b) => {
-    // ١. الأكثر فوزاً
+    // ١. المؤهلون (١٠٪ من الصكات فأكثر) قبل غير المؤهلين
+    const qA = a.games >= QUALIFY_MIN ? 1 : 0;
+    const qB = b.games >= QUALIFY_MIN ? 1 : 0;
+    if (qA !== qB) return qB - qA;
+    // ٢. الأكثر فوزاً
     if (b.wins !== a.wins) return b.wins - a.wins;
-    // ٢. الأقل خسارة
+    // ٣. عند التعادل: الأقل خسارة
     if (a.losses !== b.losses) return a.losses - b.losses;
-    // ٣. آخر من حقق فوزاً (الأحدث في المقدمة)
+    // ٤. عند التعادل: آخر من حقق فوزاً (الأحدث في المقدمة)
     const tA = a.lastWinAt?.getTime() ?? 0;
     const tB = b.lastWinAt?.getTime() ?? 0;
     return tB - tA;
   });
 
-  // البطل = أعلى لاعب مؤهّل (٣ صكات فأكثر)؛ وإلا لا يُعرض
+  // البطل = أعلى لاعب مؤهّل (١٠٪ من الصكات فأكثر)؛ وإلا لا يُعرض
   const champion =
-    individualsArr[0] && individualsArr[0].games >= MIN_GAMES_FOR_CHAMPION
+    individualsArr[0] && individualsArr[0].games >= QUALIFY_MIN
       ? individualsArr[0]
       : null;
-  // لاعبون آخرون متعادلون تماماً مع البطل (نفس الفوز ونفس الصكات)
+  // لاعبون آخرون متعادلون تماماً مع البطل (نفس الفوز ونفس الخسارة)
   const championTies = champion
     ? individualsArr.filter(
         (s) =>
           s.playerId !== champion.playerId &&
-          s.games >= MIN_GAMES_FOR_CHAMPION &&
+          s.games >= QUALIFY_MIN &&
           s.wins === champion.wins &&
-          s.games === champion.games,
+          s.losses === champion.losses,
       )
     : [];
-  const bestTeam = teamsArr[0];
+  // أفضل فريق = أعلى فريق مؤهّل (١٠٪ من الصكات فأكثر)؛ وإلا لا يُعرض
+  const bestTeam =
+    teamsArr[0] && teamsArr[0].games >= QUALIFY_MIN ? teamsArr[0] : null;
+  // فرق أخرى متعادلة تماماً مع أفضل فريق (نفس الفوز ونفس الخسارة)
+  const bestTeamTies = bestTeam
+    ? teamsArr.filter(
+        (t) =>
+          t.key !== bestTeam.key &&
+          t.games >= QUALIFY_MIN &&
+          t.wins === bestTeam.wins &&
+          t.losses === bestTeam.losses,
+      )
+    : [];
 
   // قائمة الأشهر السابقة (آخر ١٢ شهر)
   const monthOptions: { value: string; label: string }[] = [];
@@ -319,8 +334,23 @@ export default async function StatsPage({
           </div>
           <div>
             <div className="text-sm text-accent">أفضل فريق</div>
-            <div className="text-xl font-black">
-              {bestTeam.players[0]!.name} و {bestTeam.players[1]!.name}
+            <div className="flex items-center gap-2 flex-wrap">
+              <span className="text-xl font-black">
+                {bestTeam.players[0]!.name} و {bestTeam.players[1]!.name}
+              </span>
+              {bestTeamTies.length > 0 && (
+                <span
+                  className="text-[11px] font-bold text-accent bg-accent/15 border border-accent/40 rounded-full px-2 py-0.5"
+                  title={`تعادل مع: ${bestTeamTies
+                    .map((t) => `${t.players[0]!.name} و ${t.players[1]!.name}`)
+                    .join("، ")} — حُسم بآخر من فاز`}
+                >
+                  🤝 تعادل مع{" "}
+                  {bestTeamTies
+                    .map((t) => `${t.players[0]!.name} و ${t.players[1]!.name}`)
+                    .join("، ")}
+                </span>
+              )}
             </div>
             <div className="text-sm text-white/70">
               {bestTeam.wins} فوز من {bestTeam.games} صكة
