@@ -141,7 +141,7 @@ export default async function StatsPage({
   // إحصائيات جماعية (أزواج)
   type Team = {
     key: string;
-    players: { name: string; imageUrl: string | null }[];
+    players: { id: string; name: string; imageUrl: string | null }[];
     games: number;
     wins: number;
     losses: number;
@@ -160,6 +160,7 @@ export default async function StatsPage({
       const stat = teams.get(key) ?? {
         key,
         players: members.map((m) => ({
+          id: m.player.id,
           name: m.player.name,
           imageUrl: m.player.imageUrl,
         })),
@@ -301,7 +302,12 @@ export default async function StatsPage({
           <div>
             <div className="text-sm text-gold">أفضل لاعب · {championLabel}</div>
             <div className="flex items-center gap-2 flex-wrap">
-              <span className="text-2xl font-black">{champion.name}</span>
+              <Link
+                href={`/players/${champion.playerId}`}
+                className="text-2xl font-black hover:text-gold transition-colors"
+              >
+                {champion.name}
+              </Link>
               {championTies.length > 0 && (
                 <span
                   className="text-[11px] font-bold text-gold bg-gold/15 border border-gold/40 rounded-full px-2 py-0.5"
@@ -336,7 +342,19 @@ export default async function StatsPage({
             <div className="text-sm text-accent">أفضل فريق</div>
             <div className="flex items-center gap-2 flex-wrap">
               <span className="text-xl font-black">
-                {bestTeam.players[0]!.name} و {bestTeam.players[1]!.name}
+                <Link
+                  href={`/players/${bestTeam.players[0]!.id}`}
+                  className="hover:text-accent transition-colors"
+                >
+                  {bestTeam.players[0]!.name}
+                </Link>
+                {" و "}
+                <Link
+                  href={`/players/${bestTeam.players[1]!.id}`}
+                  className="hover:text-accent transition-colors"
+                >
+                  {bestTeam.players[1]!.name}
+                </Link>
               </span>
               {bestTeamTies.length > 0 && (
                 <span
@@ -382,7 +400,10 @@ export default async function StatsPage({
                     return (
                       <tr key={s.playerId} className="border-t border-white/5">
                         <td className="p-3">
-                          <div className="flex items-center gap-3">
+                          <Link
+                            href={`/players/${s.playerId}`}
+                            className="flex items-center gap-3 hover:text-gold transition-colors"
+                          >
                             <span
                               className={`shrink-0 ${
                                 i === 0
@@ -398,7 +419,7 @@ export default async function StatsPage({
                               size="sm"
                             />
                             <span className="truncate">{s.name}</span>
-                          </div>
+                          </Link>
                         </td>
                         <td className="p-3 text-green-400 font-bold">{s.wins}</td>
                         <td className="p-3 text-red-400">{s.losses}</td>
@@ -456,7 +477,19 @@ export default async function StatsPage({
                               ))}
                             </div>
                             <span className="truncate text-xs">
-                              {t.players[0]!.name} و {t.players[1]!.name}
+                              <Link
+                                href={`/players/${t.players[0]!.id}`}
+                                className="hover:text-gold transition-colors"
+                              >
+                                {t.players[0]!.name}
+                              </Link>
+                              {" و "}
+                              <Link
+                                href={`/players/${t.players[1]!.id}`}
+                                className="hover:text-gold transition-colors"
+                              >
+                                {t.players[1]!.name}
+                              </Link>
                             </span>
                           </div>
                         </td>
