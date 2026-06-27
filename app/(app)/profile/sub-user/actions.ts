@@ -15,33 +15,43 @@ async function requireContentCreatorOwner() {
   return user;
 }
 
+/** يتحقق أن المساعد المستهدف تابع لي فعلاً */
+async function requireOwnedSub(meId: string, subId: string) {
+  const sub = await db.user.findFirst({
+    where: { id: subId, parentUserId: meId },
+  });
+  if (!sub) throw new Error("المساعد غير موجود");
+  return sub;
+}
+
 // ============================================================
-// إنشاء المستخدم الفرعي
+// إنشاء مساعد جديد — صانع المحتوى يدخل اسماً ورقماً سرياً
+// اسم المستخدم الفعلي = ‹اسم‌صانع‌المحتوى›-‹الاسم›
 // ============================================================
 
 const createSchema = z.object({
-  password: z
+  name: z
     .string()
-    .min(6, "كلمة السر ٦ أحرف على الأقل")
-    .max(100),
+    .min(1, "اكتب اسماً للمساعد")
+    .max(20, "الاسم طويل جداً")
+    .regex(/^[a-z0-9_]+$/, "حروف إنجليزية صغيرة وأرقام و _ فقط"),
+  password: z.string().min(6, "كلمة السر ٦ أحرف على الأقل").max(100),
 });
 
-export async function createSubUserAction(
-  password: string,
-): Promise<ActionResult> {
+export async function createSubUserAction(input: {
+  name: string;
+  password: string;
+}): Promise<ActionResult> {
   const me = await requireContentCreatorOwner();
 
-  const parsed = createSchema.safeParse({ password });
+  const parsed = createSchema.safeParse({
+    name: String(input?.name ?? "").toLowerCase().trim(),
+    password: String(input?.password ?? ""),
+  });
   if (!parsed.success)
     return { ok: false, error: parsed.error.issues[0]?.message ?? "بيانات غير صالحة" };
 
-  // تأكّد ما في مستخدم فرعي مسبقاً
-  const existing = await db.user.findFirst({
-    where: { parentUserId: me.id },
-  });
-  if (existing) return { ok: false, error: "يوجد مستخدم فرعي بالفعل" };
-
-  const subUsername = `${me.username}-`;
+  const subUsername = `${me.username}-${parsed.data.name}`;
 
   // تأكد من أن اسم المستخدم الفرعي غير مأخوذ
   const taken = await db.user.findUnique({ where: { username: subUsername } });
@@ -50,7 +60,7 @@ export async function createSubUserAction(
   await db.user.create({
     data: {
       username: subUsername,
-      displayName: `مساعد ${me.displayName}`,
+      displayName: `مساعد ${me.displayName} (${parsed.data.name})`,
       passwordHash: await hashPassword(parsed.data.password),
       role: "USER",
       parentUserId: me.id,
@@ -63,7 +73,7 @@ export async function createSubUserAction(
 }
 
 // ============================================================
-// تغيير كلمة سر المستخدم الفرعي
+// تغيير كلمة سر مساعد محدد
 // ============================================================
 
 const passwordSchema = z.object({
@@ -71,6 +81,7 @@ const passwordSchema = z.object({
 });
 
 export async function changeSubUserPasswordAction(
+  subId: string,
   password: string,
 ): Promise<ActionResult> {
   const me = await requireContentCreatorOwner();
@@ -79,8 +90,7 @@ export async function changeSubUserPasswordAction(
   if (!parsed.success)
     return { ok: false, error: parsed.error.issues[0]?.message ?? "بيانات غير صالحة" };
 
-  const sub = await db.user.findFirst({ where: { parentUserId: me.id } });
-  if (!sub) return { ok: false, error: "لا يوجد مستخدم فرعي" };
+  const sub = await requireOwnedSub(me.id, subId);
 
   await db.user.update({
     where: { id: sub.id },
@@ -91,21 +101,22 @@ export async function changeSubUserPasswordAction(
 }
 
 // ============================================================
-// تحديث صلاحيات المستخدم الفرعي
+// تحديث صلاحيات مساعد محدد
 // ============================================================
 
-export async function updateSubUserPermissionsAction(perms: {
-  subCanStartGame: boolean;
-  subCanAddPlayers: boolean;
-  subCanViewHistory: boolean;
-  subCanViewStats: boolean;
-  subCanManageTournaments: boolean;
-  subCanDelete: boolean;
-}): Promise<ActionResult> {
+export async function updateSubUserPermissionsAction(
+  subId: string,
+  perms: {
+    subCanStartGame: boolean;
+    subCanAddPlayers: boolean;
+    subCanViewHistory: boolean;
+    subCanViewStats: boolean;
+    subCanManageTournaments: boolean;
+    subCanDelete: boolean;
+  },
+): Promise<ActionResult> {
   const me = await requireContentCreatorOwner();
-
-  const sub = await db.user.findFirst({ where: { parentUserId: me.id } });
-  if (!sub) return { ok: false, error: "لا يوجد مستخدم فرعي" };
+  const sub = await requireOwnedSub(me.id, subId);
 
   await db.user.update({
     where: { id: sub.id },
@@ -117,14 +128,12 @@ export async function updateSubUserPermissionsAction(perms: {
 }
 
 // ============================================================
-// تفعيل / تعطيل المستخدم الفرعي
+// تفعيل / تعطيل مساعد محدد
 // ============================================================
 
-export async function toggleSubUserAction(): Promise<ActionResult> {
+export async function toggleSubUserAction(subId: string): Promise<ActionResult> {
   const me = await requireContentCreatorOwner();
-
-  const sub = await db.user.findFirst({ where: { parentUserId: me.id } });
-  if (!sub) return { ok: false, error: "لا يوجد مستخدم فرعي" };
+  const sub = await requireOwnedSub(me.id, subId);
 
   await db.user.update({
     where: { id: sub.id },
@@ -136,14 +145,12 @@ export async function toggleSubUserAction(): Promise<ActionResult> {
 }
 
 // ============================================================
-// حذف المستخدم الفرعي
+// حذف مساعد محدد
 // ============================================================
 
-export async function deleteSubUserAction(): Promise<ActionResult> {
+export async function deleteSubUserAction(subId: string): Promise<ActionResult> {
   const me = await requireContentCreatorOwner();
-
-  const sub = await db.user.findFirst({ where: { parentUserId: me.id } });
-  if (!sub) return { ok: false, error: "لا يوجد مستخدم فرعي" };
+  const sub = await requireOwnedSub(me.id, subId);
 
   await db.user.delete({ where: { id: sub.id } });
 

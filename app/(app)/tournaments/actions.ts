@@ -12,16 +12,12 @@ import { syncMatch } from "@/lib/tournament-sync";
 
 export type ActionResult = { ok: true } | { ok: false; error: string };
 
-async function owner() {
-  const user = await requireUser();
-  return user.parentUserId ?? user.id;
-}
-
 /** سياق الفاعل + صلاحيات المستخدم الفرعي */
 async function actorCtx() {
   const user = await requireUser();
   const isSub = !!user.parentUserId;
   return {
+    actorId: user.id, // المنفّذ الفعلي (صانع المحتوى أو أحد مساعديه)
     ownerUserId: user.parentUserId ?? user.id,
     canManage: !isSub || user.subCanManageTournaments,
     canDelete: !isSub || user.subCanDelete,
@@ -46,7 +42,7 @@ export async function createTournamentAction(input: {
   gameMode: "NORMAL" | "MASHDOOD";
   doubleRoundRobin?: boolean;
 }): Promise<{ ok: true; id: string } | { ok: false; error: string }> {
-  const { ownerUserId, canManage } = await actorCtx();
+  const { actorId, ownerUserId, canManage } = await actorCtx();
   if (!canManage) return { ok: false, error: NO_MANAGE };
   const parsed = createSchema.safeParse(input);
   if (!parsed.success) {
@@ -55,6 +51,7 @@ export async function createTournamentAction(input: {
   const t = await db.tournament.create({
     data: {
       userId: ownerUserId,
+      createdById: actorId,
       name: parsed.data.name.trim(),
       format: parsed.data.format,
       matchBestOf: parsed.data.matchBestOf,
@@ -410,7 +407,7 @@ export async function resetDrawAction(tournamentId: string): Promise<ActionResul
 export async function startMatchGameAction(
   matchId: string,
 ): Promise<{ ok: true; gameId: string } | { ok: false; error: string }> {
-  const ownerUserId = await owner();
+  const { actorId, ownerUserId } = await actorCtx();
   const match = await db.match.findUnique({
     where: { id: matchId },
     include: {
@@ -435,6 +432,7 @@ export async function startMatchGameAction(
   const game = await db.game.create({
     data: {
       userId: ownerUserId,
+      createdById: actorId,
       matchId,
       mode: match.tournament.gameMode,
       team1Score: cfg.startScore,

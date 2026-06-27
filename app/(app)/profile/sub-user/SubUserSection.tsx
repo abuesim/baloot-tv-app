@@ -24,36 +24,58 @@ type SubUser = {
 };
 
 // ============================================================
-// المكوّن الرئيسي
+// المكوّن الرئيسي — قائمة المساعدين + نموذج إضافة
 // ============================================================
 
 export default function SubUserSection({
   creatorUsername,
-  subUser,
+  subUsers,
 }: {
   creatorUsername: string;
-  subUser: SubUser | null;
+  subUsers: SubUser[];
 }) {
   const router = useRouter();
+  const refresh = () => router.refresh();
 
-  if (!subUser) {
-    return <CreateSubUser username={`${creatorUsername}-`} onCreated={() => router.refresh()} />;
-  }
+  return (
+    <div className="space-y-6">
+      {/* شرح مختصر */}
+      <div className="bg-gold/10 border border-gold/20 rounded-2xl p-4 text-sm text-white/80 space-y-1">
+        <p className="font-bold text-gold">المساعدون</p>
+        <p>
+          حسابات مساعدة مرتبطة بحسابك — تقدر تنشئ أكثر من مساعد، كل واحد باسمه
+          وكلمة سره وصلاحياته. يساعدونك في تشغيل الجلسات بدون صلاحيات الإدارة
+          الكاملة.
+        </p>
+      </div>
 
-  return <ManageSubUser sub={subUser} onChanged={() => router.refresh()} />;
+      {/* قائمة المساعدين الحاليين */}
+      {subUsers.length > 0 && (
+        <div className="space-y-5">
+          {subUsers.map((sub) => (
+            <ManageSubUser key={sub.id} sub={sub} onChanged={refresh} />
+          ))}
+        </div>
+      )}
+
+      {/* إضافة مساعد جديد */}
+      <CreateSubUser creatorUsername={creatorUsername} onCreated={refresh} />
+    </div>
+  );
 }
 
 // ============================================================
-// إنشاء مستخدم فرعي
+// إنشاء مساعد جديد
 // ============================================================
 
 function CreateSubUser({
-  username,
+  creatorUsername,
   onCreated,
 }: {
-  username: string;
+  creatorUsername: string;
   onCreated: () => void;
 }) {
+  const [name, setName] = useState("");
   const [password, setPassword] = useState("");
   const [confirm, setConfirm] = useState("");
   const [error, setError] = useState<string | null>(null);
@@ -67,36 +89,45 @@ function CreateSubUser({
       return;
     }
     startTransition(async () => {
-      const res = await createSubUserAction(password);
+      const res = await createSubUserAction({ name, password });
       if (!res.ok) {
         setError(res.error);
         return;
       }
+      setName("");
+      setPassword("");
+      setConfirm("");
       onCreated();
     });
   }
 
   return (
-    <div className="space-y-6">
-      {/* شرح مختصر */}
-      <div className="bg-gold/10 border border-gold/20 rounded-2xl p-4 text-sm text-white/80 space-y-1">
-        <p className="font-bold text-gold">ما هو المستخدم الفرعي؟</p>
-        <p>حساب مساعد خاص بك يمكنك منحه للمساعد في تشغيل الجلسات — يقدر يضيف لاعبين ويبدأ صكات بدون صلاحيات الإدارة الكاملة.</p>
-      </div>
-
-      {/* معاينة اسم المستخدم */}
-      <div>
-        <p className="text-sm text-white/60 mb-2">سيكون اسم المستخدم الفرعي:</p>
-        <div className="inline-flex items-center gap-2 bg-navy-light border border-white/15 rounded-xl px-4 py-2">
-          <span className="text-lg font-black tracking-wider text-gold" dir="ltr">
-            {username}
-          </span>
-          <span className="text-xs text-white/40 bg-white/10 px-2 py-0.5 rounded-full">ثابت</span>
-        </div>
-      </div>
-
-      {/* نموذج الإنشاء */}
+    <div className="bg-navy rounded-2xl border border-white/10 p-5">
+      <h3 className="font-bold text-base mb-4">➕ إضافة مساعد جديد</h3>
       <form onSubmit={submit} className="space-y-3 max-w-sm">
+        <div>
+          <label className="block text-sm mb-1 text-white/80">اسم المساعد</label>
+          <div className="flex items-center bg-navy-light border border-white/10 rounded-xl overflow-hidden">
+            <span
+              className="px-3 py-2 text-sm text-white/40 bg-white/5 shrink-0"
+              dir="ltr"
+            >
+              {creatorUsername}-
+            </span>
+            <input
+              type="text"
+              value={name}
+              onChange={(e) => setName(e.target.value.toLowerCase())}
+              required
+              dir="ltr"
+              placeholder="مثلاً ahmad"
+              className="w-full bg-transparent px-3 py-2 outline-none"
+            />
+          </div>
+          <p className="text-[11px] text-white/30 mt-1">
+            حروف إنجليزية صغيرة وأرقام و _ فقط
+          </p>
+        </div>
         <div>
           <label className="block text-sm mb-1 text-white/80">كلمة السر</label>
           <input
@@ -129,10 +160,10 @@ function CreateSubUser({
 
         <button
           type="submit"
-          disabled={isPending || !password || !confirm}
+          disabled={isPending || !name || !password || !confirm}
           className="btn-grad px-6 py-2 rounded-xl disabled:opacity-50"
         >
-          {isPending ? "جاري الإنشاء..." : "إنشاء المستخدم الفرعي"}
+          {isPending ? "جاري الإنشاء..." : "إنشاء المساعد"}
         </button>
       </form>
     </div>
@@ -140,7 +171,7 @@ function CreateSubUser({
 }
 
 // ============================================================
-// إدارة مستخدم فرعي موجود
+// إدارة مساعد موجود
 // ============================================================
 
 type PermKey =
@@ -190,6 +221,9 @@ function ManageSubUser({
   const [passMsg, setPassMsg] = useState<{ ok: boolean; text: string } | null>(null);
   const [isPendingPass, startPass] = useTransition();
 
+  // طيّ بطاقة الإدارة
+  const [open, setOpen] = useState(false);
+
   // تعطيل / حذف
   const [isPendingToggle, startToggle] = useTransition();
   const [confirmDelete, setConfirmDelete] = useState(false);
@@ -199,7 +233,7 @@ function ManageSubUser({
     setPermsError(null);
     setPermsSaved(false);
     startPerms(async () => {
-      const res = await updateSubUserPermissionsAction(perms);
+      const res = await updateSubUserPermissionsAction(sub.id, perms);
       if (!res.ok) { setPermsError(res.error); return; }
       setPermsSaved(true);
       setTimeout(() => setPermsSaved(false), 2500);
@@ -215,7 +249,7 @@ function ManageSubUser({
       return;
     }
     startPass(async () => {
-      const res = await changeSubUserPasswordAction(newPass);
+      const res = await changeSubUserPasswordAction(sub.id, newPass);
       if (!res.ok) { setPassMsg({ ok: false, text: res.error }); return; }
       setPassMsg({ ok: true, text: "تم تغيير كلمة السر ✓" });
       setNewPass("");
@@ -225,36 +259,39 @@ function ManageSubUser({
 
   function handleToggle() {
     startToggle(async () => {
-      await toggleSubUserAction();
+      await toggleSubUserAction(sub.id);
       onChanged();
     });
   }
 
   function handleDelete() {
     startDelete(async () => {
-      await deleteSubUserAction();
+      await deleteSubUserAction(sub.id);
       onChanged();
     });
   }
 
   return (
-    <div className="space-y-6">
-
-      {/* بطاقة المستخدم الفرعي */}
-      <div className="bg-navy-light border border-white/10 rounded-2xl p-4 flex items-center justify-between gap-4">
-        <div className="flex items-center gap-3">
-          <div className="w-11 h-11 rounded-full bg-gold/20 border border-gold/30 flex items-center justify-center text-lg font-black text-gold">
+    <div className="bg-navy-light border border-white/10 rounded-2xl overflow-hidden">
+      {/* رأس البطاقة */}
+      <div className="p-4 flex items-center justify-between gap-4">
+        <button
+          onClick={() => setOpen((o) => !o)}
+          className="flex items-center gap-3 text-right min-w-0"
+        >
+          <div className="w-11 h-11 rounded-full bg-gold/20 border border-gold/30 flex items-center justify-center text-lg font-black text-gold shrink-0">
             ف
           </div>
-          <div>
-            <div className="font-black text-lg tracking-wider" dir="ltr">{sub.username}</div>
-            <div className="text-xs text-white/50">{sub.displayName}</div>
+          <div className="min-w-0">
+            <div className="font-black text-lg tracking-wider truncate" dir="ltr">{sub.username}</div>
+            <div className="text-xs text-white/50 truncate">{sub.displayName}</div>
           </div>
-        </div>
+          <span className="text-white/30 text-xs">{open ? "▲" : "▼"}</span>
+        </button>
         <button
           onClick={handleToggle}
           disabled={isPendingToggle}
-          className={`text-xs font-bold px-3 py-1.5 rounded-lg transition ${
+          className={`text-xs font-bold px-3 py-1.5 rounded-lg transition shrink-0 ${
             sub.active
               ? "bg-green-500/20 text-green-400 hover:bg-red-500/20 hover:text-red-400"
               : "bg-red-500/20 text-red-400 hover:bg-green-500/20 hover:text-green-400"
@@ -264,115 +301,118 @@ function ManageSubUser({
         </button>
       </div>
 
-      {/* الصلاحيات */}
-      <div className="bg-navy rounded-2xl border border-white/10 overflow-hidden">
-        <div className="px-5 py-3 border-b border-white/5 flex items-center justify-between">
-          <h3 className="font-bold text-base">الصلاحيات</h3>
-          <button
-            onClick={savePerms}
-            disabled={isPendingPerms}
-            className="text-xs btn-grad px-4 py-1.5 rounded-lg disabled:opacity-50"
-          >
-            {isPendingPerms ? "..." : permsSaved ? "✓ حُفظ" : "حفظ"}
-          </button>
-        </div>
-        <div className="divide-y divide-white/5">
-          {PERMISSIONS.map(({ key, label, desc, icon }) => (
-            <div key={key} className="flex items-center justify-between px-5 py-3.5 gap-4">
-              <div className="flex items-center gap-3">
-                <span className="text-xl">{icon}</span>
-                <div>
-                  <div className="text-sm font-medium">{label}</div>
-                  <div className="text-xs text-white/40">{desc}</div>
+      {open && (
+        <div className="border-t border-white/5 p-4 space-y-6">
+          {/* الصلاحيات */}
+          <div className="bg-navy rounded-2xl border border-white/10 overflow-hidden">
+            <div className="px-5 py-3 border-b border-white/5 flex items-center justify-between">
+              <h3 className="font-bold text-base">الصلاحيات</h3>
+              <button
+                onClick={savePerms}
+                disabled={isPendingPerms}
+                className="text-xs btn-grad px-4 py-1.5 rounded-lg disabled:opacity-50"
+              >
+                {isPendingPerms ? "..." : permsSaved ? "✓ حُفظ" : "حفظ"}
+              </button>
+            </div>
+            <div className="divide-y divide-white/5">
+              {PERMISSIONS.map(({ key, label, desc, icon }) => (
+                <div key={key} className="flex items-center justify-between px-5 py-3.5 gap-4">
+                  <div className="flex items-center gap-3">
+                    <span className="text-xl">{icon}</span>
+                    <div>
+                      <div className="text-sm font-medium">{label}</div>
+                      <div className="text-xs text-white/40">{desc}</div>
+                    </div>
+                  </div>
+                  <Toggle
+                    value={perms[key]}
+                    onChange={(v) => setPerms((p) => ({ ...p, [key]: v }))}
+                  />
                 </div>
+              ))}
+            </div>
+            {permsError && (
+              <div className="mx-5 mb-3 bg-danger/20 text-red-300 text-xs rounded-xl p-2">{permsError}</div>
+            )}
+          </div>
+
+          {/* تغيير كلمة السر */}
+          <div className="bg-navy rounded-2xl border border-white/10 p-5">
+            <h3 className="font-bold text-base mb-4">تغيير كلمة السر</h3>
+            <form onSubmit={changePassword} className="space-y-3 max-w-sm">
+              <div>
+                <label className="block text-sm mb-1 text-white/80">كلمة السر الجديدة</label>
+                <input
+                  type="password"
+                  value={newPass}
+                  onChange={(e) => setNewPass(e.target.value)}
+                  required
+                  minLength={6}
+                  dir="ltr"
+                  placeholder="٦ أحرف على الأقل"
+                  className="w-full bg-navy-light border border-white/10 rounded-xl px-3 py-2"
+                />
               </div>
-              <Toggle
-                value={perms[key]}
-                onChange={(v) => setPerms((p) => ({ ...p, [key]: v }))}
-              />
-            </div>
-          ))}
+              <div>
+                <label className="block text-sm mb-1 text-white/80">تأكيد كلمة السر</label>
+                <input
+                  type="password"
+                  value={confirmPass}
+                  onChange={(e) => setConfirmPass(e.target.value)}
+                  required
+                  dir="ltr"
+                  placeholder="أعد الكتابة"
+                  className="w-full bg-navy-light border border-white/10 rounded-xl px-3 py-2"
+                />
+              </div>
+              {passMsg && (
+                <div className={`rounded-xl p-3 text-sm ${passMsg.ok ? "bg-green-500/20 text-green-300" : "bg-danger/20 text-red-300"}`}>
+                  {passMsg.text}
+                </div>
+              )}
+              <button
+                type="submit"
+                disabled={isPendingPass || !newPass || !confirmPass}
+                className="btn-grad px-6 py-2 rounded-xl disabled:opacity-50"
+              >
+                {isPendingPass ? "..." : "تغيير"}
+              </button>
+            </form>
+          </div>
+
+          {/* خطر: حذف المساعد */}
+          <div className="bg-navy rounded-2xl border border-danger/20 p-5">
+            <h3 className="font-bold text-base mb-1 text-red-400">حذف المساعد</h3>
+            <p className="text-xs text-white/50 mb-4">سيتم حذف الحساب نهائياً. اللاعبون والصكات المسجّلة تبقى محفوظة في حسابك.</p>
+            {!confirmDelete ? (
+              <button
+                onClick={() => setConfirmDelete(true)}
+                className="text-sm bg-danger/20 hover:bg-danger/30 text-red-300 px-5 py-2 rounded-xl"
+              >
+                حذف الحساب
+              </button>
+            ) : (
+              <div className="flex items-center gap-3">
+                <span className="text-sm text-white/70">تأكيد الحذف؟</span>
+                <button
+                  onClick={handleDelete}
+                  disabled={isPendingDelete}
+                  className="bg-red-600 hover:bg-red-700 text-white text-sm font-bold px-5 py-2 rounded-xl disabled:opacity-50"
+                >
+                  {isPendingDelete ? "..." : "حذف"}
+                </button>
+                <button
+                  onClick={() => setConfirmDelete(false)}
+                  className="text-sm text-white/50 hover:text-white px-3 py-2"
+                >
+                  إلغاء
+                </button>
+              </div>
+            )}
+          </div>
         </div>
-        {permsError && (
-          <div className="mx-5 mb-3 bg-danger/20 text-red-300 text-xs rounded-xl p-2">{permsError}</div>
-        )}
-      </div>
-
-      {/* تغيير كلمة السر */}
-      <div className="bg-navy rounded-2xl border border-white/10 p-5">
-        <h3 className="font-bold text-base mb-4">تغيير كلمة السر</h3>
-        <form onSubmit={changePassword} className="space-y-3 max-w-sm">
-          <div>
-            <label className="block text-sm mb-1 text-white/80">كلمة السر الجديدة</label>
-            <input
-              type="password"
-              value={newPass}
-              onChange={(e) => setNewPass(e.target.value)}
-              required
-              minLength={6}
-              dir="ltr"
-              placeholder="٦ أحرف على الأقل"
-              className="w-full bg-navy-light border border-white/10 rounded-xl px-3 py-2"
-            />
-          </div>
-          <div>
-            <label className="block text-sm mb-1 text-white/80">تأكيد كلمة السر</label>
-            <input
-              type="password"
-              value={confirmPass}
-              onChange={(e) => setConfirmPass(e.target.value)}
-              required
-              dir="ltr"
-              placeholder="أعد الكتابة"
-              className="w-full bg-navy-light border border-white/10 rounded-xl px-3 py-2"
-            />
-          </div>
-          {passMsg && (
-            <div className={`rounded-xl p-3 text-sm ${passMsg.ok ? "bg-green-500/20 text-green-300" : "bg-danger/20 text-red-300"}`}>
-              {passMsg.text}
-            </div>
-          )}
-          <button
-            type="submit"
-            disabled={isPendingPass || !newPass || !confirmPass}
-            className="btn-grad px-6 py-2 rounded-xl disabled:opacity-50"
-          >
-            {isPendingPass ? "..." : "تغيير"}
-          </button>
-        </form>
-      </div>
-
-      {/* خطر: حذف المستخدم الفرعي */}
-      <div className="bg-navy rounded-2xl border border-danger/20 p-5">
-        <h3 className="font-bold text-base mb-1 text-red-400">حذف المستخدم الفرعي</h3>
-        <p className="text-xs text-white/50 mb-4">سيتم حذف الحساب نهائياً. اللاعبون والصكات المسجّلة تبقى محفوظة في حسابك.</p>
-        {!confirmDelete ? (
-          <button
-            onClick={() => setConfirmDelete(true)}
-            className="text-sm bg-danger/20 hover:bg-danger/30 text-red-300 px-5 py-2 rounded-xl"
-          >
-            حذف الحساب
-          </button>
-        ) : (
-          <div className="flex items-center gap-3">
-            <span className="text-sm text-white/70">تأكيد الحذف؟</span>
-            <button
-              onClick={handleDelete}
-              disabled={isPendingDelete}
-              className="bg-red-600 hover:bg-red-700 text-white text-sm font-bold px-5 py-2 rounded-xl disabled:opacity-50"
-            >
-              {isPendingDelete ? "..." : "حذف"}
-            </button>
-            <button
-              onClick={() => setConfirmDelete(false)}
-              className="text-sm text-white/50 hover:text-white px-3 py-2"
-            >
-              إلغاء
-            </button>
-          </div>
-        )}
-      </div>
-
+      )}
     </div>
   );
 }

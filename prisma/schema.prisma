@@ -74,11 +74,16 @@ model User {
   subCanDelete            Boolean @default(false) // حذف الصكات والبطولات وسجلاتها
 
   players Player[]
-  games   Game[]
+  games   Game[]      @relation("GameOwner")
   banners AdBanner[]
   teams       Team[]
-  tournaments Tournament[]
+  tournaments Tournament[] @relation("TournamentOwner")
   voiceClips  VoiceClip[]
+
+  // تتبّع المنفّذ — مَن أنشأ/حذف (مفيد لصانع المحتوى مع مساعديه)
+  createdGames       Game[]       @relation("GameCreatedBy")
+  deletedGames       Game[]       @relation("GameDeletedBy")
+  createdTournaments Tournament[] @relation("TournamentCreatedBy")
 
   @@index([role])
   @@index([parentUserId])
@@ -141,7 +146,13 @@ enum GameMode {
 model Game {
   id     String @id @default(cuid())
   userId String
-  user   User   @relation(fields: [userId], references: [id], onDelete: Cascade)
+  user   User   @relation("GameOwner", fields: [userId], references: [id], onDelete: Cascade)
+
+  // مَن أنشأ الصكة ومَن حذفها (صانع المحتوى أو أحد مساعديه) — null للصكات القديمة
+  createdById String?
+  createdBy   User?   @relation("GameCreatedBy", fields: [createdById], references: [id], onDelete: SetNull)
+  deletedById String?
+  deletedBy   User?   @relation("GameDeletedBy", fields: [deletedById], references: [id], onDelete: SetNull)
 
   // ملاحظة: كود التلفزيون الآن دائم على المستخدم (User.tvCode)
   mode        GameMode   @default(NORMAL)
@@ -301,7 +312,11 @@ model Tournament {
   deletedAt   DateTime?        // حذف ناعم — قابل للاسترجاع
   createdAt   DateTime         @default(now())
 
-  user       User             @relation(fields: [userId], references: [id], onDelete: Cascade)
+  // مَن أنشأ البطولة (صانع المحتوى أو أحد مساعديه) — null للبطولات القديمة
+  createdById String?
+  createdBy   User?            @relation("TournamentCreatedBy", fields: [createdById], references: [id], onDelete: SetNull)
+
+  user       User             @relation("TournamentOwner", fields: [userId], references: [id], onDelete: Cascade)
   teams      TournamentTeam[]
   ownedTeams Team[]           @relation("TournamentOwnedTeams")
   matches    Match[]

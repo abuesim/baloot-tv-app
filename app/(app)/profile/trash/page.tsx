@@ -16,13 +16,17 @@ export default async function TrashPage() {
   const me = await requireUser();
   if (!canManageAds(me.role)) redirect("/profile");
   const ownerUserId = me.parentUserId ?? me.id;
+  const showActor = me.role === "CONTENT_CREATOR" && !me.parentUserId;
 
   const [games, tournaments] = await Promise.all([
     db.game.findMany({
       where: { userId: ownerUserId, deletedAt: { not: null } },
       orderBy: { deletedAt: "desc" },
       take: 100,
-      include: { participants: { include: { player: true } } },
+      include: {
+        participants: { include: { player: true } },
+        deletedBy: { select: { displayName: true } },
+      },
     }),
     db.tournament.findMany({
       where: { userId: ownerUserId, deletedAt: { not: null } },
@@ -41,6 +45,7 @@ export default async function TrashPage() {
       team2: t2,
       score: `${g.team1Score} - ${g.team2Score}`,
       deletedAt: g.deletedAt ? fmt(g.deletedAt) : "",
+      deletedBy: showActor ? (g.deletedBy?.displayName ?? null) : null,
     };
   });
 

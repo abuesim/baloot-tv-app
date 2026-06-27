@@ -17,6 +17,7 @@ type Game = {
   mode: string;
   startedAt: Date;
   participants: Participant[];
+  createdBy?: { displayName: string } | null;
 };
 
 function teamPlayers(game: Game, team: 1 | 2) {
@@ -63,7 +64,7 @@ function statusBadge(game: Game) {
   return null;
 }
 
-function GameRow({ game, canDelete, onDeleted }: { game: Game; canDelete: boolean; onDeleted: (id: string) => void }) {
+function GameRow({ game, canDelete, showActor, onDeleted }: { game: Game; canDelete: boolean; showActor: boolean; onDeleted: (id: string) => void }) {
   const [confirming, setConfirming] = useState(false);
   const [isPending, startTransition] = useTransition();
 
@@ -103,6 +104,11 @@ function GameRow({ game, canDelete, onDeleted }: { game: Game; canDelete: boolea
                 <span className="bg-gold/20 text-gold px-2 py-0.5 rounded text-xs">مشدود</span>
               )}
               {statusBadge(game)}
+              {showActor && game.createdBy && (
+                <span className="bg-white/5 text-white/50 px-2 py-0.5 rounded text-xs">
+                  أنشأها: {game.createdBy.displayName}
+                </span>
+              )}
             </div>
           </div>
 
@@ -153,7 +159,7 @@ function GameRow({ game, canDelete, onDeleted }: { game: Game; canDelete: boolea
   );
 }
 
-export function HistoryList({ initialGames, canDelete = true }: { initialGames: Game[]; canDelete?: boolean }) {
+export function HistoryList({ initialGames, canDelete = true, showActor = false }: { initialGames: Game[]; canDelete?: boolean; showActor?: boolean }) {
   const [games, setGames] = useState(initialGames);
   const router = useRouter();
 
@@ -185,7 +191,7 @@ export function HistoryList({ initialGames, canDelete = true }: { initialGames: 
           </div>
           <div className="space-y-2">
             {group.games.map((g) => (
-              <GameRow key={g.id} game={g} canDelete={canDelete} onDeleted={handleDeleted} />
+              <GameRow key={g.id} game={g} canDelete={canDelete} showActor={showActor} onDeleted={handleDeleted} />
             ))}
           </div>
         </div>

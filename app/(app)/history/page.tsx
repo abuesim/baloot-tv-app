@@ -51,8 +51,11 @@ export default async function HistoryPage({
     take: filter === "all" ? 200 : undefined,
     include: {
       participants: { include: { player: true } },
+      createdBy: { select: { displayName: true } },
     },
   });
+
+  const showActor = user.role === "CONTENT_CREATOR" && !user.parentUserId;
 
   // البطولات المنتهية ضمن نفس النطاق الزمني
   const teamSel = {
@@ -70,7 +73,10 @@ export default async function HistoryPage({
     },
     orderBy: { createdAt: "desc" },
     take: filter === "all" ? 100 : undefined,
-    include: { teams: { include: { team: { select: teamSel } } } },
+    include: {
+      teams: { include: { team: { select: teamSel } } },
+      createdBy: { select: { displayName: true } },
+    },
   });
 
   return (
@@ -100,7 +106,7 @@ export default async function HistoryPage({
         </div>
       </div>
 
-      <HistoryList initialGames={games} canDelete={!user.parentUserId || user.subCanDelete} />
+      <HistoryList initialGames={games} canDelete={!user.parentUserId || user.subCanDelete} showActor={showActor} />
 
       {/* سجل البطولات — البطل (جماعي) ولاعباه (فردي) */}
       {tournaments.length > 0 && (
@@ -128,6 +134,9 @@ export default async function HistoryPage({
                     <div className="font-bold truncate">{t.name || "بطولة"}</div>
                     <div className="text-xs text-white/50">
                       {t.format === "KNOCKOUT" ? "خروج المغلوب" : "تجميع النقاط"} · {t.teams.length} فريق · {date}
+                      {showActor && t.createdBy && (
+                        <span className="text-white/40"> · أنشأها: {t.createdBy.displayName}</span>
+                      )}
                     </div>
                   </div>
 

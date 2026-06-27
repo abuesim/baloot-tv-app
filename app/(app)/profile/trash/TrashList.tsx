@@ -10,6 +10,7 @@ type DeletedGame = {
   team2: string;
   score: string;
   deletedAt: string;
+  deletedBy?: string | null;
 };
 type DeletedTournament = {
   id: string;
@@ -78,7 +79,10 @@ export default function TrashList({
                   <div className="text-sm font-bold truncate">
                     {g.team1} <span className="text-gold tabular-nums">{g.score}</span> {g.team2}
                   </div>
-                  <div className="text-[11px] text-white/40">حُذفت {g.deletedAt}</div>
+                  <div className="text-[11px] text-white/40">
+                    حُذفت {g.deletedAt}
+                    {g.deletedBy && <span> · بواسطة: {g.deletedBy}</span>}
+                  </div>
                 </div>
                 <button
                   onClick={() => restoreGame(g.id)}

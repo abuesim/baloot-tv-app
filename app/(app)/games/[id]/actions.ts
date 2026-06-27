@@ -271,7 +271,10 @@ export async function deleteGameAction(
   if (!game) return { ok: false, error: "الصكة غير موجودة" };
 
   // حذف ناعم — تبقى في سجل المحذوفات قابلة للاسترجاع
-  await db.game.update({ where: { id: gameId }, data: { deletedAt: new Date() } });
+  await db.game.update({
+    where: { id: gameId },
+    data: { deletedAt: new Date(), deletedById: user.id },
+  });
 
   // إن كانت الصكة ضمن مواجهة بطولة، أعِد مزامنتها (تتحرر للبدء من جديد)
   if (game.matchId) await syncMatch(game.matchId);

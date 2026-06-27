@@ -62,6 +62,7 @@ export async function createGameAction(input: {
   const game = await db.game.create({
     data: {
       userId: ownerUserId,
+      createdById: user.id,
       mode: parsed.data.mode,
       team1Score: modeConfig.startScore,
       team2Score: modeConfig.startScore,

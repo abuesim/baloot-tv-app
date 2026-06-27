@@ -12,6 +12,7 @@ export default async function TournamentsPage() {
     orderBy: { createdAt: "desc" },
     include: {
       _count: { select: { teams: true } },
+      createdBy: { select: { displayName: true } },
       teams: {
         include: {
           team: {
@@ -26,6 +27,8 @@ export default async function TournamentsPage() {
       },
     },
   });
+
+  const showActor = user.role === "CONTENT_CREATOR" && !user.parentUserId;
 
   const rows = tournaments.map((t) => {
     let champion: ChampionLite | null = null;
@@ -49,6 +52,7 @@ export default async function TournamentsPage() {
       status: t.status,
       teamsCount: t._count.teams,
       champion,
+      createdBy: showActor ? (t.createdBy?.displayName ?? null) : null,
     };
   });
 

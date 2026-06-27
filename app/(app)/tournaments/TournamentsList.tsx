@@ -21,6 +21,7 @@ type Row = {
   status: string;
   teamsCount: number;
   champion: ChampionLite | null;
+  createdBy?: string | null;
 };
 
 const FORMAT_LABEL: Record<string, string> = {
@@ -84,6 +85,7 @@ export default function TournamentsList({
                       <div className="text-xs text-white/50 mt-0.5">
                         {FORMAT_LABEL[t.format]} ·{" "}
                         {t.matchBestOf === 3 ? "أفضل من ٣" : "صكة واحدة"} · {t.teamsCount} فريق
+                        {t.createdBy && <span> · أنشأها: {t.createdBy}</span>}
                       </div>
                     </div>
                     <span className={`text-xs px-3 py-1 rounded-full shrink-0 ${st.cls}`}>
@@ -117,6 +119,7 @@ export default function TournamentsList({
                     <div className="font-bold truncate">{t.name || "بطولة"}</div>
                     <div className="text-xs text-white/50">
                       {FORMAT_LABEL[t.format]} · {t.teamsCount} فريق
+                      {t.createdBy && <span> · أنشأها: {t.createdBy}</span>}
                     </div>
                   </div>
                   {t.champion ? (

@@ -17,13 +17,14 @@ type Game = {
   mode: string;
   startedAt: Date;
   participants: Participant[];
+  createdBy?: { displayName: string } | null;
 };
 
 function teamPlayers(game: Game, team: 1 | 2) {
   return game.participants.filter((p) => p.team === team).map((p) => p.player);
 }
 
-function GameRow({ game, canDelete, onDeleted }: { game: Game; canDelete: boolean; onDeleted: (id: string) => void }) {
+function GameRow({ game, canDelete, showActor, onDeleted }: { game: Game; canDelete: boolean; showActor: boolean; onDeleted: (id: string) => void }) {
   const [confirming, setConfirming] = useState(false);
   const [isPending, startTransition] = useTransition();
 
@@ -79,6 +80,11 @@ function GameRow({ game, canDelete, onDeleted }: { game: Game; canDelete: boolea
               {game.status === "ABANDONED" && (
                 <span className="bg-red-500/20 text-red-400 px-2 py-0.5 rounded">ملغاة</span>
               )}
+              {showActor && game.createdBy && (
+                <span className="bg-white/5 text-white/50 px-2 py-0.5 rounded">
+                  أنشأها: {game.createdBy.displayName}
+                </span>
+              )}
             </div>
           </div>
           <div className="text-2xl font-bold flex items-center gap-3 shrink-0">
@@ -133,9 +139,11 @@ function GameRow({ game, canDelete, onDeleted }: { game: Game; canDelete: boolea
 export function RecentGamesList({
   initialGames,
   canDelete = true,
+  showActor = false,
 }: {
   initialGames: Game[];
   canDelete?: boolean;
+  showActor?: boolean;
 }) {
   const [games, setGames] = useState(initialGames);
   const router = useRouter();
@@ -156,7 +164,7 @@ export function RecentGamesList({
   return (
     <div className="space-y-3">
       {games.map((g) => (
-        <GameRow key={g.id} game={g} canDelete={canDelete} onDeleted={handleDeleted} />
+        <GameRow key={g.id} game={g} canDelete={canDelete} showActor={showActor} onDeleted={handleDeleted} />
       ))}
     </div>
   );

@@ -14,6 +14,7 @@ export default async function HomePage() {
       take: 5,
       include: {
         participants: { include: { player: true } },
+        createdBy: { select: { displayName: true } },
       },
     }),
     db.player.count({ where: { userId: ownerUserId } }),
@@ -78,7 +79,11 @@ export default async function HomePage() {
 
       <div>
         <h2 className="text-xl font-bold mb-4">آخر الصكات</h2>
-        <RecentGamesList initialGames={recentGames} canDelete={!user.parentUserId || user.subCanDelete} />
+        <RecentGamesList
+          initialGames={recentGames}
+          canDelete={!user.parentUserId || user.subCanDelete}
+          showActor={user.role === "CONTENT_CREATOR" && !user.parentUserId}
+        />
       </div>
     </div>
   );

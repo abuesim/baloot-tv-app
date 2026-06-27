@@ -11,8 +11,9 @@ export default async function SubUserPage() {
     redirect("/profile");
   }
 
-  const subUser = await db.user.findFirst({
+  const subUsers = await db.user.findMany({
     where: { parentUserId: me.id },
+    orderBy: { createdAt: "asc" },
     select: {
       id: true,
       username: true,
@@ -30,17 +31,14 @@ export default async function SubUserPage() {
   return (
     <div className="space-y-2">
       <div className="mb-4">
-        <h2 className="text-lg font-bold">المستخدم الفرعي</h2>
+        <h2 className="text-lg font-bold">المساعدون</h2>
         <p className="text-sm text-white/50">
-          حساب مساعد مرتبط بحسابك — اسمه دائماً{" "}
+          حسابات مساعدة مرتبطة بحسابك — كل مساعد اسمه يبدأ بـ{" "}
           <span className="text-gold font-bold" dir="ltr">{me.username}-</span>
         </p>
       </div>
 
-      <SubUserSection
-        creatorUsername={me.username}
-        subUser={subUser}
-      />
+      <SubUserSection creatorUsername={me.username} subUsers={subUsers} />
     </div>
   );
 }
