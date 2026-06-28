@@ -55,7 +55,7 @@ export default async function HistoryPage({
     },
   });
 
-  const showActor = user.role === "CONTENT_CREATOR" && !user.parentUserId;
+  const showActor = user.role === "CONTENT_CREATOR" || !!user.parentUserId;
 
   // البطولات المنتهية ضمن نفس النطاق الزمني
   const teamSel = {

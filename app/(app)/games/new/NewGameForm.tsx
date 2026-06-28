@@ -4,6 +4,7 @@ import { useState, useTransition } from "react";
 import { GAME_MODES, type GameMode } from "@/lib/baloot";
 import { PlayerAvatar } from "@/components/PlayerAvatar";
 import { createGameAction } from "./actions";
+import DagAlwaladStart from "./DagAlwaladStart";
 
 type Player = { id: string; name: string; imageUrl: string | null };
 
@@ -28,6 +29,7 @@ export default function NewGameForm({
   const [team2, setTeam2] = useState<string[]>([]);
   const [query, setQuery] = useState("");
   const [error, setError] = useState<string | null>(null);
+  const [showDag, setShowDag] = useState(false);
   const [isPending, startTransition] = useTransition();
 
   const byId = new Map(players.map((p) => [p.id, p]));
@@ -110,12 +112,13 @@ export default function NewGameForm({
     setTeam1(b);
     setTeam2(a);
   }
-  function shuffle() {
+  // نتيجة دق الولد — يملأ الفريقين ويغلق النافذة
+  function applyDag(team1Ids: [string, string], team2Ids: [string, string]) {
     setError(null);
-    const pool = [...players].sort(() => Math.random() - 0.5).slice(0, 4);
-    setTeam1(pool.slice(0, 2).map((p) => p.id));
-    setTeam2(pool.slice(2, 4).map((p) => p.id));
+    setTeam1(team1Ids);
+    setTeam2(team2Ids);
     setActiveTeam(1);
+    setShowDag(false);
   }
 
   const hasLastWinners = lastWinners.length === 2 && lastWinners.every((id) => byId.has(id));
@@ -151,6 +154,15 @@ export default function NewGameForm({
 
   return (
     <form onSubmit={submit} className="space-y-6">
+      {/* ── نافذة دق الولد ── */}
+      {showDag && (
+        <DagAlwaladStart
+          players={players}
+          onResult={applyDag}
+          onClose={() => setShowDag(false)}
+        />
+      )}
+
       {/* ── نوع اللعب ── */}
       <div>
         <label className="block text-sm mb-3 text-white/80">نوع اللعب</label>
@@ -209,10 +221,10 @@ export default function NewGameForm({
               )}
               <button
                 type="button"
-                onClick={shuffle}
-                className="text-xs px-3 py-1.5 rounded-lg bg-white/5 text-white/70 border border-white/10 hover:bg-white/10 transition-colors flex items-center gap-1.5"
+                onClick={() => setShowDag(true)}
+                className="text-xs px-3 py-1.5 rounded-lg bg-gold/15 text-gold border border-gold/30 hover:bg-gold/25 transition-colors flex items-center gap-1.5"
               >
-                🎲 خلط عشوائي
+                🎲 دق الولد
               </button>
               {!noneChosen && (
                 <button

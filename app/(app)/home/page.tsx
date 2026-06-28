@@ -82,7 +82,7 @@ export default async function HomePage() {
         <RecentGamesList
           initialGames={recentGames}
           canDelete={!user.parentUserId || user.subCanDelete}
-          showActor={user.role === "CONTENT_CREATOR" && !user.parentUserId}
+          showActor={user.role === "CONTENT_CREATOR" || !!user.parentUserId}
         />
       </div>
     </div>
