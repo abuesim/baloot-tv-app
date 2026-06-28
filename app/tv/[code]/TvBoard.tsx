@@ -26,6 +26,8 @@ type TvUser = {
   tvOrientation: "LANDSCAPE" | "PORTRAIT";
   tvAccentColor: string;
   tvShowRounds: boolean;
+  tvShowTournament: boolean;
+  tvShowBanners: boolean;
   tvShowChat: boolean;
   tvChatUrl: string | null;
   tvShowDonations: boolean;
@@ -395,9 +397,12 @@ export default function TvBoard({
   // عناصر البطولة المشتركة بين الحالات
   // الشريط يظهر فقط أثناء البطولة (قبل تحديد البطل) — يختفي عند الانتهاء
   const tournamentStrip =
-    tournament && tournament.status !== "COMPLETED" ? (
+    user.tvShowTournament && tournament && tournament.status !== "COMPLETED" ? (
       <TvTournamentStrip tournament={tournament} accent={accent} />
     ) : null;
+
+  // إظهار/إخفاء شريط الدعم/الإعلانات حسب إعداد الاستوديو
+  const shownBanners = user.tvShowBanners ? banners : [];
   const ceremonyOverlay = drawCeremony ? (
     <TvDrawCeremonyOverlay
       teams={drawCeremony.teams}
@@ -460,15 +465,15 @@ export default function TvBoard({
         </div>
 
         {/* إعلانات الصور في المنتصف */}
-        {banners.filter((b) => b.imageUrl).length > 0 && (
-          <TvImageBannerCenter banners={banners.filter((b) => b.imageUrl)} />
+        {shownBanners.filter((b) => b.imageUrl).length > 0 && (
+          <TvImageBannerCenter banners={shownBanners.filter((b) => b.imageUrl)} />
         )}
 
         {/* شريط البطولة الشجري */}
         {tournamentStrip}
 
         {/* الإعلانات النصية في الأسفل */}
-        {banners.length > 0 && <TvBannerBar banners={banners} />}
+        {shownBanners.length > 0 && <TvBannerBar banners={shownBanners} />}
 
         {/* صندوق التنبيهات — طبقة شفافة فوق كل شيء */}
         {showAlert && <AlertBoxOverlay url={tvProxy(user.tvAlertUrl!)} />}
@@ -519,8 +524,8 @@ export default function TvBoard({
       <Header user={user} game={game} connected={connected} />
 
       {/* إعلانات صور — تظهر في المنتصف فوق النقاط */}
-      {banners.filter((b) => b.imageUrl).length > 0 && (
-        <TvImageBannerCenter banners={banners.filter((b) => b.imageUrl)} />
+      {shownBanners.filter((b) => b.imageUrl).length > 0 && (
+        <TvImageBannerCenter banners={shownBanners.filter((b) => b.imageUrl)} />
       )}
 
       {/*
@@ -592,7 +597,7 @@ export default function TvBoard({
       {/* شريط البطولة الشجري — أسفل الصكة */}
       {tournamentStrip}
 
-      {banners.length > 0 && <TvBannerBar banners={banners} />}
+      {shownBanners.length > 0 && <TvBannerBar banners={shownBanners} />}
 
       {showCelebration && game.winner !== null && (
         <TvWinCelebration

@@ -49,6 +49,8 @@ model User {
   // استوديو شاشة التلفزيون - تخصيص صانع المحتوى
   tvAccentColor   String   @default("#f5b042") // اللون الذهبي افتراضياً
   tvShowRounds    Boolean  @default(true)
+  tvShowTournament Boolean @default(true) // إظهار شريط البطولة على الشاشة
+  tvShowBanners    Boolean @default(true) // إظهار شريط الدعم/الإعلانات السفلي
   tvShowChat      Boolean  @default(false)
   tvChatUrl       String? // رابط iframe لشات البث
   tvShowDonations Boolean  @default(false)

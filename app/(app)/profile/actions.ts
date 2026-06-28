@@ -206,6 +206,8 @@ const studioSchema = z.object({
     .string()
     .regex(/^#[0-9a-fA-F]{6}$/, "اللون لازم يكون hex مثل #f5b042"),
   tvShowRounds: z.boolean(),
+  tvShowTournament: z.boolean(),
+  tvShowBanners: z.boolean(),
   tvShowChat: z.boolean(),
   tvChatUrl: z
     .string()
@@ -235,6 +237,8 @@ export async function updateTvStudioAction(
   const parsed = studioSchema.safeParse({
     tvAccentColor: String(formData.get("tvAccentColor") ?? "#f5b042"),
     tvShowRounds: formData.get("tvShowRounds") === "on",
+    tvShowTournament: formData.get("tvShowTournament") === "on",
+    tvShowBanners: formData.get("tvShowBanners") === "on",
     tvShowChat: formData.get("tvShowChat") === "on",
     tvChatUrl: String(formData.get("tvChatUrl") ?? "").trim(),
     tvShowDonations: formData.get("tvShowDonations") === "on",
@@ -253,6 +257,8 @@ export async function updateTvStudioAction(
     data: {
       tvAccentColor: parsed.data.tvAccentColor,
       tvShowRounds: parsed.data.tvShowRounds,
+      tvShowTournament: parsed.data.tvShowTournament,
+      tvShowBanners: parsed.data.tvShowBanners,
       tvShowChat: parsed.data.tvShowChat,
       tvChatUrl: parsed.data.tvChatUrl || null,
       tvShowDonations: parsed.data.tvShowDonations,

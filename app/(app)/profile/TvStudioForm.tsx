@@ -21,6 +21,8 @@ export default function TvStudioForm({
   initial: {
     tvAccentColor: string;
     tvShowRounds: boolean;
+    tvShowTournament: boolean;
+    tvShowBanners: boolean;
     tvShowChat: boolean;
     tvChatUrl: string | null;
     tvShowDonations: boolean;
@@ -38,6 +40,8 @@ export default function TvStudioForm({
   const [showDonations, setShowDonations] = useState(initial.tvShowDonations);
   const [showAlert, setShowAlert] = useState(initial.tvShowAlert);
   const [showRounds, setShowRounds] = useState(initial.tvShowRounds);
+  const [showTournament, setShowTournament] = useState(initial.tvShowTournament);
+  const [showBanners, setShowBanners] = useState(initial.tvShowBanners);
   // التحديث الإجباري بعدّاد — 0 يعني مُطفأ
   const [autoRefresh, setAutoRefresh] = useState(initial.tvRefreshSeconds > 0);
   const [refreshSeconds, setRefreshSeconds] = useState(
@@ -105,6 +109,8 @@ export default function TvStudioForm({
     if (showDonations) formData.set("tvShowDonations", "on");
     if (showAlert) formData.set("tvShowAlert", "on");
     if (showRounds) formData.set("tvShowRounds", "on");
+    if (showTournament) formData.set("tvShowTournament", "on");
+    if (showBanners) formData.set("tvShowBanners", "on");
     formData.set("tvRefreshSeconds", String(autoRefresh ? refreshSeconds : 0));
     startTransition(async () => {
       const res = await updateTvStudioAction(formData);
@@ -180,6 +186,20 @@ export default function TvStudioForm({
           onChange={setShowRounds}
           label="عرض شريط الجولات"
           desc="آخر ٥ جولات أسفل الشاشة"
+        />
+
+        <ToggleRow
+          checked={showTournament}
+          onChange={setShowTournament}
+          label="🏆 شريط البطولة"
+          desc="شريط شجرة/ترتيب البطولة الذي يظهر على الشاشة أثناء البطولة"
+        />
+
+        <ToggleRow
+          checked={showBanners}
+          onChange={setShowBanners}
+          label="📢 شريط الدعم / الإعلانات"
+          desc="الشريط السفلي وإعلانات الصور — أخفِه أو أظهره"
         />
 
         <ToggleRow

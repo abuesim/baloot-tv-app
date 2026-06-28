@@ -12,6 +12,8 @@ const USER_TV_SELECT = {
   tvOrientation: true,
   tvAccentColor: true,
   tvShowRounds: true,
+  tvShowTournament: true,
+  tvShowBanners: true,
   tvShowChat: true,
   tvChatUrl: true,
   tvShowDonations: true,

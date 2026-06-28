@@ -16,6 +16,8 @@ export default async function StudioPage() {
       tvCode: true,
       tvAccentColor: true,
       tvShowRounds: true,
+      tvShowTournament: true,
+      tvShowBanners: true,
       tvShowChat: true,
       tvChatUrl: true,
       tvShowDonations: true,
@@ -51,6 +53,8 @@ export default async function StudioPage() {
           initial={{
             tvAccentColor: userRow.tvAccentColor,
             tvShowRounds: userRow.tvShowRounds,
+            tvShowTournament: userRow.tvShowTournament,
+            tvShowBanners: userRow.tvShowBanners,
             tvShowChat: userRow.tvShowChat,
             tvChatUrl: userRow.tvChatUrl,
             tvShowDonations: userRow.tvShowDonations,

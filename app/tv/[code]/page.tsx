@@ -18,6 +18,8 @@ export default async function TvPage({
       tvOrientation: true,
       tvAccentColor: true,
       tvShowRounds: true,
+      tvShowTournament: true,
+      tvShowBanners: true,
       tvShowChat: true,
       tvChatUrl: true,
       tvShowDonations: true,
