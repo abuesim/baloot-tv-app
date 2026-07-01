@@ -38,7 +38,7 @@ export default async function HistoryPage({
   const user = await requireUser();
   const ownerUserId = user.parentUserId ?? user.id;
   const sp = await searchParams;
-  const filter = FILTERS.find((f) => f.key === sp.filter)?.key ?? "week";
+  const filter = FILTERS.find((f) => f.key === sp.filter)?.key ?? "all";
   const dateRange = getDateRange(filter);
 
   const games = await db.game.findMany({

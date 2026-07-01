@@ -2,6 +2,7 @@ import Link from "next/link";
 import { db } from "@/lib/db";
 import { requireUser } from "@/lib/auth";
 import { PlayerAvatar } from "@/components/PlayerAvatar";
+import StatsInfo from "./StatsInfo";
 
 type SearchParams = Promise<{ period?: string }>;
 
@@ -247,7 +248,10 @@ export default async function StatsPage({
     <div className="space-y-6">
       <div className="flex flex-wrap items-end justify-between gap-3">
         <div>
-          <h1 className="text-3xl font-bold mb-1">الإحصائيات</h1>
+          <h1 className="text-3xl font-bold mb-1 flex items-center gap-2">
+            الإحصائيات
+            <StatsInfo />
+          </h1>
           <p className="text-white/60">{games.length} صكة · {label}</p>
         </div>
 
