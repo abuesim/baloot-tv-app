@@ -3,6 +3,7 @@ import { db } from "@/lib/db";
 import { requireUser } from "@/lib/auth";
 import { PlayerAvatar } from "@/components/PlayerAvatar";
 import StatsInfo from "./StatsInfo";
+import MonthBreakdown from "./MonthBreakdown";
 
 type SearchParams = Promise<{ period?: string }>;
 
@@ -81,6 +82,56 @@ export default async function StatsPage({
       participants: { include: { player: true } },
     },
   });
+
+  // ─── تفصيل الشهر يوماً بيوم (يظهر فقط عند اختيار شهر) ───
+  type DayEntry = {
+    key: string;
+    label: string;
+    count: number;
+    players: { id: string; name: string; imageUrl: string | null }[];
+  };
+  let dailyBreakdown: DayEntry[] | null = null;
+  if (monthKey) {
+    const dayMap = new Map<
+      string,
+      { date: Date; count: number; players: Map<string, { id: string; name: string; imageUrl: string | null }> }
+    >();
+    for (const g of games) {
+      const d = new Date(g.startedAt);
+      const key = `${d.getFullYear()}-${d.getMonth()}-${d.getDate()}`;
+      let entry = dayMap.get(key);
+      if (!entry) {
+        entry = { date: d, count: 0, players: new Map() };
+        dayMap.set(key, entry);
+      }
+      entry.count++;
+      for (const p of g.participants) {
+        if (!entry.players.has(p.player.id)) {
+          entry.players.set(p.player.id, {
+            id: p.player.id,
+            name: p.player.name,
+            imageUrl: p.player.imageUrl,
+          });
+        }
+      }
+    }
+    dailyBreakdown = Array.from(dayMap.values())
+      .sort((a, b) => b.date.getTime() - a.date.getTime()) // الأحدث أولاً
+      .map((v) => ({
+        key: `${v.date.getFullYear()}-${v.date.getMonth()}-${v.date.getDate()}`,
+        label:
+          "يوم " +
+          v.date.toLocaleDateString("ar", {
+            calendar: "gregory",
+            weekday: "long",
+            day: "numeric",
+            month: "long",
+            year: "numeric",
+          }),
+        count: v.count,
+        players: Array.from(v.players.values()),
+      }));
+  }
 
   // إحصائيات فردية
   type Indi = {
@@ -252,7 +303,12 @@ export default async function StatsPage({
             الإحصائيات
             <StatsInfo />
           </h1>
-          <p className="text-white/60">{games.length} صكة · {label}</p>
+          <p className="text-white/60">
+            {games.length} صكة · {label}
+            {dailyBreakdown && (
+              <MonthBreakdown days={dailyBreakdown} monthLabel={label} />
+            )}
+          </p>
         </div>
 
         {/* ── الفلاتر ── */}
