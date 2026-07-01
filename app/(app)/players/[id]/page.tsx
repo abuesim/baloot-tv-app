@@ -88,9 +88,14 @@ export default async function PlayerStatsPage({
 
   const total = wins + losses;
   const winRate = total > 0 ? Math.round((wins / total) * 100) : 0;
-  const matesArr = Array.from(mates.values()).sort(
-    (a, b) => b.games - a.games || b.wins - a.wins,
-  );
+  // ترتيب حسب نسبة الفوز معاً (الأعلى أولاً)، ثم الأكثر صكات ثم الأكثر فوزاً
+  const matesArr = Array.from(mates.values()).sort((a, b) => {
+    const rateA = a.games > 0 ? a.wins / a.games : 0;
+    const rateB = b.games > 0 ? b.wins / b.games : 0;
+    if (rateB !== rateA) return rateB - rateA;
+    if (b.games !== a.games) return b.games - a.games;
+    return b.wins - a.wins;
+  });
 
   return (
     <div className="space-y-6">
