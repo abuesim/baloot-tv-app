@@ -4,6 +4,8 @@ import { requireUser } from "@/lib/auth";
 import { PlayerAvatar } from "@/components/PlayerAvatar";
 import StatsInfo from "./StatsInfo";
 import MonthBreakdown from "./MonthBreakdown";
+import CustomPeriodPicker from "./CustomPeriodPicker";
+import ShareStatsButton from "./ShareStatsButton";
 
 type SearchParams = Promise<{ period?: string }>;
 
@@ -22,8 +24,17 @@ const MONTHS_AR = [
   "ديسمبر",
 ];
 
+type PeriodInfo = {
+  start: Date;
+  end: Date;
+  label: string;
+  championLabel: string;
+  monthKey?: string;
+  customDays?: Set<string>; // مفاتيح الأيام المختارة "سنة-شهر-يوم"
+};
+
 /** حوّل قيمة الـ period إلى نطاق تاريخ ووصف */
-function resolvePeriod(period: string | undefined, now: Date) {
+function resolvePeriod(period: string | undefined, now: Date): PeriodInfo {
   if (period === "24h") {
     const start = new Date(now.getTime() - 24 * 60 * 60 * 1000);
     return { start, end: now, label: "آخر ٢٤ ساعة", championLabel: "بطل اليوم" };
@@ -35,6 +46,33 @@ function resolvePeriod(period: string | undefined, now: Date) {
   if (period === "7d") {
     const start = new Date(now.getTime() - 7 * 24 * 60 * 60 * 1000);
     return { start, end: now, label: "آخر أسبوع", championLabel: "بطل الأسبوع" };
+  }
+
+  // مخصص: أيام محددة من التقويم — التنسيق custom-YYYYMMDD.YYYYMMDD...
+  if (period && period.startsWith("custom-")) {
+    const dates = period
+      .slice("custom-".length)
+      .split(".")
+      .filter(Boolean)
+      .map((s) => new Date(+s.slice(0, 4), +s.slice(4, 6) - 1, +s.slice(6, 8)))
+      .filter((d) => !isNaN(d.getTime()));
+    if (dates.length > 0) {
+      const times = dates.map((d) => d.getTime());
+      const start = new Date(Math.min(...times));
+      start.setHours(0, 0, 0, 0);
+      const end = new Date(Math.max(...times));
+      end.setHours(0, 0, 0, 0);
+      end.setDate(end.getDate() + 1);
+      return {
+        start,
+        end,
+        label: `أيام مختارة (${dates.length})`,
+        championLabel: "بطل الأيام المختارة",
+        customDays: new Set(
+          dates.map((d) => `${d.getFullYear()}-${d.getMonth()}-${d.getDate()}`),
+        ),
+      };
+    }
   }
 
   // شهر محدد أو الشهر الحالي افتراضياً
@@ -65,13 +103,13 @@ export default async function StatsPage({
   const sp   = await searchParams;
   const now  = new Date();
 
-  const { start, end, label, championLabel, monthKey } = resolvePeriod(
-    sp.period,
-    now,
-  );
+  const { start, end, label, championLabel, monthKey, customDays } =
+    resolvePeriod(sp.period, now);
   const activePeriod = sp.period ?? `${now.getFullYear()}-${now.getMonth() + 1}`;
+  const isCustom = (sp.period ?? "").startsWith("custom-");
+  const customEncoded = isCustom ? sp.period!.slice("custom-".length) : "";
 
-  const games = await db.game.findMany({
+  const gamesRaw = await db.game.findMany({
     where: {
       userId: ownerUserId,
       status: "COMPLETED",
@@ -82,6 +120,14 @@ export default async function StatsPage({
       participants: { include: { player: true } },
     },
   });
+
+  // في الوضع المخصص: أبقِ فقط صكات الأيام المختارة
+  const games = customDays
+    ? gamesRaw.filter((g) => {
+        const d = new Date(g.startedAt);
+        return customDays.has(`${d.getFullYear()}-${d.getMonth()}-${d.getDate()}`);
+      })
+    : gamesRaw;
 
   // ─── تفصيل الشهر يوماً بيوم (يظهر فقط عند اختيار شهر) ───
   type DayEntry = {
@@ -309,6 +355,9 @@ export default async function StatsPage({
               <MonthBreakdown days={dailyBreakdown} monthLabel={label} />
             )}
           </p>
+          <div className="mt-2">
+            <ShareStatsButton targetId="stats-capture" fileName={`إحصائيات-${label}`} />
+          </div>
         </div>
 
         {/* ── الفلاتر ── */}
@@ -348,9 +397,16 @@ export default async function StatsPage({
               </Link>
             ))}
           </div>
+
+          {/* مخصص — أيام من التقويم */}
+          <div className="flex flex-wrap gap-1 items-center">
+            <span className="text-[10px] text-white/40 self-center ml-1">مخصص</span>
+            <CustomPeriodPicker active={isCustom} initial={customEncoded} />
+          </div>
         </div>
       </div>
 
+      <div id="stats-capture" className="space-y-6 bg-bg">
       {champion && (
         <div className="bg-gradient-to-l from-gold/30 to-gold/10 rounded-2xl p-6 border border-gold/40 flex items-center gap-4">
           <div className="text-5xl">🏆</div>
@@ -564,6 +620,7 @@ export default async function StatsPage({
             </div>
           )}
         </section>
+      </div>
       </div>
     </div>
   );

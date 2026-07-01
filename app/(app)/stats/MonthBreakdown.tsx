@@ -71,9 +71,14 @@ export default function MonthBreakdown({
                   >
                     <div className="flex items-center justify-between gap-2 mb-2">
                       <span className="font-bold text-sm">{d.label}</span>
-                      <span className="text-xs font-bold text-gold bg-gold/15 border border-gold/30 rounded-full px-2.5 py-0.5 shrink-0">
-                        {d.count} صكة
-                      </span>
+                      <div className="flex items-center gap-1.5 shrink-0">
+                        <span className="text-xs font-bold text-white/70 bg-white/10 border border-white/15 rounded-full px-2.5 py-0.5">
+                          {d.players.length} لاعب
+                        </span>
+                        <span className="text-xs font-bold text-gold bg-gold/15 border border-gold/30 rounded-full px-2.5 py-0.5">
+                          {d.count} صكة
+                        </span>
+                      </div>
                     </div>
                     {d.players.length > 0 ? (
                       <div className="flex flex-wrap items-center gap-1.5">
