@@ -27,6 +27,8 @@ export default async function PlayerStatsPage({
       winner: { not: null },
       deletedAt: null,
       participants: { some: { playerId: id } },
+      // استبعاد صكات البطولات المحذوفة (تبقى الودية بلا مباراة)
+      OR: [{ matchId: null }, { match: { tournament: { deletedAt: null } } }],
     },
     include: { participants: { include: { player: true } } },
   });
@@ -36,6 +38,7 @@ export default async function PlayerStatsPage({
     where: {
       OR: [{ player1Id: id }, { player2Id: id }],
       tournamentId: { not: null },
+      tournament: { deletedAt: null }, // استبعاد البطولات المحذوفة
     },
     select: {
       id: true,
