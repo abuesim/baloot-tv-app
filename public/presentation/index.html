@@ -1,0 +1,433 @@
+<!DOCTYPE html>
+<html lang="ar" dir="rtl">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>أكك لايف — أكبر منصة بلوت</title>
+<script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.1/dist/chart.umd.min.js"></script>
+<style>
+  :root {
+    --gold: #f5b042;
+    --gold-soft: #f5b04233;
+    --gold-glow: #f5b04255;
+    --bg: #0a0a0e;
+    --bg2: #11111a;
+    --navy: #14142b;
+    --red: #ff5e3a;
+    --green: #10b981;
+    --blue: #3b82f6;
+    --purple: #7c3aed;
+    --text: #ffffff;
+    --muted: rgba(255,255,255,0.55);
+    --dim: rgba(255,255,255,0.30);
+    --border: rgba(255,255,255,0.10);
+  }
+  *{margin:0;padding:0;box-sizing:border-box;-webkit-tap-highlight-color:transparent}
+  html,body{background:#000;color:var(--text);font-family:'Segoe UI',Tahoma,'Cairo',sans-serif;overflow:hidden;height:100%}
+  body{display:flex;align-items:center;justify-content:center}
+
+  .stage{position:relative;width:100vw;height:100vh;overflow:hidden;background:var(--bg)}
+  @media(min-width:769px){
+    .stage{max-width:calc(100vh*16/9);max-height:calc(100vw*9/16);margin:auto;position:absolute;inset:0;box-shadow:0 0 80px rgba(0,0,0,.8)}
+  }
+
+  .slide{position:absolute;inset:0;padding:clamp(24px,4vw,60px);display:flex;flex-direction:column;justify-content:center;opacity:0;visibility:hidden;transition:opacity .45s ease;background:var(--bg);overflow:hidden}
+  .slide.active{opacity:1;visibility:visible}
+  .slide.active .rv{animation:fadeUp .55s ease-out both}
+  .slide.active .rv:nth-child(1){animation-delay:.05s}
+  .slide.active .rv:nth-child(2){animation-delay:.15s}
+  .slide.active .rv:nth-child(3){animation-delay:.25s}
+  .slide.active .rv:nth-child(4){animation-delay:.35s}
+  .slide.active .rv:nth-child(5){animation-delay:.45s}
+  .slide.active .rv:nth-child(6){animation-delay:.55s}
+
+  @keyframes fadeUp{from{opacity:0;transform:translateY(24px)}to{opacity:1;transform:translateY(0)}}
+
+  .glow{position:absolute;border-radius:50%;filter:blur(90px);opacity:.22;pointer-events:none}
+
+  h1{font-size:clamp(36px,6.2vw,82px);line-height:1.05;font-weight:900;letter-spacing:-.4px}
+  h2{font-size:clamp(26px,4.2vw,54px);line-height:1.1;font-weight:900}
+  h3{font-size:clamp(18px,2.4vw,30px);font-weight:800}
+  p,li{font-size:clamp(14px,1.6vw,20px);line-height:1.65}
+  .muted{color:var(--muted)}.dim{color:var(--dim)}.gold{color:var(--gold)}.accent{color:var(--gold)}
+
+  .kicker{display:inline-flex;align-items:center;gap:8px;font-size:clamp(10px,1vw,13px);font-weight:800;letter-spacing:1.5px;color:var(--gold);padding:5px 12px;border:1px solid var(--gold-soft);border-radius:999px;background:var(--gold-soft)}
+
+  .phone{border:5px solid #2a2a3a;border-radius:32px;overflow:hidden;background:#000;box-shadow:0 28px 56px rgba(0,0,0,.5);width:clamp(200px,18vw,280px);height:clamp(434px,39vw,607px)}
+  .phone img{display:block;width:100%;height:100%;object-fit:cover;object-position:top}
+
+  /* Monitor/TV frame — horizontal */
+  .monitor-frame{
+    border:6px solid #1e1e2e;border-radius:18px;overflow:hidden;background:#000;
+    box-shadow:0 0 0 2px #333,0 30px 60px rgba(0,0,0,.6),0 0 40px rgba(245,176,66,.08);
+    width:clamp(360px,38vw,640px);height:clamp(200px,21vw,360px);
+    position:relative;
+  }
+  .monitor-frame::after{
+    content:'';position:absolute;bottom:-10px;left:50%;transform:translateX(-50%);
+    width:60px;height:8px;background:#1e1e2e;border-radius:0 0 6px 6px;
+    box-shadow:0 4px 12px rgba(0,0,0,.4);
+  }
+  .monitor-frame img{display:block;width:100%;height:100%;object-fit:cover;object-position:center}
+
+  .pw{display:flex;justify-content:center}
+
+  .card{background:linear-gradient(180deg,rgba(255,255,255,.05),rgba(255,255,255,.02));border:1px solid var(--border);border-radius:16px;padding:clamp(14px,1.6vw,22px)}
+  .card.ge{border-color:var(--gold-soft)}
+
+  .feat{display:flex;gap:14px;align-items:flex-start}
+  .feat .ico{font-size:clamp(24px,2.8vw,38px);flex-shrink:0;width:clamp(44px,4.8vw,64px);height:clamp(44px,4.8vw,64px);display:flex;align-items:center;justify-content:center;background:var(--gold-soft);border-radius:14px}
+
+  .btn{display:inline-flex;align-items:center;gap:10px;background:var(--gold);color:#1a1208;font-weight:900;font-size:clamp(15px,1.7vw,20px);padding:12px 28px;border-radius:12px;text-decoration:none;box-shadow:0 12px 30px rgba(245,176,66,.3)}
+
+  .progress{position:fixed;top:0;right:0;height:3px;background:var(--gold);transition:width .35s;z-index:1000}
+  .nav{position:fixed;bottom:20px;left:50%;transform:translateX(-50%);display:flex;align-items:center;gap:16px;z-index:1000;background:rgba(0,0,0,.5);backdrop-filter:blur(10px);padding:7px 14px;border-radius:999px;border:1px solid var(--border)}
+  .nav button{background:rgba(255,255,255,.08);color:#fff;border:none;width:36px;height:36px;border-radius:50%;cursor:pointer;font-size:15px}
+  .nav button:hover{background:var(--gold);color:#000}
+  .counter{color:var(--muted);font-size:12px;font-weight:700;min-width:50px;text-align:center}
+
+  .g2{display:grid;grid-template-columns:1fr 1fr;gap:clamp(18px,2.8vw,44px);align-items:center}
+  .g3{display:grid;grid-template-columns:repeat(3,1fr);gap:clamp(12px,1.6vw,22px)}
+  .g4{display:grid;grid-template-columns:repeat(4,1fr);gap:clamp(10px,1.4vw,18px)}
+  .stk{display:flex;flex-direction:column;gap:12px}
+  .cen{text-align:center}
+  .badge{font-size:clamp(10px,.95vw,12px);font-weight:800;color:var(--gold);background:var(--gold-soft);padding:3px 9px;border-radius:999px}
+  .platforms-row{display:flex;justify-content:center;gap:clamp(10px,1.5vw,20px);flex-wrap:wrap}
+  .platform-badge{display:flex;align-items:center;gap:8px;background:rgba(255,255,255,.06);border:1px solid var(--border);border-radius:12px;padding:8px clamp(12px,1.4vw,20px);transition:background .25s,border-color .25s}
+  .platform-badge:hover{background:rgba(255,255,255,.12);border-color:var(--gold-soft)}
+  .platform-badge svg{flex-shrink:0}
+  .platform-badge span{font-size:clamp(11px,1.1vw,15px);font-weight:700;color:var(--text)}
+
+  .num{font-size:clamp(36px,5vw,64px);font-weight:900;color:var(--gold);line-height:1}
+
+  @media(max-width:768px){
+    .g2,.g3,.g4{grid-template-columns:1fr 1fr}
+    .phone{max-width:220px}
+  }
+  @media(max-width:480px){
+    .g2,.g3,.g4{grid-template-columns:1fr}
+  }
+</style>
+</head>
+<body>
+<div class="progress" id="progress"></div>
+<div class="stage">
+
+<!-- ==================== 1. TITLE ==================== -->
+<section class="slide active">
+  <div class="glow" style="width:600px;height:600px;background:var(--gold);top:-200px;right:-120px"></div>
+  <div class="glow" style="width:400px;height:400px;background:var(--red);bottom:-150px;left:-100px;opacity:.14"></div>
+  <div class="stk" style="position:relative;z-index:2">
+    <h1 class="rv gold">أكك لايف</h1>
+    <h2 class="rv" style="font-size:clamp(22px,3.2vw,40px);font-weight:600;color:var(--muted);margin-top:4px">منصة البلوت الشاملة — حاسبة + بطولات + بث مباشر</h2>
+    <p class="rv muted" style="max-width:720px;margin-top:16px;font-size:clamp(15px,1.8vw,22px)">
+      حاسبة نقاط احترافية، بطولات بنظامين، إحصائيات تفصيلية، سجل كامل، شاشة بث متصلة بـ Streamlabs، وإعلانات مخصصة — كل شيء في منصة واحدة.
+    </p>
+    <div class="rv" style="display:flex;gap:8px;flex-wrap:wrap;margin-top:16px">
+      <span class="badge">🎯 حاسبة ذكية</span>
+      <span class="badge">🏆 بطولات</span>
+      <span class="badge">📊 إحصائيات</span>
+      <span class="badge">📺 بث مباشر</span>
+      <span class="badge">📢 إعلانات</span>
+      <span class="badge">⚡ Streamlabs</span>
+    </div>
+  </div>
+</section>
+
+<!-- ==================== 2. SOLUTION ==================== -->
+<section class="slide">
+  <div class="glow" style="width:550px;height:550px;background:var(--gold);top:-180px;left:-120px;opacity:.2"></div>
+  <span class="kicker rv">✅ الحل</span>
+  <h2 class="rv" style="margin-top:12px">كل شيء في <span class="gold">منصة واحدة</span></h2>
+  <div class="g2 rv" style="margin-top:28px">
+    <div class="pw">
+      <div class="phone" style="width:clamp(220px,20vw,300px);height:auto;aspect-ratio:746/1198"><img src="shots/slide3.png" alt="نظرة شاملة" style="object-fit:cover;object-position:center top"></div>
+    </div>
+    <div class="stk">
+      <div class="feat"><div class="ico">🎯</div><div><h3>حاسبة + شاشة بث</h3><p class="muted">سجّل النقاط من جوالك، والشاشة تتحدث لحظياً.</p></div></div>
+      <div class="feat"><div class="ico">⚡</div><div><h3>تنبيهات Streamlabs</h3><p class="muted">متابع، دونيشن، اشتراك — فوق شاشة النقاط فورًا.</p></div></div>
+      <div class="feat"><div class="ico">🏆</div><div><h3>بطولات مباشرة</h3><p class="muted">شجرة إقصاء أو دوري — يراها المشاهد أثناء اللعب.</p></div></div>
+      <div class="feat"><div class="ico">📊</div><div><h3>إحصائيات تفصيلية</h3><p class="muted">لكل لاعب: فوز، خسارة، أفضل من لعب معاه، وأكثر.</p></div></div>
+    </div>
+  </div>
+</section>
+
+<!-- ==================== 3. CALCULATOR ==================== -->
+<section class="slide">
+  <div class="glow" style="width:500px;height:500px;background:var(--blue);top:-160px;right:-100px;opacity:.16"></div>
+  <span class="kicker rv">🧮 الحاسبة</span>
+  <h2 class="rv" style="margin-top:12px">حاسبة <span class="gold">احترافية ومتقدمة</span></h2>
+  <div class="g2 rv" style="margin-top:28px">
+    <div class="pw"><div class="phone" style="width:clamp(220px,20vw,310px);height:auto;aspect-ratio:994/1720"><img src="shots/2342.png" alt="حاسبة البلوت" style="object-fit:cover;object-position:center top"></div></div>
+    <div class="stk">
+      <div class="feat"><div class="ico">✍️</div><div><h3>تسجيل سهل</h3><p class="muted">سجّل النقاط بضغطة واحدة — سريع وخالي من الأخطاء.</p></div></div>
+      <div class="feat"><div class="ico">🔢</div><div><h3>اختصار للأرقام</h3><p class="muted">أهم الأرقام مختصرة لتسجيل أسرع.</p></div></div>
+      <div class="feat"><div class="ico">🔊</div><div><h3>نطق صوتي</h3><p class="muted">آلي أو بتسجيل صوتك — يُعلن النتيجة بصوت واضح.</p></div></div>
+      <div class="feat"><div class="ico">🗑️</div><div><h3>حذف نشرة</h3><p class="muted">احذف أي نشرة سابقة بسهولة.</p></div></div>
+    </div>
+  </div>
+</section>
+
+<!-- ==================== 4. TV SCREEN — MOBILE + BROADCAST ==================== -->
+<section class="slide">
+  <div class="glow" style="width:460px;height:460px;background:var(--green);top:-140px;left:-90px;opacity:.14"></div>
+  <span class="kicker rv">📱 التحكم والعرض</span>
+  <h2 class="rv" style="margin-top:12px">جوالك للحساب، <span class="gold">الشاشة للجمهور</span></h2>
+  <div class="g2 rv" style="margin-top:32px">
+    <div class="stk">
+      <div class="feat"><div class="ico">📲</div><div><h3>في يدك</h3><p class="muted">جوالك = حاسبة سريعة. دق، اضبط، ارجع.</p></div></div>
+      <div class="feat"><div class="ico">🖥️</div><div><h3>على الشاشة</h3><p class="muted">شاشة TV أفقية تعرض النقاط احترافيًا.</p></div></div>
+      <div class="feat"><div class="ico">🔄</div><div><h3>مزامنة فورية</h3><p class="muted">كل نقطة تظهر لحظيًا عبر SSE.</p></div></div>
+      <div class="feat"><div class="ico">🎨</div><div><h3>ألوانك وهويتك</h3><p class="muted">خصّص لون الأكسنت، وارفع شعارك.</p></div></div>
+      <div class="feat"><div class="ico">📢</div><div><h3>شعارات وإعلانات</h3><p class="muted">ارفع شعارات الرعاة وإعلانات صور تظهر على الشاشة.</p></div></div>
+      <div class="feat"><div class="ico">🏆</div><div><h3>شريط البطولة</h3><p class="muted">يعرض شجرة الإقصاء أو ترتيب الدوري أثناء اللعب.</p></div></div>
+      <div class="feat"><div class="ico">📺</div><div><h3>تطبيق الشاشات</h3><p class="muted">تطبيق خاص للشاشات يدعم النشرة المباشرة للصك.</p></div></div>
+    </div>
+    <div class="pw" style="position:relative">
+      <div class="monitor-frame" style="width:clamp(448px,48vw,784px);height:clamp(280px,29vw,491px)"><img src="shots/screen-live.png" alt="شاشة البث المباشر"></div>
+      <div class="phone" style="width:clamp(80px,7vw,120px);height:auto;aspect-ratio:994/1720;position:absolute;bottom:clamp(-40px,-3vw,-20px);left:clamp(10px,2vw,30px);z-index:5;box-shadow:0 12px 30px rgba(0,0,0,.7);border:4px solid #2a2a3a;border-radius:20px;object-fit:cover"><img src="shots/2342.png" alt="جوال التحكم"></div>
+    </div>
+  </div>
+</section>
+
+<!-- ==================== 5. TOURNAMENTS — 2 SYSTEMS ==================== -->
+<section class="slide">
+  <div class="glow" style="width:480px;height:480px;background:var(--purple);bottom:-140px;right:-100px;opacity:.14"></div>
+  <span class="kicker rv">🏆 بطولات</span>
+  <h2 class="rv" style="margin-top:12px">نظامان كاملان — <span class="gold">اختر ما يناسبك</span></h2>
+  <div class="g2 rv" style="margin-top:28px">
+    <div class="pw"><div class="phone" style="width:clamp(220px,20vw,310px);height:auto;aspect-ratio:986/1724"><img src="shots/extra-tournament-detail1.png" alt="تفاصيل البطولة" style="object-fit:cover;object-position:center top"></div></div>
+    <div class="stk">
+      <div class="feat"><div class="ico">🌳</div><div><h3>خروج المغلوب</h3><p class="muted">شجرة إقصاء من ٤ فرق إلى النهائي. أفضل من ٣ صكات.</p></div></div>
+      <div class="feat"><div class="ico">📊</div><div><h3>نظام النقاط (دوري)</h3><p class="muted">كل فريق يلعب ضد الجميع. الترتيب بالفوز والأبناط.</p></div></div>
+    </div>
+  </div>
+  <div class="g4 rv" style="margin-top:20px">
+    <div class="cen"><div class="num">🎲</div><p class="dim" style="margin-top:2px">قرعة عشوائية<br>على الشاشة</p></div>
+    <div class="cen"><div class="num">🏆</div><p class="dim" style="margin-top:2px">احتفال البطل<br>بالكشف</p></div>
+    <div class="cen"><div class="num">📺</div><p class="dim" style="margin-top:2px">شريط البطولة<br>على البث</p></div>
+    <div class="cen"><div class="num">👑</div><p class="dim" style="margin-top:2px">تتويج + كونفيتي<br>عند الانتهاء</p></div>
+  </div>
+</section>
+
+<!-- ==================== 6. HISTORY ==================== -->
+<section class="slide">
+  <div class="glow" style="width:460px;height:460px;background:var(--blue);top:-140px;right:-100px;opacity:.14"></div>
+  <span class="kicker rv">📋 السجل</span>
+  <h2 class="rv" style="margin-top:12px">سجل كامل لكل <span class="gold">صكة وحدة</span></h2>
+  <div class="g2 rv" style="margin-top:28px">
+    <div class="pw"><div class="phone" style="width:clamp(220px,20vw,310px);height:auto;aspect-ratio:1179/2556"><img src="shots/real-history.png" alt="سجل الصكات" style="object-fit:cover;object-position:center top"></div></div>
+    <div class="stk">
+      <div class="feat"><div class="ico">📝</div><div><h3>تفاصيل كل جولة</h3><p class="muted">كل صكة بنتائجها وتوقيتها ومن نفّذها.</p></div></div>
+      <div class="feat"><div class="ico">🔄</div><div><h3">إدارة الصكات</h3><p class="muted">تراجع، عدّل، أو احذف أي صكة.</p></div></div>
+      <div class="feat"><div class="ico">👥</div><div><h3">تتبع المنفّذ</h3><p class="muted">مَن سجّل النقاط ومَن حذف — مع المساعدين.</p></div></div>
+      <div class="feat"><div class="ico">📆</div><div><h3>فلترة حسب الوقت</h3><p class="muted">اليوم، الأسبوع، أو فترة مخصصة.</p></div></div>
+    </div>
+  </div>
+</section>
+
+<!-- ==================== 7. STATS ==================== -->
+<section class="slide">
+  <div class="glow" style="width:500px;height:500px;background:var(--green);bottom:-150px;left:-100px;opacity:.14"></div>
+  <span class="kicker rv">📊 الإحصائيات</span>
+  <h2 class="rv" style="margin-top:12px">إحصائيات <span class="gold">تفصيلية</span></h2>
+  <div class="g2 rv" style="margin-top:24px">
+    <div class="pw"><div class="phone" style="width:clamp(220px,20vw,310px);height:auto;aspect-ratio:986/1846"><img src="shots/history.png" alt="إحصائيات" style="object-fit:cover;object-position:center top"></div></div>
+    <div class="stk">
+      <div class="card ge">
+        <h3 style="color:var(--gold)">📅 فترات مخصصة</h3>
+        <div class="g3" style="margin-top:10px">
+          <div class="cen"><div class="num" style="font-size:28px">24</div><p class="dim">ساعة</p></div>
+          <div class="cen"><div class="num" style="font-size:28px">📅</div><p class="dim">شهر</p></div>
+          <div class="cen"><div class="num" style="font-size:28px">🎯</div><p class="dim">تاريخ مخصص<br>تختار أيام</p></div>
+        </div>
+      </div>
+      <div class="feat"><div class="ico">👤</div><div><h3>لكل لاعب</h3><p class="muted">عدد مرات اللعب، الفوز، الخسارة، النسبة</p></div></div>
+      <div class="feat"><div class="ico">🏆</div><div><h3>أفضل لاعب</h3><p class="muted">أعلى نسبة فوز</p></div></div>
+      <div class="feat"><div class="ico">🤝</div><div><h3>أفضل فريق</h3><p class="muted">أعلى فوز مشترك</p></div></div>
+      <div class="feat"><div class="ico">📤</div><div><h3>تصدير ومشاركة</h3><p class="muted">صدّر الإحصائيات كصورة PNG لأي فترة تختارها</p></div></div>
+    </div>
+  </div>
+</section>
+
+<!-- ==================== 8. PLAYER PROFILE ==================== -->
+<section class="slide">
+  <div class="glow" style="width:480px;height:480px;background:var(--purple);top:-140px;left:-100px;opacity:.14"></div>
+  <span class="kicker rv">👤 ملف اللاعب</span>
+  <h2 class="rv" style="margin-top:12px">تفاصيل كل لاعب — <span class="gold">من لعب معاه؟ كم فاز؟</span></h2>
+  <div class="g2 rv" style="margin-top:24px">
+    <div class="pw"><div class="phone" style="width:clamp(220px,20vw,310px);height:auto;aspect-ratio:982/1712"><img src="shots/extra-player-detail.png" alt="ملف لاعب تفصيلي" style="object-fit:cover;object-position:center top"></div></div>
+    <div class="stk">
+      <div class="feat"><div class="ico">🎮</div><div><h3>إحصائيات اللعب</h3><p class="muted">كم مرة لعب، فاز، خسر — ونسبة الفوز.</p></div></div>
+      <div class="feat"><div class="ico">👥</div><div><h3">اللاعبون الذين لعب معهم</h3><p class="muted">مرتبين حسب نسبة الفوز تنازليًا.</p></div></div>
+      <div class="feat"><div class="ico">🏆</div><div><h3>أفضل شريك</h3><p class="muted">من كانت معه أعلى نسبة فوز.</p></div></div>
+      <div class="feat"><div class="ico">📅</div><div><h3>تاريخ الصكات</h3><p class="muted">كل الصكات التي شارك فيها.</p></div></div>
+    </div>
+  </div>
+</section>
+
+<!-- ==================== 9. ADS ==================== -->
+<section class="slide">
+  <div class="glow" style="width:500px;height:500px;background:var(--gold);bottom:-150px;right:-100px;opacity:.18"></div>
+  <span class="kicker rv">📢 الإعلانات</span>
+  <h2 class="rv" style="margin-top:12px">شريط إعلاني أو <span class="gold">شعارات متعددة</span> على شاشة البث</h2>
+  <div class="g2 rv" style="margin-top:24px">
+    <div class="stk">
+      <div class="card ge"><h3 style="color:var(--gold)">📢 شريط إعلاني متحرك</h3><p class="muted" style="margin-top:6px">نص إعلاني يدور أسفل شاشة البث — مثالي للدعماء والرعاة.</p></div>
+      <div class="card ge"><h3 style="color:var(--gold)">🖼️ شعارات متعددة</h3><p class="muted" style="margin-top:6px">ارفع صور إعلانية متعددة — تتبدل تلقائيًا على الشاشة أثناء الصكة.</p></div>
+      <div class="card ge"><h3 style="color:var(--gold)">🔗 ربط بروابط</h3><p class="muted" style="margin-top:6px">كل إعلان يمكن ربطه برابط — لزيارة موقع الراعي.</p></div>
+    </div>
+    <div class="pw"><div class="phone" style="width:clamp(220px,20vw,310px);height:auto;aspect-ratio:982/1712"><img src="shots/extra-studio-full.png" alt="إعدادات الإعلانات" style="object-fit:cover;object-position:center top"></div></div>
+  </div>
+</section>
+
+<!-- ==================== 10. BROADCAST — STREAMLABS ==================== -->
+<section class="slide">
+  <div class="glow" style="width:500px;height:500px;background:var(--gold);bottom:-150px;right:-100px;opacity:.18"></div>
+  <span class="kicker rv">⚡ تكامل البث</span>
+  <h2 class="rv" style="margin-top:12px">متصل مباشرة بـ <span class="gold">Streamlabs</span></h2>
+  <div class="g2 rv" style="margin-top:24px;align-items:flex-start">
+    <div class="stk">
+      <div class="card ge"><h3 style="color:var(--gold)">🔗 إعداد بـ ٣ خطوات فقط</h3><ol style="margin-top:10px;padding-right:18px" class="stk"><li><strong>افتح</strong> Streamlabs ← API Settings</li><li><strong>انسخ</strong> Socket API Token</li><li><strong>الصقه</strong> في إعدادات الشاشة</li></ol></div>
+      <p class="dim" style="font-size:.9em">اتصال لحظي عبر WebSocket — لا iframe، لا تأخير.</p>
+    </div>
+    <div class="pw"><div class="phone" style="width:clamp(220px,20vw,310px);height:auto;aspect-ratio:982/1846"><img src="shots/real-studio1.png" alt="إعدادات الاستوديو" style="object-fit:cover;object-position:center top"></div></div>
+  </div>
+  <!-- أسماء منصات البث -->
+  <div class="rv" style="margin-top:clamp(16px,2vw,28px)">
+    <p class="cen muted" style="font-size:clamp(11px,1.1vw,15px);margin-bottom:clamp(8px,1vw,14px);font-weight:700;letter-spacing:1px">دعم منصات البث المتعددة</p>
+    <div class="platforms-row">
+      <span class="platform-badge"><span>يوتيوب</span></span>
+      <span class="platform-badge"><span>تيكتوك</span></span>
+      <span class="platform-badge"><span>كيت</span></span>
+      <span class="platform-badge"><span>جاكو</span></span>
+    </div>
+  </div>
+</section>
+
+<!-- ==================== 11. VALUE CHART ==================== -->
+<section class="slide">
+  <div class="glow" style="width:500px;height:500px;background:var(--green);top:-150px;right:-100px;opacity:.16"></div>
+  <span class="kicker rv">📈 القيمة</span>
+  <h2 class="rv" style="margin-top:12px">محتوى أكثر، <span class="gold">مجهود أقل</span></h2>
+  <div class="g2 rv" style="margin-top:24px;align-items:center">
+    <div class="stk">
+      <div class="feat"><div class="ico">⏱️</div><div><h3>وفّر وقت الإعداد</h3><p class="muted">منصة واحدة بدل ثلاث.</p></div></div>
+      <div class="feat"><div class="ico">💰</div><div><h3>دونيشن أكثر تفاعلًا</h3><p class="muted">تنبيهات مدمجة = تفاعل أعلى = دعم أكبر.</p></div></div>
+      <div class="feat"><div class="ico">📊</div><div><h3>محتوى إضافي</h3><p class="muted">إحصائيات وبطولات = محتوى لقصصك ومنشوراتك.</p></div></div>
+    </div>
+    <div class="card"><h3 class="cen" style="margin-bottom:6px">جودة البث قبل وبعد</h3><div style="width:100%;height:clamp(180px,22vh,260px)"><canvas id="valueChart"></canvas></div></div>
+  </div>
+</section>
+
+<!-- ==================== 11. WHY US ==================== -->
+<section class="slide">
+  <div class="glow" style="width:500px;height:500px;background:var(--gold);bottom:-150px;left:-100px;opacity:.16"></div>
+  <span class="kicker rv">⚡ لماذا أكك لايف</span>
+  <h2 class="rv" style="margin-top:12px">ليست حاسبة عادية — <span class="gold">منصة بث متكاملة</span></h2>
+  <div class="g3 rv" style="margin-top:32px">
+    <div class="card ge cen"><div style="font-size:40px">🔗</div><h3 style="margin-top:8px;color:var(--gold)">بث مدمج</h3><p class="muted" style="margin-top:6px">نقاط + تنبيهات + دونيشن في شاشة واحدة.</p></div>
+    <div class="card ge cen"><div style="font-size:40px">👥</div><h3 style="margin-top:8px;color:var(--gold)">مساعدون متعددون</h3><p class="muted" style="margin-top:6px">حسابات مساعدة لتسجيل النقاط أثناء البث.</p></div>
+    <div class="card ge cen"><div style="font-size:40px">📢</div><h3 style="margin-top:8px;color:var(--gold)">إعلانات مخصصة</h3><p class="muted" style="margin-top:6px">شعارات وأشرطة لرعائك على شاشة البث.</p></div>
+  </div>
+  <div class="g3 rv" style="margin-top:16px">
+    <div class="card cen"><div style="font-size:40px">🏆</div><h3 style="margin-top:8px">بطولات بنظامين</h3><p class="muted" style="margin-top:6px;font-size:.9em">إقصاء + دوري مع شاشة بث مباشر.</p></div>
+    <div class="card cen"><div style="font-size:40px">📊</div><h3 style="margin-top:8px">إحصائيات غنية</h3><p class="muted" style="margin-top:6px;font-size:.9em">لكل لاعب وفترة — محتوى لمنشوراتك.</p></div>
+    <div class="card cen"><div style="font-size:40px">🎲</div><h3 style="margin-top:8px">قرعة + تتويج</h3><p class="muted" style="margin-top:6px;font-size:.9em">احتفاليات على الشاشة أمام المشاهد.</p></div>
+  </div>
+</section>
+
+<!-- ==================== 12. GET STARTED ==================== -->
+<section class="slide">
+  <div class="glow" style="width:500px;height:500px;background:var(--green);top:-140px;left:-100px;opacity:.14"></div>
+  <span class="kicker rv">🚀 ابدأ خلال دقائق</span>
+  <h2 class="rv" style="margin-top:12px">من التسجيل إلى البث في <span class="gold">٣ خطوات</span></h2>
+  <div class="g3 rv" style="margin-top:36px">
+    <div class="card cen" style="position:relative"><div style="position:absolute;top:-16px;right:50%;transform:translateX(50%);width:40px;height:40px;background:var(--gold);color:#000;border-radius:50%;display:flex;align-items:center;justify-content:center;font-weight:900;font-size:18px">١</div><div style="font-size:38px;margin-top:12px">👤</div><h3 style="margin-top:8px">أنشئ حسابك</h3><p class="muted" style="margin-top:4px">سجّل وفعّل حساب صانع محتوى.</p></div>
+    <div class="card cen" style="position:relative"><div style="position:absolute;top:-16px;right:50%;transform:translateX(50%);width:40px;height:40px;background:var(--gold);color:#000;border-radius:50%;display:flex;align-items:center;justify-content:center;font-weight:900;font-size:18px">٢</div><div style="font-size:38px;margin-top:12px">🔗</div><h3 style="margin-top:8px">اربط Streamlabs</h3><p class="muted" style="margin-top:4px">الصق Socket Token وخصّص شاشتك.</p></div>
+    <div class="card cen" style="position:relative"><div style="position:absolute;top:-16px;right:50%;transform:translateX(50%);width:40px;height:40px;background:var(--gold);color:#000;border-radius:50%;display:flex;align-items:center;justify-content:center;font-weight:900;font-size:18px">٣</div><div style="font-size:38px;margin-top:12px">📺</div><h3 style="margin-top:8px">افتح شاشة TV</h3><p class="muted" style="margin-top:4px">أضفها كمصدر في OBS — وابدأ.</p></div>
+  </div>
+  <p class="rv cen muted" style="margin-top:30px;font-size:.9em">مجاني للتجربة · لا يحتاج تطبيق منفصل · يعمل على أي متصفح</p>
+</section>
+
+<!-- ==================== 13. CTA ==================== -->
+<section class="slide">
+  <div class="glow" style="width:700px;height:700px;background:var(--gold);top:50%;right:50%;transform:translate(50%,-50%);opacity:.18"></div>
+  <div class="stk cen" style="position:relative;z-index:2">
+    <h1 class="rv gold" style="font-size:clamp(38px,6.5vw,88px)">بثّ البلوت، باحترافية</h1>
+    <p class="rv muted" style="max-width:580px;margin:14px auto 0;font-size:clamp(15px,1.9vw,22px)">حاسبة + بطولات + إحصائيات + إعلانات + بث مباشر — كل شيء في مكان واحد.</p>
+    <div class="rv" style="margin-top:28px;display:flex;gap:14px;justify-content:center;flex-wrap:wrap">
+      <a class="btn" href="https://baloot-tv-app.vercel.app" target="_blank">🚀 جرّب الآن مجانًا</a>
+      <a class="btn" href="https://baloot-tv-app.vercel.app/login" target="_blank" style="background:transparent;color:var(--gold);border:2px solid var(--gold);box-shadow:none">إنشاء حساب</a>
+    </div>
+    <p class="rv dim" style="margin-top:28px;font-size:.85em">baloot-tv-app.vercel.app · تصميم وبرمجة محمد المسند · 0565406221</p>
+  </div>
+</section>
+
+</div><!-- /.stage -->
+
+<div class="nav">
+  <button onclick="prevSlide()" aria-label="السابق">›</button>
+  <span class="counter"><span id="current">1</span> / <span id="total">14</span></span>
+  <button onclick="nextSlide()" aria-label="التالي">‹</button>
+</div>
+
+<script>
+let current=1;
+const slides=document.querySelectorAll('.slide');
+const total=slides.length;
+document.getElementById('total').textContent=total;
+
+function showSlide(n){
+  n=Math.max(1,Math.min(total,n));
+  current=n;
+  slides.forEach((s,i)=>s.classList.toggle('active',i===n-1));
+  document.getElementById('current').textContent=n;
+  document.getElementById('progress').style.width=(n/total*100)+'%';
+}
+function nextSlide(){showSlide(current+1)}
+function prevSlide(){showSlide(current-1)}
+
+document.addEventListener('keydown',e=>{
+  if(e.key==='ArrowLeft'||e.key===' '||e.key==='PageDown'){e.preventDefault();nextSlide()}
+  if(e.key==='ArrowRight'||e.key==='PageUp'){e.preventDefault();prevSlide()}
+});
+document.addEventListener('click',e=>{
+  if(e.target.closest('.nav')||e.target.closest('.btn')||e.target.closest('a'))return;
+  nextSlide();
+});
+let touchX=null;
+document.addEventListener('touchstart',e=>{touchX=e.changedTouches[0].clientX});
+document.addEventListener('touchend',e=>{
+  if(touchX===null)return;
+  const dx=e.changedTouches[0].clientX-touchX;
+  if(Math.abs(dx)>50){dx<0?nextSlide():prevSlide()}
+  touchX=null;
+});
+showSlide(1);
+
+window.addEventListener('load',()=>{
+  const ctx=document.getElementById('valueChart');
+  if(!ctx||typeof Chart==='undefined')return;
+  new Chart(ctx,{
+    type:'bar',
+    data:{
+      labels:['احترافية الشاشة','تكامل التنبيهات','تفاعل الجمهور','سهولة الإعداد','محتوى إضافي'],
+      datasets:[
+        {label:'الطريقة التقليدية',data:[30,15,25,35,20],backgroundColor:'rgba(255,94,58,0.6)',borderColor:'#ff5e3a',borderWidth:2,borderRadius:8},
+        {label:'مع أكك لايف',data:[92,90,85,90,88],backgroundColor:'rgba(245,176,66,0.8)',borderColor:'#f5b042',borderWidth:2,borderRadius:8}
+      ]
+    },
+    options:{
+      responsive:true,maintainAspectRatio:false,indexAxis:'y',
+      plugins:{legend:{labels:{color:'#fff',font:{size:11,weight:'700'}}}},
+      scales:{
+        x:{grid:{color:'rgba(255,255,255,0.05)'},ticks:{color:'rgba(255,255,255,0.5)'},max:100,beginAtZero:true},
+        y:{grid:{display:false},ticks:{color:'rgba(255,255,255,0.7)',font:{size:11}}}
+      }
+    }
+  });
+});
+</script>
+</body>
+</html>
