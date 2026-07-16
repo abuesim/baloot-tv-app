@@ -9,9 +9,19 @@ export type CueDef = {
 
 export const VOICE_CUES: CueDef[] = [
   {
-    key: "cue_diff50",
+    key: "cue_diff35",
     label: "فرق كبير (٣٥+)",
     desc: "عند بلوغ الفرق بين الفريقين ٣٥ نقطة فأكثر",
+  },
+  {
+    key: "cue_diff40",
+    label: "فرق كبير (٤٠+)",
+    desc: "عند بلوغ الفرق بين الفريقين ٤٠ نقطة فأكثر",
+  },
+  {
+    key: "cue_diff50",
+    label: "فرق كبير (٥٠+)",
+    desc: "عند بلوغ الفرق بين الفريقين ٥٠ نقطة فأكثر",
   },
   {
     key: "cue_zero_twice",
@@ -41,10 +51,15 @@ export function evaluateScoreCues(
 ): string[] {
   const fired: string[] = [];
 
-  // فرق ٣٥+ (عند العبور من تحت ٣٥ إلى ٣٥ فأكثر)
+  // مؤثرات الفرق المنفصلة؛ عند تجاوز عدة حدود في جولة واحدة يعمل أعلى حد فقط
   const prevDiff = Math.abs(prev.t1 - prev.t2);
   const nextDiff = Math.abs(next.t1 - next.t2);
-  if (prevDiff < 35 && nextDiff >= 35) fired.push("cue_diff50");
+  const crossedDiffCue = [
+    { threshold: 50, key: "cue_diff50" },
+    { threshold: 40, key: "cue_diff40" },
+    { threshold: 35, key: "cue_diff35" },
+  ].find(({ threshold }) => prevDiff < threshold && nextDiff >= threshold);
+  if (crossedDiffCue) fired.push(crossedDiffCue.key);
 
   // نفس الفريق سجّل صفراً في جولتين متتاليتين
   if (
