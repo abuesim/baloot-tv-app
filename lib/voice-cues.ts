@@ -10,8 +10,13 @@ export type CueDef = {
 export const VOICE_CUES: CueDef[] = [
   {
     key: "cue_diff50",
-    label: "فرق كبير (٥٠+)",
-    desc: "عند بلوغ الفرق بين الفريقين ٥٠ نقطة فأكثر",
+    label: "فرق كبير (٣٥+)",
+    desc: "عند بلوغ الفرق بين الفريقين ٣٥ نقطة فأكثر",
+  },
+  {
+    key: "cue_zero_twice",
+    label: "صفر مرتين متتاليتين",
+    desc: "عند تسجيل لنا أو لهم صفراً في جولتين متتاليتين",
   },
   {
     key: "cue_cross99",
@@ -31,13 +36,25 @@ export const CUE_KEYS = VOICE_CUES.map((c) => c.key);
 export function evaluateScoreCues(
   prev: { t1: number; t2: number },
   next: { t1: number; t2: number },
+  currentRound?: { t1: number; t2: number },
+  previousRound?: { t1: number; t2: number },
 ): string[] {
   const fired: string[] = [];
 
-  // فرق ٥٠+ (عند العبور من تحت ٥٠ إلى ٥٠ فأكثر)
+  // فرق ٣٥+ (عند العبور من تحت ٣٥ إلى ٣٥ فأكثر)
   const prevDiff = Math.abs(prev.t1 - prev.t2);
   const nextDiff = Math.abs(next.t1 - next.t2);
-  if (prevDiff < 50 && nextDiff >= 50) fired.push("cue_diff50");
+  if (prevDiff < 35 && nextDiff >= 35) fired.push("cue_diff50");
+
+  // نفس الفريق سجّل صفراً في جولتين متتاليتين
+  if (
+    currentRound &&
+    previousRound &&
+    ((currentRound.t1 === 0 && previousRound.t1 === 0) ||
+      (currentRound.t2 === 0 && previousRound.t2 === 0))
+  ) {
+    fired.push("cue_zero_twice");
+  }
 
   // فريق بلغ ١٠٠ فأكثر والآخر تحته
   const crossed = (a: number, b: number) => a >= 100 && b < 100;

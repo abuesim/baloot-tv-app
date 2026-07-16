@@ -379,9 +379,16 @@ export default function AdvancedGameView({
         stopNarration();
       } else {
         // النشرة أولاً، ثم التوجيهات الصوتية بعد اكتمال نطق المجموع بـ ١٠ ثوانٍ
+        const previousRound = [...game.rounds]
+          .filter((r) => r.number > 0)
+          .sort((a, b) => b.number - a.number)[0];
         const cues = evaluateScoreCues(
           { t1: game.team1Score, t2: game.team2Score },
           { t1: newTotal1, t2: newTotal2 },
+          { t1, t2 },
+          previousRound
+            ? { t1: previousRound.team1Score, t2: previousRound.team2Score }
+            : undefined,
         );
         speakRound(t1, t2, newTotal1, newTotal2).then(() => {
           if (cues.length > 0) {
