@@ -327,6 +327,13 @@ export default function AdvancedGameView({
   // النقاط الحية (مع الإدخال أثناء الكتابة)
   const usScore = game.team1Score + (Number(usInput) || 0);
   const themScore = game.team2Score + (Number(themInput) || 0);
+  const scoreDifference = Math.abs(usScore - themScore);
+  const differenceColor =
+    usScore > themScore
+      ? "text-gold"
+      : themScore > usScore
+        ? "text-white"
+        : "text-white/60";
 
   function clickChip(value: number) {
     if (activeSide === "us")        setUsInput(String(value));
@@ -477,11 +484,20 @@ export default function AdvancedGameView({
           <div className="w-11 h-11" />
         )}
 
-        <div className="flex items-center gap-2 text-white/95">
-          <TimerIcon />
-          <span className="text-3xl font-medium tabular-nums tracking-wider">
-            {elapsed}
-          </span>
+        <div className="flex items-center gap-3 text-white/95">
+          <div className="flex items-center gap-2">
+            <TimerIcon />
+            <span className="text-3xl font-medium tabular-nums tracking-wider">
+              {elapsed}
+            </span>
+          </div>
+          <div className="h-8 w-px bg-white/20" aria-hidden="true" />
+          <div className="flex items-baseline gap-1.5 whitespace-nowrap">
+            <span className="text-sm text-white/60">الفرق</span>
+            <span className={`text-2xl font-bold tabular-nums ${differenceColor}`}>
+              {scoreDifference}
+            </span>
+          </div>
         </div>
 
         <div className="w-11 h-11" />
