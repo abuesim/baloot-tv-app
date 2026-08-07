@@ -46,6 +46,10 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
         viewModelScope.launch { onResult(repository.addPlayer(name).isSuccess) }
     }
 
+    fun addPlayerWithImage(name: String, imagePath: String?, onResult: (String?) -> Unit = {}) {
+        viewModelScope.launch { onResult(repository.addPlayerAndReturnId(name, imagePath).getOrNull()) }
+    }
+
     fun deletePlayer(player: PlayerEntity) {
         viewModelScope.launch { repository.deletePlayer(player) }
     }

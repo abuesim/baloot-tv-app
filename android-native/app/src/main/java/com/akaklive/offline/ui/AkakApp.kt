@@ -93,6 +93,7 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.draw.scale
+import androidx.compose.ui.focus.onFocusChanged
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.asImageBitmap
@@ -129,6 +130,7 @@ import kotlinx.coroutines.delay
 import java.text.SimpleDateFormat
 import java.util.Date
 import java.util.Locale
+import java.util.UUID
 import kotlin.math.abs
 
 private enum class Screen {
@@ -159,6 +161,7 @@ fun AkakApp(vm: MainViewModel) {
     val tournamentTeams by vm.tournamentTeams.collectAsState()
     val players by vm.players.collectAsState()
     var screen by remember { mutableStateOf(Screen.HOME) }
+    var playersReturnScreen by remember { mutableStateOf(Screen.PROFILE) }
     var requestedMode by remember { mutableStateOf(GameMode.NORMAL) }
 
     CompositionLocalProvider(
@@ -193,6 +196,11 @@ fun AkakApp(vm: MainViewModel) {
                         )
                         Screen.NEW_GAME -> NewGameScreen(
                             players = players,
+                            onAddPlayer = vm::addPlayerWithImage,
+                            onManagePlayers = {
+                                playersReturnScreen = Screen.NEW_GAME
+                                screen = Screen.PLAYERS
+                            },
                             onStart = { mode, team1, team2 ->
                                 requestedMode = mode
                                 vm.startGame(mode, team1, team2)
@@ -204,10 +212,13 @@ fun AkakApp(vm: MainViewModel) {
                         Screen.STATS -> StatsScreen(gameDetails, players)
                         Screen.PROFILE -> ProfileScreen(
                             playersCount = players.size,
-                            onPlayers = { screen = Screen.PLAYERS },
+                            onPlayers = {
+                                playersReturnScreen = Screen.PROFILE
+                                screen = Screen.PLAYERS
+                            },
                         )
                         Screen.PLAYERS -> PlayersScreen(players, gameDetails, vm::addPlayer, vm::deletePlayer, vm::setPlayerImage) {
-                            screen = Screen.PROFILE
+                            screen = playersReturnScreen
                         }
                         Screen.CALCULATOR -> CalculatorScreen(
                             game = latestGame,
@@ -388,12 +399,24 @@ private fun HomeBigCard(
 }
 
 @Composable
-private fun NewGameScreen(players: List<PlayerEntity>, onStart: (GameMode, List<String>, List<String>) -> Unit) {
+private fun NewGameScreen(
+    players: List<PlayerEntity>,
+    onAddPlayer: (String, String?, (String?) -> Unit) -> Unit,
+    onManagePlayers: () -> Unit,
+    onStart: (GameMode, List<String>, List<String>) -> Unit,
+) {
     var mode by remember { mutableStateOf(GameMode.NORMAL) }
     var activeTeam by remember { mutableIntStateOf(1) }
     var team1 by remember { mutableStateOf(listOf<String>()) }
     var team2 by remember { mutableStateOf(listOf<String>()) }
     var error by remember { mutableStateOf<String?>(null) }
+    var newPlayerName by remember { mutableStateOf("") }
+    var newPlayerImage by remember { mutableStateOf<Uri?>(null) }
+    var addingPlayer by remember { mutableStateOf(false) }
+    val context = LocalContext.current
+    val imagePicker = rememberLauncherForActivityResult(ActivityResultContracts.OpenDocument()) { uri ->
+        if (uri != null) newPlayerImage = uri
+    }
     val byId = players.associateBy { it.id }
     fun choose(playerId: String) {
         error = null
@@ -436,8 +459,62 @@ private fun NewGameScreen(players: List<PlayerEntity>, onStart: (GameMode, List<
                     Pill("اختياري")
                 }
                 Spacer(Modifier.height(14.dp))
-                if (players.size < 4) {
-                    Text("ما عندك ما يكفي من اللاعبين بعد. ابدأ الصكة الآن وأضفهم لاحقاً.", color = Color.White.copy(alpha = .55f), fontSize = 13.sp)
+                Text("اكتب اسماً جديداً أو اختر لاعباً محفوظاً", color = Color.White.copy(alpha = .55f), fontSize = 12.sp)
+                Spacer(Modifier.height(9.dp))
+                Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(8.dp), verticalAlignment = Alignment.CenterVertically) {
+                    OutlinedTextField(
+                        value = newPlayerName,
+                        onValueChange = { newPlayerName = it.take(30); error = null },
+                        placeholder = { Text("اسم اللاعب") },
+                        singleLine = true,
+                        enabled = !addingPlayer,
+                        modifier = Modifier.weight(1f),
+                        shape = RoundedCornerShape(14.dp),
+                    )
+                    OutlinedButton(
+                        onClick = { imagePicker.launch(arrayOf("image/*")) },
+                        enabled = !addingPlayer,
+                        contentPadding = PaddingValues(horizontal = 12.dp, vertical = 15.dp),
+                        shape = RoundedCornerShape(14.dp),
+                    ) { Text(if (newPlayerImage == null) "صورة" else "✓ صورة", color = Gold) }
+                }
+                Spacer(Modifier.height(8.dp))
+                Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                    Button(
+                        onClick = {
+                            val cleanName = newPlayerName.trim()
+                            if (cleanName.isEmpty()) {
+                                error = "اكتب اسم اللاعب أولاً"
+                            } else {
+                                addingPlayer = true
+                                val imagePath = newPlayerImage?.let { source ->
+                                    savePlayerImage(context, source, UUID.randomUUID().toString()).getOrNull()
+                                }
+                                onAddPlayer(cleanName, imagePath) { playerId ->
+                                    addingPlayer = false
+                                    if (playerId != null) {
+                                        newPlayerName = ""
+                                        newPlayerImage = null
+                                        choose(playerId)
+                                    } else {
+                                        imagePath?.let(::deleteStoredImage)
+                                        error = "الاسم مستخدم أو تعذر إضافة اللاعب"
+                                    }
+                                }
+                            }
+                        },
+                        enabled = !addingPlayer,
+                        modifier = Modifier.weight(1f),
+                        colors = ButtonDefaults.buttonColors(containerColor = Gold, contentColor = DeepBlack),
+                        shape = RoundedCornerShape(13.dp),
+                    ) { Text(if (addingPlayer) "جارٍ الإضافة…" else "إضافة واختيار", fontWeight = FontWeight.Black) }
+                    OutlinedButton(onClick = onManagePlayers, modifier = Modifier.weight(1f), shape = RoundedCornerShape(13.dp)) {
+                        Text("صفحة اللاعبين", fontSize = 12.sp)
+                    }
+                }
+                Spacer(Modifier.height(16.dp))
+                if (players.isEmpty()) {
+                    Text("أضف اللاعبين هنا، ويمكنك رفع صورهم الآن أو من صفحة اللاعبين.", color = Color.White.copy(alpha = .55f), fontSize = 13.sp)
                 } else {
                     Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(10.dp)) {
                         TeamSelectionCard("لنا", TeamOrange, team1.mapNotNull(byId::get), activeTeam == 1, Modifier.weight(1f)) { activeTeam = 1 }
@@ -650,7 +727,7 @@ private fun CalculatorScreen(
                 }
                 Spacer(Modifier.height(34.dp))
                 Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(10.dp)) {
-                    ScoreInput("لنا", usInput, active == 1, Modifier.weight(1f)) { usInput = it; active = 1 }
+                    ScoreInput("لنا", usInput, active == 1, Modifier.weight(1f), onSelected = { active = 1 }) { usInput = it }
                     Box(
                         Modifier.weight(2.4f).height(68.dp).clip(RoundedCornerShape(19.dp)).background(Color.Black)
                             .border(1.dp, Color.White.copy(alpha = .14f), RoundedCornerShape(19.dp)).clickable(enabled = canRecord, onClick = ::submit),
@@ -658,26 +735,24 @@ private fun CalculatorScreen(
                     ) {
                         Text("سجل", color = if (canRecord) Color(0xFFFF9C35) else Color(0xFF7B3D09), fontSize = 34.sp, fontWeight = FontWeight.Black)
                     }
-                    ScoreInput("لهم", themInput, active == 2, Modifier.weight(1f)) { themInput = it; active = 2 }
+                    ScoreInput("لهم", themInput, active == 2, Modifier.weight(1f), onSelected = { active = 2 }) { themInput = it }
                 }
                 AnimatedVisibility(active != null) {
-                    Row(Modifier.fillMaxWidth().padding(top = 18.dp), horizontalArrangement = Arrangement.Center) {
-                        listOf(16, 18, 26, 30).forEach { value ->
-                            Box(
-                                Modifier.padding(horizontal = 5.dp).size(49.dp).clip(CircleShape)
-                                    .background(Color(0xCC29241F)).border(1.dp, Color(0xFF805322), CircleShape)
-                                    .clickable { if (active == 1) usInput = value.toString() else themInput = value.toString() },
-                                contentAlignment = Alignment.Center,
-                            ) { Text(value.toString(), color = Color(0xFFFFD39A), fontWeight = FontWeight.Bold) }
-                        }
+                    QuickScoreButtons(Modifier.padding(top = 18.dp)) { value ->
+                        if (active == 1) usInput = value.toString() else if (active == 2) themInput = value.toString()
                     }
                 }
                 } else {
                     ClassicScoreBoard(game, players, difference)
                     Spacer(Modifier.height(20.dp))
                     Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(10.dp), verticalAlignment = Alignment.CenterVertically) {
-                        ScoreInput("لنا", usInput, active == 1, Modifier.weight(1f)) { usInput = it; active = 1 }
-                        ScoreInput("لهم", themInput, active == 2, Modifier.weight(1f)) { themInput = it; active = 2 }
+                        ScoreInput("لنا", usInput, active == 1, Modifier.weight(1f), onSelected = { active = 1 }) { usInput = it }
+                        ScoreInput("لهم", themInput, active == 2, Modifier.weight(1f), onSelected = { active = 2 }) { themInput = it }
+                    }
+                    AnimatedVisibility(active != null) {
+                        QuickScoreButtons(Modifier.padding(top = 12.dp)) { value ->
+                            if (active == 1) usInput = value.toString() else if (active == 2) themInput = value.toString()
+                        }
                     }
                     Spacer(Modifier.height(12.dp))
                     Button(
@@ -758,7 +833,7 @@ private fun ScorePanel(label: String, score: Int, color: Color, members: List<Pl
         }
         Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(7.dp)) {
             Icon(Icons.Outlined.Edit, null, Modifier.size(13.dp), tint = color.copy(alpha = .35f))
-            Text(label, color = color.copy(alpha = .96f), fontSize = 21.sp, fontWeight = FontWeight.SemiBold)
+            Text(label, color = color.copy(alpha = .96f), fontSize = 22.sp, fontWeight = FontWeight.Black)
         }
         if (members.isNotEmpty()) Text(members.joinToString(" + ") { it.name }, color = color.copy(alpha = .55f), fontSize = 10.sp, maxLines = 1, overflow = TextOverflow.Ellipsis)
         Text(score.toString(), color = color, fontSize = 84.sp, lineHeight = 90.sp, fontWeight = FontWeight.Black)
@@ -766,15 +841,22 @@ private fun ScorePanel(label: String, score: Int, color: Color, members: List<Pl
 }
 
 @Composable
-private fun ScoreInput(label: String, value: String, selected: Boolean, modifier: Modifier, onChange: (String) -> Unit) {
+private fun ScoreInput(
+    label: String,
+    value: String,
+    selected: Boolean,
+    modifier: Modifier,
+    onSelected: () -> Unit = {},
+    onChange: (String) -> Unit,
+) {
     OutlinedTextField(
         value = value,
-        onValueChange = { onChange(it.filter(Char::isDigit).take(3)) },
+        onValueChange = { onChange(it.filter(Char::isDigit).take(2)) },
         placeholder = { Text(label, Modifier.fillMaxWidth(), color = Color.White.copy(alpha = .25f), fontSize = 11.sp, textAlign = TextAlign.Center) },
         singleLine = true,
         textStyle = androidx.compose.ui.text.TextStyle(color = Color.White, fontSize = 22.sp, fontWeight = FontWeight.Black, textAlign = TextAlign.Center),
         keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number),
-        modifier = modifier.height(68.dp),
+        modifier = modifier.onFocusChanged { if (it.isFocused) onSelected() }.height(68.dp),
         shape = RoundedCornerShape(19.dp),
         colors = androidx.compose.material3.OutlinedTextFieldDefaults.colors(
             focusedBorderColor = Gold,
@@ -783,6 +865,20 @@ private fun ScoreInput(label: String, value: String, selected: Boolean, modifier
             unfocusedContainerColor = Color.Black,
         ),
     )
+}
+
+@Composable
+private fun QuickScoreButtons(modifier: Modifier = Modifier, onValue: (Int) -> Unit) {
+    Row(modifier.fillMaxWidth(), horizontalArrangement = Arrangement.Center) {
+        listOf(16, 18, 26, 30).forEach { value ->
+            Box(
+                Modifier.padding(horizontal = 5.dp).size(49.dp).clip(CircleShape)
+                    .background(Color(0xCC29241F)).border(1.dp, Color(0xFF805322), CircleShape)
+                    .clickable { onValue(value) },
+                contentAlignment = Alignment.Center,
+            ) { Text(value.toString(), color = Color(0xFFFFD39A), fontWeight = FontWeight.Black) }
+        }
+    }
 }
 
 @Composable
@@ -795,8 +891,8 @@ private fun RoundsCard(game: GameWithRounds, onEdit: (RoundEntity) -> Unit) {
             HorizontalDivider(color = Color.White.copy(alpha = .05f))
             Row(Modifier.fillMaxWidth().padding(horizontal = 24.dp, vertical = 8.dp), horizontalArrangement = Arrangement.SpaceBetween, verticalAlignment = Alignment.CenterVertically) {
                 Text(round.number.toString(), color = Color.White.copy(alpha = .4f), modifier = Modifier.width(25.dp))
-                Text(round.team1Score.toString(), color = if (round.isEdited) TeamBlue else Gold, fontWeight = FontWeight.Bold, modifier = Modifier.width(45.dp), textAlign = TextAlign.Center)
-                Text(round.team2Score.toString(), color = if (round.isEdited) TeamBlue else Color.White, fontWeight = FontWeight.Bold, modifier = Modifier.width(45.dp), textAlign = TextAlign.Center)
+                Text(round.team1Score.toString(), color = if (round.isEdited) TeamBlue else Gold, fontWeight = FontWeight.Black, modifier = Modifier.width(45.dp), textAlign = TextAlign.Center)
+                Text(round.team2Score.toString(), color = if (round.isEdited) TeamBlue else Color.White, fontWeight = FontWeight.Black, modifier = Modifier.width(45.dp), textAlign = TextAlign.Center)
                 if (round.number > 0) {
                     IconButton(onClick = { onEdit(round) }, modifier = Modifier.size(34.dp)) { Icon(Icons.Outlined.Edit, "تعديل الجولة", tint = TeamBlue, modifier = Modifier.size(17.dp)) }
                 } else Spacer(Modifier.size(34.dp))
@@ -860,7 +956,7 @@ private fun ClassicScoreBoard(game: GameWithRounds, players: List<PlayerEntity>,
         verticalAlignment = Alignment.CenterVertically,
     ) {
         Column(Modifier.weight(1f), horizontalAlignment = Alignment.CenterHorizontally) {
-            Text("لنا", color = Gold, fontWeight = FontWeight.Bold)
+            Text("لنا", color = Gold, fontWeight = FontWeight.Black, fontSize = 18.sp)
             if (ours.isNotEmpty()) Text(ours.joinToString(" + "), color = Gold.copy(alpha = .55f), fontSize = 9.sp, maxLines = 1)
             Text(game.game.team1Score.toString(), color = Gold, fontSize = 54.sp, fontWeight = FontWeight.Black)
         }
@@ -872,7 +968,7 @@ private fun ClassicScoreBoard(game: GameWithRounds, players: List<PlayerEntity>,
             Text(if (difference == 0) "=" else difference.toString(), color = if (game.game.team1Score > game.game.team2Score) Gold else Color.White, fontSize = 25.sp, fontWeight = FontWeight.Black)
         }
         Column(Modifier.weight(1f), horizontalAlignment = Alignment.CenterHorizontally) {
-            Text("لهم", color = Color.White.copy(alpha = .8f), fontWeight = FontWeight.Bold)
+            Text("لهم", color = Color.White.copy(alpha = .8f), fontWeight = FontWeight.Black, fontSize = 18.sp)
             if (theirs.isNotEmpty()) Text(theirs.joinToString(" + "), color = Color.White.copy(alpha = .45f), fontSize = 9.sp, maxLines = 1)
             Text(game.game.team2Score.toString(), color = Color.White, fontSize = 54.sp, fontWeight = FontWeight.Black)
         }

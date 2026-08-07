@@ -10,10 +10,18 @@ class BalootRepository(private val dao: BalootDao) {
     val tournaments = dao.observeTournaments()
     val tournamentTeams = dao.observeTournamentTeams()
 
-    suspend fun addPlayer(name: String): Result<Unit> = runCatching {
+    suspend fun addPlayer(name: String, imagePath: String? = null): Result<Unit> = runCatching {
         val clean = name.trim()
         require(clean.isNotEmpty())
-        dao.insertPlayer(PlayerEntity(id = UUID.randomUUID().toString(), name = clean))
+        dao.insertPlayer(PlayerEntity(id = UUID.randomUUID().toString(), name = clean, imagePath = imagePath))
+    }
+
+    suspend fun addPlayerAndReturnId(name: String, imagePath: String?): Result<String> = runCatching {
+        val clean = name.trim()
+        require(clean.isNotEmpty())
+        val id = UUID.randomUUID().toString()
+        dao.insertPlayer(PlayerEntity(id = id, name = clean, imagePath = imagePath))
+        id
     }
 
     suspend fun deletePlayer(player: PlayerEntity) = dao.deletePlayer(player)
