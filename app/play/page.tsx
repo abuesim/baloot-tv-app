@@ -11,12 +11,11 @@ import {
   Settings as SettingsIcon,
   Volume2,
   VolumeX,
-  Trash2,
 } from "lucide-react";
 import { scoreSequence, totalSequence, CLIP_TEXT } from "@/lib/voice-narration";
-import { getWinner } from "@/lib/baloot";
+import { getWinner, shouldMergeWithPreviousRound } from "@/lib/baloot";
 
-type Round = { n: number; us: number; them: number };
+type Round = { n: number; us: number; them: number; edited?: boolean };
 
 const QUICK_CHIPS = [16, 18, 26, 30];
 
@@ -157,7 +156,9 @@ export default function PlayPage() {
   const [editingName, setEditingName] = useState<"us" | "them" | null>(null);
   const [showHistory, setShowHistory] = useState(false);
   const [winner, setWinner] = useState<"us" | "them" | null>(null);
-  const [roundToDelete, setRoundToDelete] = useState<Round | null>(null);
+  const [roundToEdit, setRoundToEdit] = useState<Round | null>(null);
+  const [editUs, setEditUs] = useState("");
+  const [editThem, setEditThem] = useState("");
 
   // الإعدادات القابلة للتخصيص والمحفوظة محلياً
   const [calcStyle, setCalcStyle] = useState<"CLASSIC" | "ADVANCED">("ADVANCED");
@@ -382,8 +383,12 @@ export default function PlayPage() {
     const them = Number(themInput) || 0;
     if (us === 0 && them === 0) return;
 
-    const nextRoundNumber = rounds.length + 1;
-    const newRounds = [...rounds, { n: nextRoundNumber, us, them }];
+    const merge = rounds.length > 0 && shouldMergeWithPreviousRound(us, them);
+    const newRounds = merge
+      ? rounds.map((round, index) => index === rounds.length - 1
+          ? { ...round, us: round.us + us, them: round.them + them, edited: true }
+          : round)
+      : [...rounds, { n: rounds.length + 1, us, them }];
     setRounds(newRounds);
     setUsInput("");
     setThemInput("");
@@ -407,14 +412,10 @@ export default function PlayPage() {
     stopNarration();
   };
 
-  const deleteRound = (roundNum: number) => {
-    const filtered = rounds.filter((r) => r.n !== roundNum);
-    // إعادة تسلسل أرقام الجولات لتكون متتالية من 1 إلى N
-    const updated = filtered.map((r, i) => ({
-      n: i + 1,
-      us: r.us,
-      them: r.them,
-    }));
+  const editRound = (roundNum: number, us: number, them: number) => {
+    const updated = rounds.map((round) =>
+      round.n === roundNum ? { ...round, us, them, edited: true } : round,
+    );
     setRounds(updated);
     setWinner(null);
     stopNarration();
@@ -425,6 +426,12 @@ export default function PlayPage() {
     if (checkWin !== null) {
       setWinner(checkWin === 1 ? "us" : "them");
     }
+  };
+
+  const openRoundEdit = (round: Round) => {
+    setRoundToEdit(round);
+    setEditUs(String(round.us));
+    setEditThem(String(round.them));
   };
 
   const resetGame = () => {
@@ -689,7 +696,7 @@ export default function PlayPage() {
                   <div className="text-right">#</div>
                   <div className="text-center">لنا</div>
                   <div className="text-center">لهم</div>
-                  <div className="text-left">حذف</div>
+                  <div className="text-left">تعديل</div>
                 </div>
 
                 {/* الجولات */}
@@ -699,15 +706,15 @@ export default function PlayPage() {
                     className="grid grid-cols-[1fr_2fr_2fr_1fr] px-5 py-2.5 text-base border-t border-white/5 items-center"
                   >
                     <div className="text-right tabular-nums text-white/40 text-sm">{r.n}</div>
-                    <div className="text-center tabular-nums text-amber-400 font-bold">{r.us}</div>
-                    <div className="text-center tabular-nums text-white font-bold">{r.them}</div>
+                    <div className={`text-center tabular-nums font-bold ${r.edited ? "text-cyan-400" : "text-amber-400"}`}>{r.us}</div>
+                    <div className={`text-center tabular-nums font-bold ${r.edited ? "text-cyan-400" : "text-white"}`}>{r.them}</div>
                     <div className="text-left">
                       <button
-                        onClick={() => setRoundToDelete(r)}
-                        className="text-red-400 hover:text-red-300 p-1.5 rounded hover:bg-white/5 transition inline-flex items-center justify-center"
-                        title="حذف الجولة"
+                        onClick={() => openRoundEdit(r)}
+                        className="text-cyan-400 hover:text-cyan-300 p-1.5 rounded hover:bg-white/5 transition inline-flex items-center justify-center"
+                        title="تعديل الجولة"
                       >
-                        <Trash2 size={14} />
+                        <Pencil size={14} />
                       </button>
                     </div>
                   </div>
@@ -845,8 +852,12 @@ export default function PlayPage() {
                 const t2 = Number(classicThem) || 0;
                 if (t1 === 0 && t2 === 0) return;
 
-                const nextRoundNumber = rounds.length + 1;
-                const newRounds = [...rounds, { n: nextRoundNumber, us: t1, them: t2 }];
+                const merge = rounds.length > 0 && shouldMergeWithPreviousRound(t1, t2);
+                const newRounds = merge
+                  ? rounds.map((round, index) => index === rounds.length - 1
+                      ? { ...round, us: round.us + t1, them: round.them + t2, edited: true }
+                      : round)
+                  : [...rounds, { n: rounds.length + 1, us: t1, them: t2 }];
                 setRounds(newRounds);
                 setClassicUs("");
                 setClassicThem("");
@@ -934,16 +945,16 @@ export default function PlayPage() {
                     {newestFirst.slice(0, 2).map((r) => (
                       <tr key={r.n} className="hover:bg-white/[0.02] items-center">
                         <td className="py-2.5 text-white/40 text-sm text-right pr-4">{r.n}</td>
-                        <td className="py-2.5 font-bold text-[#f5b042] text-center">{r.us}</td>
-                        <td className="py-2.5 font-bold text-white text-center">{r.them}</td>
+                        <td className={`py-2.5 font-bold text-center ${r.edited ? "text-cyan-400" : "text-[#f5b042]"}`}>{r.us}</td>
+                        <td className={`py-2.5 font-bold text-center ${r.edited ? "text-cyan-400" : "text-white"}`}>{r.them}</td>
                         <td className="py-2.5 text-left pl-4">
                           <button
                             type="button"
-                            onClick={() => setRoundToDelete(r)}
-                            className="text-red-400 hover:text-red-300 p-1.5 rounded hover:bg-white/5 transition inline-flex items-center justify-center"
-                            title="حذف الجولة"
+                            onClick={() => openRoundEdit(r)}
+                            className="text-cyan-400 hover:text-cyan-300 p-1.5 rounded hover:bg-white/5 transition inline-flex items-center justify-center"
+                            title="تعديل الجولة"
                           >
-                            <Trash2 size={14} />
+                            <Pencil size={14} />
                           </button>
                         </td>
                       </tr>
@@ -1020,40 +1031,40 @@ export default function PlayPage() {
         />
       )}
 
-      {/* ===== تأكيد حذف جولة ===== */}
-      {roundToDelete && (
+      {/* ===== تعديل جولة ===== */}
+      {roundToEdit && (
         <div
           className="fixed inset-0 z-50 bg-black/75 backdrop-blur-sm flex items-center justify-center p-6"
-          onClick={() => setRoundToDelete(null)}
+          onClick={() => setRoundToEdit(null)}
           dir="rtl"
         >
           <div
             className="bg-[#171717] border border-white/10 rounded-3xl p-6 w-full max-w-xs shadow-2xl text-center"
             onClick={(e) => e.stopPropagation()}
           >
-            <div className="text-3xl mb-3">⚠️</div>
-            <h3 className="text-base font-bold text-white mb-2">تأكيد حذف الجولة</h3>
-            <p className="text-xs text-white/60 mb-6 leading-relaxed">
-              هل أنت متأكد من حذف الجولة رقم {roundToDelete.n}؟
-              <br />
-              (لنا: {roundToDelete.us} · لهم: {roundToDelete.them})
-            </p>
+            <div className="text-3xl mb-3">✏️</div>
+            <h3 className="text-base font-bold text-white mb-2">تعديل الجولة {roundToEdit.n}</h3>
+            <p className="text-xs text-cyan-300/70 mb-4">ستظهر النتيجة المعدلة بلون مختلف</p>
+            <div className="grid grid-cols-2 gap-3 mb-6">
+              <input value={editUs} onChange={(e) => setEditUs(e.target.value.replace(/\D/g, ""))} inputMode="numeric" className="rounded-xl border border-cyan-400/40 bg-black px-3 py-3 text-center text-xl text-cyan-300 outline-none" placeholder="لنا" />
+              <input value={editThem} onChange={(e) => setEditThem(e.target.value.replace(/\D/g, ""))} inputMode="numeric" className="rounded-xl border border-cyan-400/40 bg-black px-3 py-3 text-center text-xl text-cyan-300 outline-none" placeholder="لهم" />
+            </div>
 
             <div className="grid grid-cols-2 gap-3">
               <button
-                onClick={() => setRoundToDelete(null)}
+                onClick={() => setRoundToEdit(null)}
                 className="py-3 rounded-xl border border-white/15 text-white/60 hover:text-white text-xs font-bold"
               >
                 إلغاء
               </button>
               <button
                 onClick={() => {
-                  deleteRound(roundToDelete.n);
-                  setRoundToDelete(null);
+                  editRound(roundToEdit.n, Number(editUs) || 0, Number(editThem) || 0);
+                  setRoundToEdit(null);
                 }}
-                className="py-3 rounded-xl bg-red-500 text-white text-xs font-bold shadow-lg shadow-red-500/20"
+                className="py-3 rounded-xl bg-cyan-500 text-black text-xs font-bold shadow-lg shadow-cyan-500/20"
               >
-                حذف
+                حفظ التعديل
               </button>
             </div>
           </div>
@@ -1227,19 +1238,16 @@ export default function PlayPage() {
                   {newestFirst.map((r) => (
                     <tr key={r.n} className="hover:bg-white/[0.02]">
                       <td className="py-2.5 text-white/40 text-sm text-right pr-4">{r.n}</td>
-                      <td className="py-2.5 font-bold text-[#f5b042] text-center">{r.us}</td>
-                      <td className="py-2.5 font-bold text-white text-center">{r.them}</td>
+                      <td className={`py-2.5 font-bold text-center ${r.edited ? "text-cyan-400" : "text-[#f5b042]"}`}>{r.us}</td>
+                      <td className={`py-2.5 font-bold text-center ${r.edited ? "text-cyan-400" : "text-white"}`}>{r.them}</td>
                       <td className="py-2.5 text-left pl-4">
                         <button
                           type="button"
-                          onClick={() => {
-                            deleteRound(r.n);
-                            if (rounds.length <= 3) setShowClassicRoundsOverlay(false);
-                          }}
-                          className="text-red-400 hover:text-red-300 p-1.5 rounded hover:bg-white/5 transition inline-flex items-center justify-center"
-                          title="حذف الجولة"
+                          onClick={() => { openRoundEdit(r); setShowClassicRoundsOverlay(false); }}
+                          className="text-cyan-400 hover:text-cyan-300 p-1.5 rounded hover:bg-white/5 transition inline-flex items-center justify-center"
+                          title="تعديل الجولة"
                         >
-                          <Trash2 size={14} />
+                          <Pencil size={14} />
                         </button>
                       </td>
                     </tr>

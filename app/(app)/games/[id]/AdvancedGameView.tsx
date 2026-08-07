@@ -11,7 +11,6 @@ import {
   X,
   Camera,
   Pencil,
-  Trash2,
   Volume2,
   VolumeX,
 } from "lucide-react";
@@ -21,6 +20,7 @@ import { evaluateScoreCues, TIME_CUE_MS } from "@/lib/voice-cues";
 import { getWinner } from "@/lib/baloot";
 import {
   recordRoundAction,
+  updateRoundAction,
   deleteRoundAction,
   abandonGameAction,
   setGamePlayersAction,
@@ -35,6 +35,7 @@ type Round = {
   number: number;
   team1Score: number;
   team2Score: number;
+  isEdited: boolean;
 };
 type Game = {
   id: string;
@@ -368,7 +369,7 @@ export default function AdvancedGameView({
       setThemInput("");
       setActiveSide(null);
       // أنيميشن تأكيد التسجيل — يختفي بعد 3 ثواني
-      setFlashScore({ us: t1, them: t2, round: nextRound });
+      setFlashScore({ us: t1, them: t2, round: res.roundNumber ?? nextRound });
       setTimeout(() => setFlashScore(null), 6000);
       const newTotal1 = game.team1Score + t1;
       const newTotal2 = game.team2Score + t2;
@@ -661,7 +662,6 @@ export default function AdvancedGameView({
         <RoundsOverlay
           gameId={game.id}
           rounds={game.rounds}
-          isOver={isOver}
           onClose={() => setShowAllRounds(false)}
           onChanged={() => router.refresh()}
         />
@@ -957,10 +957,10 @@ function RoundsPreview({
             >
               {r.number === 0 ? 1 : r.number}
             </div>
-            <div className={`text-center tabular-nums ${r.number === 0 ? "text-gold/70" : ""}`}>
+            <div className={`text-center tabular-nums ${r.number === 0 ? "text-gold/70" : r.isEdited ? "text-cyan-400 font-bold" : ""}`}>
               {r.team1Score}
             </div>
-            <div className={`text-left tabular-nums ${r.number === 0 ? "text-gold/70" : ""}`}>
+            <div className={`text-left tabular-nums ${r.number === 0 ? "text-gold/70" : r.isEdited ? "text-cyan-400 font-bold" : ""}`}>
               {r.team2Score}
             </div>
           </div>
@@ -982,25 +982,45 @@ function RoundsPreview({
 function RoundsOverlay({
   gameId,
   rounds,
-  isOver,
   onClose,
   onChanged,
 }: {
   gameId: string;
   rounds: Round[];
-  isOver: boolean;
   onClose: () => void;
   onChanged: () => void;
 }) {
   const [isPending, startTransition] = useTransition();
+  const [editing, setEditing] = useState<Round | null>(null);
+  const [editUs, setEditUs] = useState("");
+  const [editThem, setEditThem] = useState("");
+  const [editError, setEditError] = useState<string | null>(null);
   // جولة البداية (مشدود) تظهر أولاً، ثم الجولات العادية تصاعدياً
   const ascending = [...rounds].sort((a, b) => a.number - b.number);
   const regularCount = rounds.filter((r) => r.number > 0).length;
 
-  function del(roundId: string, n: number) {
-    if (!confirm(`حذف الجولة ${n}؟`)) return;
+  function beginEdit(round: Round) {
+    setEditing(round);
+    setEditUs(String(round.team1Score));
+    setEditThem(String(round.team2Score));
+    setEditError(null);
+  }
+
+  function saveEdit() {
+    if (!editing) return;
     startTransition(async () => {
-      await deleteRoundAction(gameId, roundId);
+      const res = await updateRoundAction(
+        gameId,
+        editing.id,
+        Number(editUs) || 0,
+        Number(editThem) || 0,
+      );
+      if (!res.ok) {
+        setEditError(res.error);
+        return;
+      }
+      setEditing(null);
+      onClose();
       onChanged();
     });
   }
@@ -1042,23 +1062,52 @@ function RoundsOverlay({
               <div className={`tabular-nums ${r.number === 0 ? "text-gold/70 font-bold" : "text-white/50"}`}>
                 {r.number === 0 ? 1 : r.number}
               </div>
-              <div className={`text-center tabular-nums ${r.number === 0 ? "text-gold/70" : ""}`}>{r.team1Score}</div>
-              <div className={`text-center tabular-nums ${r.number === 0 ? "text-gold/70" : ""}`}>{r.team2Score}</div>
+              {editing?.id === r.id ? (
+                <input
+                  type="number"
+                  min={0}
+                  max={300}
+                  value={editUs}
+                  onChange={(e) => setEditUs(e.target.value.replace(/\D/g, ""))}
+                  className="w-full min-w-0 rounded-lg border border-cyan-400/50 bg-black px-2 py-1 text-center text-cyan-300 outline-none"
+                />
+              ) : (
+                <div className={`text-center tabular-nums ${r.number === 0 ? "text-gold/70" : r.isEdited ? "text-cyan-400 font-bold" : ""}`}>{r.team1Score}</div>
+              )}
+              {editing?.id === r.id ? (
+                <input
+                  type="number"
+                  min={0}
+                  max={300}
+                  value={editThem}
+                  onChange={(e) => setEditThem(e.target.value.replace(/\D/g, ""))}
+                  className="w-full min-w-0 rounded-lg border border-cyan-400/50 bg-black px-2 py-1 text-center text-cyan-300 outline-none"
+                />
+              ) : (
+                <div className={`text-center tabular-nums ${r.number === 0 ? "text-gold/70" : r.isEdited ? "text-cyan-400 font-bold" : ""}`}>{r.team2Score}</div>
+              )}
               <div>
-                {!isOver && r.number > 0 && (
+                {editing?.id === r.id ? (
+                  <div className="flex gap-1">
+                    <button disabled={isPending} onClick={saveEdit} className="rounded-lg bg-cyan-500/20 px-2 py-1 text-xs text-cyan-300">حفظ</button>
+                    <button disabled={isPending} onClick={() => setEditing(null)} className="rounded-lg bg-white/10 px-2 py-1 text-xs text-white/60">إلغاء</button>
+                  </div>
+                ) : r.number > 0 && (
                   <button
                     disabled={isPending}
-                    onClick={() => del(r.id, r.number)}
-                    className="p-1.5 rounded-lg text-red-400/60 hover:text-red-400 hover:bg-red-400/10 transition disabled:opacity-30"
-                    title={`حذف الجولة ${r.number}`}
+                    onClick={() => beginEdit(r)}
+                    className="p-1.5 rounded-lg text-cyan-400/70 hover:text-cyan-300 hover:bg-cyan-400/10 transition disabled:opacity-30"
+                    title={`تعديل الجولة ${r.number}`}
                   >
-                    <Trash2 size={16} strokeWidth={2} />
+                    <Pencil size={16} strokeWidth={2} />
                   </button>
                 )}
               </div>
             </div>
           ))}
         </div>
+
+        {editError && <div className="px-5 py-2 text-sm text-red-300 bg-red-500/10">{editError}</div>}
 
         <button
           onClick={onClose}

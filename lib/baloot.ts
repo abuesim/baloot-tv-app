@@ -38,6 +38,17 @@ export function getWinner(
 }
 
 /**
+ * النقاط الصغيرة المنفردة (١–١٥ مقابل صفر) تُضم للجولة السابقة
+ * بدل إنشاء جولة جديدة. ٠–٠ لا تُسجّل، و١٦ فأكثر جولة مستقلة.
+ */
+export function shouldMergeWithPreviousRound(team1: number, team2: number): boolean {
+  return (
+    (team1 === 0 && team2 >= 1 && team2 <= 15) ||
+    (team2 === 0 && team1 >= 1 && team1 <= 15)
+  );
+}
+
+/**
  * إنشاء كود تلفزيون عشوائي من ٦ خانات.
  */
 export function generateTvCode(): string {

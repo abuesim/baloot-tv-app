@@ -1,0 +1,2 @@
+ALTER TABLE "Round"
+ADD COLUMN "isEdited" BOOLEAN NOT NULL DEFAULT false;

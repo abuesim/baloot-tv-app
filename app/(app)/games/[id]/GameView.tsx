@@ -7,13 +7,14 @@ import { PlayerAvatar } from "@/components/PlayerAvatar";
 import {
   recordRoundAction,
   deleteRoundAction,
+  updateRoundAction,
   abandonGameAction,
   setGamePlayersAction,
 } from "./actions";
 
 type Player = { id: string; name: string; imageUrl: string | null };
 type Participant = { team: number; player: Player };
-type Round = { id: string; number: number; team1Score: number; team2Score: number };
+type Round = { id: string; number: number; team1Score: number; team2Score: number; isEdited: boolean };
 type Game = {
   id: string;
   mode: "NORMAL" | "MASHDOOD";
@@ -207,29 +208,13 @@ export default function GameView({
             </thead>
             <tbody>
               {game.rounds.map((r) => (
-                <tr key={r.id} className="border-t border-white/5">
-                  <td className="p-3 text-white/40">{r.number}</td>
-                  <td className="p-3 font-bold text-gold">{r.team1Score}</td>
-                  <td className="p-3">{r.team2Score}</td>
-                  <td className="p-3 text-left">
-                    {!isOver && (
-                      <button
-                        disabled={isPending}
-                        onClick={() => {
-                          if (confirm(`حذف الجولة ${r.number}؟`)) {
-                            startTransition(async () => {
-                              await deleteRoundAction(game.id, r.id);
-                              router.refresh();
-                            });
-                          }
-                        }}
-                        className="text-xs text-red-400 hover:text-red-300"
-                      >
-                        حذف
-                      </button>
-                    )}
-                  </td>
-                </tr>
+                <EditableRoundRow
+                  key={r.id}
+                  gameId={game.id}
+                  round={r}
+                  canEdit={game.status !== "ABANDONED" && r.number > 0}
+                  onDone={() => router.refresh()}
+                />
               ))}
             </tbody>
           </table>
@@ -266,6 +251,90 @@ export default function GameView({
         />
       )}
     </div>
+  );
+}
+
+function EditableRoundRow({
+  gameId,
+  round,
+  canEdit,
+  onDone,
+}: {
+  gameId: string;
+  round: Round;
+  canEdit: boolean;
+  onDone: () => void;
+}) {
+  const [editing, setEditing] = useState(false);
+  const [team1, setTeam1] = useState(String(round.team1Score));
+  const [team2, setTeam2] = useState(String(round.team2Score));
+  const [error, setError] = useState<string | null>(null);
+  const [isPending, startTransition] = useTransition();
+  const editedClass = round.isEdited ? "text-cyan-400" : "";
+
+  function save() {
+    setError(null);
+    startTransition(async () => {
+      const res = await updateRoundAction(
+        gameId,
+        round.id,
+        Number(team1) || 0,
+        Number(team2) || 0,
+      );
+      if (!res.ok) {
+        setError(res.error);
+        return;
+      }
+      setEditing(false);
+      onDone();
+    });
+  }
+
+  return (
+    <>
+      <tr className="border-t border-white/5">
+        <td className="p-3 text-white/40">{round.number}</td>
+        <td className={`p-3 font-bold ${round.isEdited ? "text-cyan-400" : "text-gold"}`}>
+          {editing ? (
+            <input
+              type="number"
+              min={0}
+              max={300}
+              value={team1}
+              onChange={(e) => setTeam1(e.target.value.replace(/\D/g, ""))}
+              className="w-20 rounded-lg border border-cyan-400/50 bg-black px-2 py-1 text-center text-cyan-300 outline-none"
+            />
+          ) : round.team1Score}
+        </td>
+        <td className={`p-3 ${editedClass}`}>
+          {editing ? (
+            <input
+              type="number"
+              min={0}
+              max={300}
+              value={team2}
+              onChange={(e) => setTeam2(e.target.value.replace(/\D/g, ""))}
+              className="w-20 rounded-lg border border-cyan-400/50 bg-black px-2 py-1 text-center text-cyan-300 outline-none"
+            />
+          ) : round.team2Score}
+        </td>
+        <td className="p-3 text-left">
+          {canEdit && (editing ? (
+            <span className="inline-flex gap-2">
+              <button disabled={isPending} onClick={save} className="text-xs text-cyan-300">حفظ</button>
+              <button disabled={isPending} onClick={() => setEditing(false)} className="text-xs text-white/50">إلغاء</button>
+            </span>
+          ) : (
+            <button disabled={isPending} onClick={() => setEditing(true)} className="text-xs text-cyan-400 hover:text-cyan-300">
+              تعديل
+            </button>
+          ))}
+        </td>
+      </tr>
+      {error && (
+        <tr><td colSpan={4} className="bg-red-500/10 px-3 py-2 text-xs text-red-300">{error}</td></tr>
+      )}
+    </>
   );
 }
 

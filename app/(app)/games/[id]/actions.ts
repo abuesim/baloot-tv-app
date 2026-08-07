@@ -4,7 +4,7 @@ import { revalidatePath } from "next/cache";
 import { z } from "zod";
 import { db } from "@/lib/db";
 import { requireUser } from "@/lib/auth";
-import { getWinner } from "@/lib/baloot";
+import { getWinner, shouldMergeWithPreviousRound } from "@/lib/baloot";
 import { publish } from "@/lib/events";
 import { syncMatchForGame, syncMatch } from "@/lib/tournament-sync";
 
@@ -13,7 +13,9 @@ const roundSchema = z.object({
   team2Score: z.number().int().min(0).max(300),
 });
 
-export type ActionResult = { ok: true } | { ok: false; error: string };
+export type ActionResult =
+  | { ok: true; merged?: boolean; roundNumber?: number }
+  | { ok: false; error: string };
 
 async function broadcastGame(gameId: string, userId: string) {
   const game = await db.game.findUnique({
@@ -46,6 +48,9 @@ export async function recordRoundAction(
   const ownerUserId = user.parentUserId ?? user.id;
   const parsed = roundSchema.safeParse({ team1Score: team1, team2Score: team2 });
   if (!parsed.success) return { ok: false, error: "نقاط غير صالحة" };
+  if (parsed.data.team1Score === 0 && parsed.data.team2Score === 0) {
+    return { ok: false, error: "أدخل نقاطاً" };
+  }
 
   const game = await db.game.findFirst({
     where: { id: gameId, userId: ownerUserId },
@@ -59,13 +64,88 @@ export async function recordRoundAction(
   const newTeam2 = game.team2Score + parsed.data.team2Score;
   const winner = getWinner(newTeam1, newTeam2, game.targetScore);
 
+  const previousRound = game.rounds
+    .filter((round) => round.number > 0)
+    .sort((a, b) => b.number - a.number)[0];
+  const mergeWithPrevious =
+    !!previousRound &&
+    shouldMergeWithPreviousRound(
+      parsed.data.team1Score,
+      parsed.data.team2Score,
+    );
+  const roundNumber = mergeWithPrevious
+    ? previousRound.number
+    : nextRoundNumber(game.rounds);
+
   await db.$transaction([
-    db.round.create({
+    mergeWithPrevious
+      ? db.round.update({
+          where: { id: previousRound.id },
+          data: {
+            team1Score: previousRound.team1Score + parsed.data.team1Score,
+            team2Score: previousRound.team2Score + parsed.data.team2Score,
+            isEdited: true,
+          },
+        })
+      : db.round.create({
+          data: {
+            gameId: game.id,
+            number: roundNumber,
+            team1Score: parsed.data.team1Score,
+            team2Score: parsed.data.team2Score,
+          },
+        }),
+    db.game.update({
+      where: { id: game.id },
       data: {
-        gameId: game.id,
-        number: nextRoundNumber(game.rounds),
+        team1Score: newTeam1,
+        team2Score: newTeam2,
+        winner,
+        status: winner !== null ? "COMPLETED" : "IN_PROGRESS",
+        endedAt: winner !== null ? new Date() : null,
+      },
+    }),
+  ]);
+
+  await broadcastGame(game.id, ownerUserId);
+  await syncMatchForGame(game.id);
+  revalidatePath(`/games/${game.id}`);
+  return { ok: true, merged: mergeWithPrevious, roundNumber };
+}
+
+export async function updateRoundAction(
+  gameId: string,
+  roundId: string,
+  team1: number,
+  team2: number,
+): Promise<ActionResult> {
+  const user = await requireUser();
+  const ownerUserId = user.parentUserId ?? user.id;
+  const parsed = roundSchema.safeParse({ team1Score: team1, team2Score: team2 });
+  if (!parsed.success) return { ok: false, error: "نقاط غير صالحة" };
+
+  const game = await db.game.findFirst({
+    where: { id: gameId, userId: ownerUserId },
+    include: { rounds: true },
+  });
+  if (!game) return { ok: false, error: "الصكة غير موجودة" };
+  if (game.status === "ABANDONED") return { ok: false, error: "الصكة ملغاة" };
+
+  const round = game.rounds.find((item) => item.id === roundId);
+  if (!round) return { ok: false, error: "الجولة غير موجودة" };
+  if (round.number === 0) return { ok: false, error: "لا يمكن تعديل جولة بداية المشدود" };
+
+  const newTeam1 = game.team1Score - round.team1Score + parsed.data.team1Score;
+  const newTeam2 = game.team2Score - round.team2Score + parsed.data.team2Score;
+  const winner = getWinner(newTeam1, newTeam2, game.targetScore);
+
+  await db.$transaction([
+    db.round.update({
+      where: { id: round.id },
+      data: {
         team1Score: parsed.data.team1Score,
         team2Score: parsed.data.team2Score,
+        isEdited: true,
       },
     }),
     db.game.update({
@@ -83,7 +163,7 @@ export async function recordRoundAction(
   await broadcastGame(game.id, ownerUserId);
   await syncMatchForGame(game.id);
   revalidatePath(`/games/${game.id}`);
-  return { ok: true };
+  return { ok: true, roundNumber: round.number };
 }
 
 export async function deleteRoundAction(

@@ -200,6 +200,7 @@ model Round {
   number     Int
   team1Score Int
   team2Score Int
+  isEdited   Boolean  @default(false) // تعديل يدوي أو دمج نقاط صغيرة مع الجولة السابقة
   createdAt  DateTime @default(now())
 
   game Game @relation(fields: [gameId], references: [id], onDelete: Cascade)
