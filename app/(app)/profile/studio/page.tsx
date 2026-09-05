@@ -5,6 +5,7 @@ import { canManageAds, requireUser } from "@/lib/auth";
 import TvStudioForm from "../TvStudioForm";
 import MyAdsSection from "../MyAdsSection";
 import StreamlabsSetup from "./StreamlabsSetup";
+import StudioTabs from "./StudioTabs";
 
 export default async function StudioPage() {
   const me = await requireUser();
@@ -44,6 +45,7 @@ export default async function StudioPage() {
 
   return (
     <div className="space-y-6">
+      <StudioTabs />
       <section className="bg-navy rounded-2xl p-6 border border-white/10">
         <h2 className="font-bold text-lg mb-1">🎬 إعدادات شاشة البث</h2>
         <p className="text-xs text-white/50 mb-4">

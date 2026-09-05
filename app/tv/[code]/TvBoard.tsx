@@ -3,6 +3,7 @@
 import { useEffect, useRef, useState } from "react";
 import { PlayerAvatar } from "@/components/PlayerAvatar";
 import type { TvTournament, TvTeam, TvChampionTeam } from "@/lib/tv-tournament";
+import { normalizeTvLayout, tvElementStyle } from "@/lib/tv-layout";
 
 type Player = { id: string; name: string; imageUrl: string | null };
 type Participant = { team: number; player: Player };
@@ -37,6 +38,7 @@ type TvUser = {
   tvStreamlabsToken: string | null;
   tvAlertSound: string | null;
   tvRefreshSeconds: number;
+  tvLayout: unknown;
 };
 
 type BannerItem = {
@@ -182,6 +184,14 @@ export default function TvBoard({
         }
         if (msg.type === "tournament") {
           setTournament(msg.tournament ?? null);
+          return;
+        }
+        if (msg.type === "user" && msg.user) {
+          setUser(msg.user);
+          return;
+        }
+        if (msg.type === "layout") {
+          setUser((old) => ({ ...old, tvLayout: msg.layout ?? null }));
           return;
         }
         if (msg.type === "draw") {
@@ -387,8 +397,10 @@ export default function TvBoard({
 
   // المتغيرات اللازمة للستايل
   const accent = user.tvAccentColor || "#f5b042";
+  const layout = normalizeTvLayout(user.tvLayout, accent);
   const styleVars: React.CSSProperties = {
     ["--tv-accent" as never]: accent,
+    backgroundColor: layout.backgroundColor,
   };
 
   // overlay.creators.sa و streamelements تشتغل عبر الـ proxy — نفعّل الـ iframe
@@ -398,7 +410,9 @@ export default function TvBoard({
   // الشريط يظهر فقط أثناء البطولة (قبل تحديد البطل) — يختفي عند الانتهاء
   const tournamentStrip =
     user.tvShowTournament && tournament && tournament.status !== "COMPLETED" ? (
-      <TvTournamentStrip tournament={tournament} accent={accent} />
+      <div style={tvElementStyle(layout.elements.tournament)}>
+        <TvTournamentStrip tournament={tournament} accent={layout.elements.tournament.color} />
+      </div>
     ) : null;
 
   // إظهار/إخفاء شريط الدعم/الإعلانات حسب إعداد الاستوديو
@@ -428,7 +442,7 @@ export default function TvBoard({
         style={styleVars}
       >
         {/* الهيدر: شعار + اسم التطبيق + اسم اليوزر */}
-        <div className="px-4 md:px-8 pt-4 md:pt-6 pb-2 flex items-center justify-between shrink-0">
+        <div className="px-4 md:px-8 pt-4 md:pt-6 pb-2 flex items-center justify-between shrink-0" style={tvElementStyle(layout.elements.header)}>
           <div className="flex items-center gap-2 md:gap-3">
             {/* eslint-disable-next-line @next/next/no-img-element */}
             <img
@@ -436,7 +450,7 @@ export default function TvBoard({
               alt="logo"
               className="w-9 h-9 md:w-12 md:h-12 rounded-full object-cover"
             />
-            <span className="text-xl md:text-3xl font-black" style={{ color: accent }}>
+            <span className="text-xl md:text-3xl font-black" style={{ color: layout.elements.header.color }}>
               أكك لايف
             </span>
             <RefreshCountdown key={user.tvRefreshSeconds} seconds={user.tvRefreshSeconds} accent={accent} />
@@ -466,14 +480,14 @@ export default function TvBoard({
 
         {/* إعلانات الصور في المنتصف */}
         {shownBanners.filter((b) => b.imageUrl).length > 0 && (
-          <TvImageBannerCenter banners={shownBanners.filter((b) => b.imageUrl)} />
+          <div style={tvElementStyle(layout.elements.banners)}><TvImageBannerCenter banners={shownBanners.filter((b) => b.imageUrl)} /></div>
         )}
 
         {/* شريط البطولة الشجري */}
         {tournamentStrip}
 
         {/* الإعلانات النصية في الأسفل */}
-        {shownBanners.length > 0 && <TvBannerBar banners={shownBanners} />}
+        {shownBanners.length > 0 && <div style={tvElementStyle(layout.elements.banners)}><TvBannerBar banners={shownBanners} color={layout.elements.banners.color} /></div>}
 
         {/* صندوق التنبيهات — طبقة شفافة فوق كل شيء */}
         {showAlert && <AlertBoxOverlay url={tvProxy(user.tvAlertUrl!)} />}
@@ -515,17 +529,19 @@ export default function TvBoard({
   const showDonations = user.tvShowDonations && recentDonations.length > 0;
 
   // ألوان الفريقين الثابتة
-  const TEAM1_COLOR = "#ff7c2a"; // لنا  — برتقالي
-  const TEAM2_COLOR = "#ffffff"; // لهم — أبيض
+  const TEAM1_COLOR = layout.elements.team1.color;
+  const TEAM2_COLOR = layout.elements.team2.color;
 
   // محتوى الصكة (مشترك بين الوضعين)
   const gameContent = (
     <>
-      <Header user={user} game={game} connected={connected} />
+      <div style={tvElementStyle(layout.elements.header)}>
+        <Header user={user} game={game} connected={connected} color={layout.elements.header.color} />
+      </div>
 
       {/* إعلانات صور — تظهر في المنتصف فوق النقاط */}
       {shownBanners.filter((b) => b.imageUrl).length > 0 && (
-        <TvImageBannerCenter banners={shownBanners.filter((b) => b.imageUrl)} />
+        <div style={tvElementStyle(layout.elements.banners)}><TvImageBannerCenter banners={shownBanners.filter((b) => b.imageUrl)} /></div>
       )}
 
       {/*
@@ -542,29 +558,29 @@ export default function TvBoard({
           <div className={showChat ? "flex-[2]" : "flex-1"}>
             <div className="flex items-center justify-center md:h-full">
               <div className="grid grid-cols-[1fr_auto_1fr] gap-2 md:gap-6 w-full items-center">
-                <ScoreColumn
+                <div style={tvElementStyle(layout.elements.team1)}><ScoreColumn
                   label="لنا"
                   players={team1}
                   score={game.team1Score}
                   isWinner={game.winner === 1}
                   target={game.targetScore}
-                  accent={accent}
-                  isAccent
+                  accent={TEAM1_COLOR}
+                  winnerColor={accent}
                   flashing={flash.team1}
                   pops={pops.filter((p) => p.team === 1)}
-                />
-                <DiffPanel diff={diff} lead={lead} accent={accent} />
-                <ScoreColumn
+                /></div>
+                <div style={tvElementStyle(layout.elements.difference)}><DiffPanel diff={diff} lead={lead} accent={layout.elements.difference.color} /></div>
+                <div style={tvElementStyle(layout.elements.team2)}><ScoreColumn
                   label="لهم"
                   players={team2}
                   score={game.team2Score}
                   isWinner={game.winner === 2}
                   target={game.targetScore}
-                  accent={accent}
-                  isAccent={false}
+                  accent={TEAM2_COLOR}
+                  winnerColor={accent}
                   flashing={flash.team2}
                   pops={pops.filter((p) => p.team === 2)}
-                />
+                /></div>
               </div>
             </div>
           </div>
@@ -586,7 +602,7 @@ export default function TvBoard({
             )}
             {user.tvShowRounds && lastRounds.length > 0 && (
               <div className="w-full sm:w-auto sm:shrink-0">
-                <RoundsStrip rounds={lastRounds} accent={accent} />
+                <div style={tvElementStyle(layout.elements.rounds)}><RoundsStrip rounds={lastRounds} accent={layout.elements.rounds.color} /></div>
               </div>
             )}
           </div>
@@ -597,7 +613,7 @@ export default function TvBoard({
       {/* شريط البطولة الشجري — أسفل الصكة */}
       {tournamentStrip}
 
-      {shownBanners.length > 0 && <TvBannerBar banners={shownBanners} />}
+      {shownBanners.length > 0 && <div style={tvElementStyle(layout.elements.banners)}><TvBannerBar banners={shownBanners} color={layout.elements.banners.color} /></div>}
 
       {showCelebration && game.winner !== null && (
         <TvWinCelebration
@@ -666,10 +682,12 @@ function Header({
   user,
   game,
   connected,
+  color,
 }: {
   user: TvUser;
   game: Game | null;
   connected: boolean;
+  color: string;
 }) {
   return (
     <div className="px-3 md:px-8 pt-3 md:pt-6 pb-1 md:pb-2 flex items-center justify-between">
@@ -680,7 +698,7 @@ function Header({
           alt="logo"
           className="w-8 h-8 md:w-11 md:h-11 rounded-full object-cover"
         />
-        <span className="text-xl md:text-3xl font-black" style={{ color: user.tvAccentColor }}>
+        <span className="text-xl md:text-3xl font-black" style={{ color }}>
           أكك لايف
         </span>
         <RefreshCountdown key={user.tvRefreshSeconds} seconds={user.tvRefreshSeconds} accent={user.tvAccentColor} />
@@ -967,7 +985,7 @@ function ScoreColumn({
   isWinner,
   target,
   accent,
-  isAccent,
+  winnerColor,
   flashing,
   pops,
 }: {
@@ -977,12 +995,12 @@ function ScoreColumn({
   isWinner: boolean;
   target: number;
   accent: string;
-  isAccent: boolean;
+  winnerColor: string;
   flashing: boolean;
   pops: FloatPop[];
 }) {
   const pct = Math.min(100, Math.round((score / target) * 100));
-  const color = isAccent || isWinner ? accent : "#ffffff";
+  const color = isWinner ? winnerColor : accent;
   return (
     <div
       className={`text-center relative rounded-2xl md:rounded-3xl p-2 md:p-4 transition-all ${
@@ -1314,11 +1332,11 @@ function AlertBoxOverlay({ url }: { url: string }) {
 // شريط الإعلانات — يُعرض داخل gameContent فيتدوّر مع الطولي
 // ============================================================
 /** شريط النص السفلي — يعرض كل البانرات التي لديها نص */
-function TvBannerBar({ banners }: { banners: BannerItem[] }) {
+function TvBannerBar({ banners, color }: { banners: BannerItem[]; color: string }) {
   const textBanners = banners.filter((b) => b.text); // صورة+نص أو نص فقط
   if (textBanners.length === 0) return null;
   return (
-    <div className="bg-gold/95 text-navy-deep py-3 overflow-hidden whitespace-nowrap">
+    <div className="text-navy-deep py-3 overflow-hidden whitespace-nowrap" style={{ backgroundColor: color }}>
       <div className="inline-flex animate-marquee gap-12 font-bold text-[1.65rem]">
         {[...textBanners, ...textBanners].map((b, i) => (
           <span key={`${b.id}-${i}`} className="px-6 inline-flex items-center gap-2">
@@ -1711,4 +1729,3 @@ function TvChampionCelebration({
     </div>
   );
 }
-

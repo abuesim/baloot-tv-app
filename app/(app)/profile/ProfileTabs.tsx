@@ -22,7 +22,9 @@ export default function ProfileTabs({
   return (
     <div className="flex gap-1 border-b border-white/10 -mt-2">
       {tabs.map((t) => {
-        const active = pathname === t.href;
+        const active =
+          pathname === t.href ||
+          (t.href !== "/profile" && pathname.startsWith(`${t.href}/`));
         return (
           <Link
             key={t.href}

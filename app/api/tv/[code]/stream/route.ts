@@ -23,7 +23,18 @@ const USER_TV_SELECT = {
   tvStreamlabsToken: true,
   tvAlertSound: true,
   tvRefreshSeconds: true,
+  tvLayout: true,
 } as const;
+
+type TvUserRow = Awaited<ReturnType<typeof getTvUser>>;
+
+async function getTvUser(code: string) {
+  return db.user.findUnique({ where: { tvCode: code }, select: USER_TV_SELECT });
+}
+
+function userSignature(user: TvUserRow): string {
+  return user ? JSON.stringify(user) : "none";
+}
 
 type GameRow = Awaited<ReturnType<typeof getCurrentGameForUser>>;
 
@@ -57,10 +68,7 @@ export async function GET(
 ) {
   const { code } = await params;
 
-  const user = await db.user.findUnique({
-    where: { tvCode: code },
-    select: USER_TV_SELECT,
-  });
+  const user = await getTvUser(code);
   if (!user) return new Response("Not found", { status: 404 });
 
   const initialGame = await getCurrentGameForUser(user.id);
@@ -86,6 +94,7 @@ export async function GET(
 
       // نحتفظ بآخر بصمة معروفة حتى لا نرسل تكراراً بلا داعي
       let lastSig = gameSignature(initialGame);
+      let lastUserSig = userSignature(user);
       let lastTourSig = tvTournamentSignature(initialTournament);
       let lastDrawAt = initialTournament?.drawAt ?? null;
       let lastChampionAt = initialTournament?.championAt ?? null;
@@ -93,8 +102,9 @@ export async function GET(
       // ① اشتراك الذاكرة — تحديث فوري إذا صادف نفس نسخة السيرفر
       const unsubscribe = subscribe(`tv:user:${user.id}`, (data) => {
         // لو وصل حدث صكة، حدّث البصمة حتى لا يكرّره الـ polling
-        const d = data as { type?: string; game?: GameRow };
+        const d = data as { type?: string; game?: GameRow; layout?: unknown };
         if (d?.type === "game") lastSig = gameSignature(d.game ?? null);
+        if (d?.type === "layout") lastUserSig = "pending-refresh";
         send(data);
       });
 
@@ -108,6 +118,13 @@ export async function GET(
             lastSig = sig;
             if (g) send({ type: "game", game: g });
             else send({ type: "init", user, game: null });
+          }
+
+          const currentUser = await getTvUser(code);
+          const currentUserSig = userSignature(currentUser);
+          if (currentUser && currentUserSig !== lastUserSig) {
+            lastUserSig = currentUserSig;
+            send({ type: "user", user: currentUser });
           }
 
           // البطولة — أرسل التحديث عند تغيّر الشجرة/الترتيب

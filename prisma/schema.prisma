@@ -61,6 +61,7 @@ model User {
   tvStreamlabsToken String? // Socket API Token من Streamlabs (للاتصال المباشر)
   tvAlertSound      String? // صوت مخصص للتنبيهات (مرفوع من الجهاز)
   tvRefreshSeconds  Int      @default(0) // 0 = مُطفأ (تحديث لحظي SSE) / >0 = تحديث إجباري بعدّاد تنازلي
+  tvLayout          Json?    // تخصيص مواقع وأحجام وألوان عناصر شاشة البث
 
   // اليوزر الفرعي — يشير إلى الحساب الأصل (صانع المحتوى)
   parentUserId String?
