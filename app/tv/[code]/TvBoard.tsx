@@ -3,7 +3,7 @@
 import { useEffect, useRef, useState } from "react";
 import { PlayerAvatar } from "@/components/PlayerAvatar";
 import type { TvTournament, TvTeam, TvChampionTeam } from "@/lib/tv-tournament";
-import { normalizeTvLayout, tvElementStyle } from "@/lib/tv-layout";
+import { normalizeTvLayout, tvElementStyle, type TvLayoutElement } from "@/lib/tv-layout";
 
 type Player = { id: string; name: string; imageUrl: string | null };
 type Participant = { team: number; player: Player };
@@ -566,6 +566,8 @@ export default function TvBoard({
                   target={game.targetScore}
                   accent={TEAM1_COLOR}
                   winnerColor={accent}
+                  playerLayout={layout.elements.players}
+                  playerRows={layout.playerRows}
                   flashing={flash.team1}
                   pops={pops.filter((p) => p.team === 1)}
                 /></div>
@@ -578,6 +580,8 @@ export default function TvBoard({
                   target={game.targetScore}
                   accent={TEAM2_COLOR}
                   winnerColor={accent}
+                  playerLayout={layout.elements.players}
+                  playerRows={layout.playerRows}
                   flashing={flash.team2}
                   pops={pops.filter((p) => p.team === 2)}
                 /></div>
@@ -986,6 +990,8 @@ function ScoreColumn({
   target,
   accent,
   winnerColor,
+  playerLayout,
+  playerRows,
   flashing,
   pops,
 }: {
@@ -996,6 +1002,8 @@ function ScoreColumn({
   target: number;
   accent: string;
   winnerColor: string;
+  playerLayout: TvLayoutElement;
+  playerRows: 1 | 2;
   flashing: boolean;
   pops: FloatPop[];
 }) {
@@ -1013,7 +1021,10 @@ function ScoreColumn({
       >
         {label}
       </div>
-      <div className="flex items-center justify-center gap-1.5 md:gap-4 mb-1 md:mb-4 min-h-6 md:min-h-24">
+      <div
+        className={`flex items-center justify-center gap-1.5 md:gap-4 mb-1 md:mb-4 min-h-6 md:min-h-24 ${playerRows === 2 ? "flex-col" : "flex-row"}`}
+        style={tvElementStyle(playerLayout)}
+      >
         {players.map((p) => (
           <div key={p.id} className="flex flex-col items-center gap-0.5 md:gap-2">
             {/* جوال: md (48px) — شاشة كبيرة: xl (96px) */}
@@ -1025,7 +1036,7 @@ function ScoreColumn({
             </span>
             <span
               className="text-[10px] md:text-base max-w-14 md:max-w-24 truncate font-medium"
-              style={{ color }}
+              style={{ color: playerLayout.color === "auto" ? color : playerLayout.color }}
             >
               {p.name}
             </span>

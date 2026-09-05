@@ -3,6 +3,7 @@ export const TV_LAYOUT_KEYS = [
   "team1",
   "difference",
   "team2",
+  "players",
   "rounds",
   "tournament",
   "banners",
@@ -19,8 +20,9 @@ export type TvLayoutElement = {
 };
 
 export type TvLayoutConfig = {
-  version: 1;
+  version: 2;
   backgroundColor: string;
+  playerRows: 1 | 2;
   elements: Record<TvLayoutKey, TvLayoutElement>;
 };
 
@@ -37,13 +39,15 @@ export function createDefaultTvLayout(accent = "#f5b042"): TvLayoutConfig {
   });
 
   return {
-    version: 1,
+    version: 2,
     backgroundColor: "#0a0a0e",
+    playerRows: 1,
     elements: {
       header: element(safeAccent),
       team1: element(safeAccent),
       difference: element(safeAccent),
       team2: element("#ffffff"),
+      players: element("auto"),
       rounds: element(safeAccent),
       tournament: element(safeAccent),
       banners: element("#f5b042"),
@@ -80,7 +84,7 @@ export function normalizeTvLayout(value: unknown, accent = "#f5b042"): TvLayoutC
           y: finiteNumber(candidate.y, fallback.y, -30, 30),
           scale: finiteNumber(candidate.scale, fallback.scale, 0.5, 1.8),
           visible: typeof candidate.visible === "boolean" ? candidate.visible : fallback.visible,
-          color: typeof candidate.color === "string" && HEX.test(candidate.color)
+          color: typeof candidate.color === "string" && (HEX.test(candidate.color) || (key === "players" && candidate.color === "auto"))
             ? candidate.color
             : fallback.color,
         },
@@ -89,11 +93,12 @@ export function normalizeTvLayout(value: unknown, accent = "#f5b042"): TvLayoutC
   ) as Record<TvLayoutKey, TvLayoutElement>;
 
   return {
-    version: 1,
+    version: 2,
     backgroundColor:
       typeof raw.backgroundColor === "string" && HEX.test(raw.backgroundColor)
         ? raw.backgroundColor
         : defaults.backgroundColor,
+    playerRows: raw.playerRows === 2 ? 2 : 1,
     elements,
   };
 }
