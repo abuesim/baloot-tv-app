@@ -17,6 +17,17 @@ const nextConfig: NextConfig = {
     "172.29.*.*", "172.30.*.*", "172.31.*.*", "*.local",
   ],
 
+  // العرض التقديمي يُحمّل داخل iframe عبر srcDoc، لذلك روابط الصور النسبية
+  // تُطلب من /shots. أبقِ هذا المسار متوافقاً مع مكان الصور الفعلي.
+  async rewrites() {
+    return [
+      {
+        source: "/shots/:path*",
+        destination: "/presentation/shots/:path*",
+      },
+    ];
+  },
+
   output: 'standalone', 
 };
 
